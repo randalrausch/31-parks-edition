@@ -1,0 +1,17 @@
+{
+  "name": "31 · National Parks Edition",
+  "short_name": "31 Parks",
+  "description": "A vintage WPA-poster card game of 31 — solo vs AI rangers or online with friends.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0d2418",
+  "theme_color": "#0d2418",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
