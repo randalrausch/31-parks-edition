@@ -1,11 +1,11 @@
 /**
- * The immersive, perspective-correct game table.
- *
- * Hidden information is enforced here: only the current player's hand is shown
- * face-up (and only their score); every opponent is face-down with tokens but
- * NO score. There are no community cards — just the deck and the discard.
- * The seating row adapts to however many players are configured.
+ * Online game board — viewer-centric perspective (you're always at the bottom),
+ * driven by server snapshots. Controls are enabled only on your turn; otherwise
+ * a "waiting for {player}" banner shows. No deal animation, AI-thinking view, or
+ * pass-the-device cover (the server owns turn flow; each device is one player).
+ * Reuses the solo board's CSS classes and leaf components for a consistent look.
  */
+import { useEffect, useState } from "react";
 import { useTheme } from "./ParkThemeProvider";
 import Card from "./Card";
 import CardBack from "./CardBack";
@@ -13,7 +13,6 @@ import HelpPanel from "./HelpPanel";
 import Modal from "./Modal";
 import ParkScene from "./ParkScene";
 import ParkPicker from "./ParkPicker";
-import CoverScreen from "./CoverScreen";
 import RoundEndOverlay from "./RoundEndOverlay";
 import GameOverOverlay from "./GameOverOverlay";
 import { TokenRow } from "./TokenRow";
@@ -26,31 +25,32 @@ import {
   scoreHand,
   isAlive,
   type GamePlayer,
-  type GameState,
 } from "../game/engine";
-import type { GameApi } from "../game/useGame";
-import { useState } from "react";
+import type { NetworkGameApi } from "../game/useNetworkGame";
 import "./GameBoard.css";
 
-/** A face-down opponent — name, tokens, fanned backs. Never a score. */
 function Opponent({
   player,
   isKnocker,
+  isCurrent,
 }: {
   player: GamePlayer;
   isKnocker: boolean;
+  isCurrent: boolean;
 }) {
   const danger = !player.grace && player.lives === 1;
   return (
     <div
-      className={`opp${player.grace ? " opp--grace" : ""}${danger ? " opp--danger" : ""}`}
+      className={`opp${player.grace ? " opp--grace" : ""}${danger ? " opp--danger" : ""}${
+        isCurrent ? " opp--active" : ""
+      }`}
     >
       <div className="opp__fan">
-        {player.hand.map((c, i) => {
+        {player.hand.map((_, i) => {
           const mid = (player.hand.length - 1) / 2;
           return (
             <CardBack
-              key={c.id}
+              key={i}
               size="sm"
               fanStyle={{
                 transform: `rotate(${(i - mid) * 10}deg) translateY(${Math.abs(i - mid) * 2}px)`,
@@ -77,31 +77,62 @@ function Opponent({
   );
 }
 
-export default function GameBoard({ game }: { game: GameApi }) {
+export default function OnlineGameBoard({
+  game,
+  onLeave,
+}: {
+  game: NetworkGameApi;
+  onLeave: () => void;
+}) {
   const { theme } = useTheme();
   const [helpOpen, setHelpOpen] = useState(false);
   const [parksOpen, setParksOpen] = useState(false);
-  const s = game.state;
-  if (!s) return null;
+  const [selected, setSelected] = useState<number | null>(null);
 
-  const cur = s.players[s.cur];
-  // Seat only living opponents (eliminated players leave the table).
+  const snap = game.snap;
+  const s = snap?.state ?? null;
+  const viewer = snap?.seatIndex ?? -1;
+
+  // Reset the local selection whenever it stops being our discard turn.
+  const myDiscard = !!s && s.phase === "discarding" && s.cur === viewer;
+  useEffect(() => {
+    if (!myDiscard && selected !== null) setSelected(null);
+  }, [myDiscard, selected]);
+
+  if (!s) {
+    return (
+      <section className="board-fold">
+        <div className="board paper-grain">
+          <ParkScene theme={theme} className="board__scene" />
+          <div className="board__vignette" />
+          <div className="board__connecting">Connecting…</div>
+        </div>
+      </section>
+    );
+  }
+
+  const me = viewer >= 0 ? s.players[viewer] : null;
   const opponents = s.players
     .map((p, i) => ({ p, i }))
-    .filter((x) => x.i !== s.cur && isAlive(x.p));
+    .filter((x) => x.i !== viewer && isAlive(x.p));
   const aliveCount = s.players.filter(isAlive).length;
   const topDiscard = s.discard[s.discard.length - 1] ?? null;
-
-  const isHumanTurn =
-    !cur.isAI && (s.phase === "drawing" || s.phase === "discarding");
-  const canDraw = !cur.isAI && s.phase === "drawing";
-  const counting = bestSuit(cur.hand);
-  const handScore = scoreHand(cur.hand, s.options);
-  // Round (lap of the table) within the current deal.
+  const current = s.players[s.cur];
+  const myTurn =
+    s.cur === viewer && (s.phase === "drawing" || s.phase === "discarding");
+  const canDraw = myTurn && s.phase === "drawing";
+  const counting = me ? bestSuit(me.hand) : null;
+  const handScore = me ? scoreHand(me.hand, s.options) : 0;
   const roundNo =
     s.dealPlayers > 0
       ? Math.max(1, Math.ceil(s.turnInDeal / s.dealPlayers))
       : 1;
+
+  const turnLabel = myTurn
+    ? s.phase === "discarding"
+      ? "Your turn · discard a card"
+      : "Your turn"
+    : `Waiting for ${current?.name ?? "…"}`;
 
   return (
     <section className="board-fold">
@@ -109,7 +140,6 @@ export default function GameBoard({ game }: { game: GameApi }) {
         <ParkScene theme={theme} className="board__scene" />
         <div className="board__vignette" />
 
-        {/* Live public-action feed (what everyone at the table can see) */}
         {s.log.length > 0 && (
           <div className="board__log">
             <span className="board__log-title">At the Table</span>
@@ -117,7 +147,6 @@ export default function GameBoard({ game }: { game: GameApi }) {
           </div>
         )}
 
-        {/* Park badge */}
         <div className="board__badge">
           <NpsArrowhead className="board__arrowhead" />
           <span className="board__badge-text">
@@ -126,7 +155,6 @@ export default function GameBoard({ game }: { game: GameApi }) {
           </span>
         </div>
 
-        {/* Round info + tools */}
         <div className="board__topright">
           <span className="board__round">
             <span className="board__round-num">
@@ -178,12 +206,12 @@ export default function GameBoard({ game }: { game: GameApi }) {
           <button
             className="board__tool"
             type="button"
-            onClick={game.newGame}
-            aria-label="New game"
+            onClick={onLeave}
+            aria-label="Leave game"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path
-                d="M5 5h14v14H5z M9 9l6 6 M15 9l-6 6"
+                d="M14 7V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-2M10 12h11m0 0-3-3m3 3-3 3"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
@@ -194,21 +222,24 @@ export default function GameBoard({ game }: { game: GameApi }) {
           </button>
         </div>
 
-        {/* Opponents */}
         <div className="board__opponents">
           {opponents.map(({ p, i }) => (
-            <Opponent key={p.id} player={p} isKnocker={s.knocker === i} />
+            <Opponent
+              key={p.id}
+              player={p}
+              isKnocker={s.knocker === i}
+              isCurrent={s.cur === i}
+            />
           ))}
         </div>
 
-        {/* Center: deck + discard */}
         <div className="board__center">
           <div className="piles">
             <div className="piles__stacks">
               <button
                 className="piles__deck"
                 type="button"
-                onClick={game.drawDeck}
+                onClick={() => game.act({ type: "drawDeck" })}
                 disabled={!canDraw}
                 aria-label="Draw from deck"
               >
@@ -221,11 +252,10 @@ export default function GameBoard({ game }: { game: GameApi }) {
                 )}
                 <span className="piles__label">Deck · {s.deck.length}</span>
               </button>
-
               <button
                 className={`piles__discard${topDiscard ? " piles__discard--filled" : ""}`}
                 type="button"
-                onClick={game.drawDiscard}
+                onClick={() => game.act({ type: "takeDiscard" })}
                 disabled={!canDraw || !topDiscard}
                 aria-label="Take discard"
               >
@@ -241,69 +271,48 @@ export default function GameBoard({ game }: { game: GameApi }) {
                 )}
               </button>
             </div>
-            {s.status && <div className="board__status">{s.status}</div>}
+            <div className="board__status">{turnLabel}</div>
           </div>
         </div>
 
-        {/* Current player */}
+        {/* You — always at the bottom */}
         <div className="board__current">
-          {cur.isAI ? (
-            <div className="board__ai">
-              <Avatar
-                avatarKey={cur.avatarKey}
-                emoji={cur.emoji}
-                image={cur.image}
-              />
-              <span className="board__ai-name">{cur.name}</span>
-              <span className="board__ai-think">is thinking…</span>
-              <div className="board__ai-cards">
-                {cur.hand.map((c) => (
-                  <CardBack key={c.id} size="sm" />
-                ))}
-              </div>
-            </div>
-          ) : (
+          {me && (
             <>
               <div className="board__you-head">
                 <Avatar
-                  avatarKey={cur.avatarKey}
-                  emoji={cur.emoji}
-                  image={cur.image}
+                  avatarKey={me.avatarKey}
+                  emoji={me.emoji}
+                  image={me.image}
                   className="avatar--sm"
                 />
                 <span className="board__you-name">
-                  {cur.name}
-                  <span className="board__you-turn">
-                    {s.phase === "discarding" ? " · discard a card" : "'s turn"}
-                  </span>
+                  {me.name}
+                  <span className="board__you-turn"> (You)</span>
                 </span>
-                <TokenRow lives={cur.lives} grace={cur.grace} />
+                <TokenRow lives={me.lives} grace={me.grace} />
               </div>
 
               <div className="board__hand">
-                {cur.hand.map((c, i) => {
-                  const mid = (cur.hand.length - 1) / 2;
+                {me.hand.map((c, i) => {
+                  const mid = (me.hand.length - 1) / 2;
                   return (
                     <Card
                       key={c.id}
                       card={c}
                       size="lg"
-                      interactive={s.phase === "discarding"}
-                      // Suppress the counting-suit highlight while discarding so the
-                      // only emphasized card is the one chosen to discard.
-                      counting={s.phase !== "discarding" && c.suit === counting}
-                      selected={s.selected === i}
-                      onSelect={() => game.selectCard(i)}
+                      interactive={myDiscard}
+                      counting={!myDiscard && c.suit === counting}
+                      selected={selected === i}
+                      onSelect={() =>
+                        myDiscard && setSelected(selected === i ? null : i)
+                      }
                       fanStyle={{
-                        transform: `rotate(${(i - mid) * 4}deg) translateY(${
-                          s.selected === i ? -30 : 0
-                        }px)`,
+                        transform: `rotate(${(i - mid) * 4}deg) translateY(${selected === i ? -30 : 0}px)`,
                         marginInline: "-6px",
-                        zIndex: s.selected === i ? 50 : i,
+                        zIndex: selected === i ? 50 : i,
                         opacity:
-                          s.phase === "discarding" &&
-                          s.selected !== null &&
-                          s.selected !== i
+                          myDiscard && selected !== null && selected !== i
                             ? 0.62
                             : 1,
                         transition: "transform 0.14s ease, opacity 0.14s ease",
@@ -320,14 +329,21 @@ export default function GameBoard({ game }: { game: GameApi }) {
               </div>
 
               <div className="board__actions">
-                {s.phase === "discarding" ? (
+                {myDiscard ? (
                   <button
                     className="btn btn--knock board__act-wide"
                     type="button"
-                    onClick={game.confirmDiscard}
-                    disabled={s.selected === null}
+                    onClick={() => {
+                      if (selected === null) return;
+                      game.act({
+                        type: "discard",
+                        cardId: me.hand[selected].id,
+                      });
+                      setSelected(null);
+                    }}
+                    disabled={selected === null}
                   >
-                    {s.selected === null
+                    {selected === null
                       ? "Tap a Card to Discard"
                       : "Discard Selected"}
                   </button>
@@ -336,7 +352,7 @@ export default function GameBoard({ game }: { game: GameApi }) {
                     <button
                       className="btn btn--draw"
                       type="button"
-                      onClick={game.drawDeck}
+                      onClick={() => game.act({ type: "drawDeck" })}
                       disabled={!canDraw}
                     >
                       Draw Deck
@@ -344,7 +360,7 @@ export default function GameBoard({ game }: { game: GameApi }) {
                     <button
                       className="btn btn--draw"
                       type="button"
-                      onClick={game.drawDiscard}
+                      onClick={() => game.act({ type: "takeDiscard" })}
                       disabled={!canDraw || !topDiscard}
                     >
                       Take Discard
@@ -352,7 +368,7 @@ export default function GameBoard({ game }: { game: GameApi }) {
                     <button
                       className="btn btn--knock"
                       type="button"
-                      onClick={game.knock}
+                      onClick={() => game.act({ type: "knock" })}
                       disabled={!canDraw || s.knocker !== null}
                     >
                       Knock
@@ -360,28 +376,16 @@ export default function GameBoard({ game }: { game: GameApi }) {
                   </>
                 )}
               </div>
-              {!isHumanTurn && s.phase !== "discarding" && (
-                <div className="board__wait">Waiting…</div>
-              )}
             </>
           )}
         </div>
       </div>
 
-      {/* Overlays */}
-      {s.phase === "cover" && (
-        <CoverScreen
-          name={cur.name}
-          avatarKey={cur.avatarKey}
-          log={s.log}
-          onReady={game.coverReady}
-        />
-      )}
       {s.phase === "dealEnd" && (
-        <RoundEndOverlay state={s as GameState} onNext={game.nextDeal} />
+        <RoundEndOverlay state={s} onNext={game.nextDeal} />
       )}
       {s.phase === "gameOver" && (
-        <GameOverOverlay state={s as GameState} onNewGame={game.newGame} />
+        <GameOverOverlay state={s} onNewGame={onLeave} />
       )}
       <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
       <Modal

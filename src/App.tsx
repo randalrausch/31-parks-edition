@@ -9,16 +9,21 @@
  * A networked transport would feed/return the same GameState so each human can
  * play from their own device.
  */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ParkThemeProvider } from "./components/ParkThemeProvider";
 import SetupScreen from "./components/SetupScreen";
 import GameBoard from "./components/GameBoard";
+import JoinModal from "./components/JoinModal";
+import OnlineGame, { type OnlineSession } from "./components/OnlineGame";
 import { useGame } from "./game/useGame";
+import { gameApi } from "./game/supabaseClient";
 import { AI_CHARACTERS } from "./game/aiCharacters";
 import "./App.css";
 
 function Shell() {
   const game = useGame();
+  const [session, setSession] = useState<OnlineSession | null>(null);
+  const [joinOpen, setJoinOpen] = useState(false);
   // DEV: #demo auto-starts a sample game (for screenshots). Harmless deep-link.
   useEffect(() => {
     if (
@@ -47,10 +52,41 @@ function Shell() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  return game.state ? (
-    <GameBoard game={game} />
-  ) : (
-    <SetupScreen onStart={game.startGame} />
+  if (session) {
+    return <OnlineGame session={session} onLeave={() => setSession(null)} />;
+  }
+  if (game.state) {
+    return <GameBoard game={game} />;
+  }
+  return (
+    <>
+      <SetupScreen
+        onStart={game.startGame}
+        onCreateOnline={async (config) => {
+          if (!gameApi) return;
+          try {
+            const r = await gameApi.create(config);
+            setSession({
+              gameId: r.gameId,
+              seatToken: r.seatToken,
+              code: r.code,
+              seatIndex: r.seatIndex,
+            });
+          } catch (e) {
+            console.error("create online failed", e);
+          }
+        }}
+        onJoinOnline={() => setJoinOpen(true)}
+      />
+      <JoinModal
+        open={joinOpen}
+        onClose={() => setJoinOpen(false)}
+        onJoined={(s) => {
+          setJoinOpen(false);
+          setSession(s);
+        }}
+      />
+    </>
   );
 }
 

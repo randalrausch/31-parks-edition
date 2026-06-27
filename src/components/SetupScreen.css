@@ -629,6 +629,41 @@
   width: 22px;
   height: 28px;
 }
+/* Online entry buttons */
+.setup__online {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.setup__online-btn {
+  flex: 1;
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  font-size: 0.86rem;
+  color: var(--cream);
+  background: linear-gradient(
+    180deg,
+    var(--c-draw),
+    color-mix(in srgb, var(--c-draw) 70%, black)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 12px;
+  min-height: 48px;
+  border-radius: 11px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 3px 0 rgba(0, 0, 0, 0.3);
+}
+.setup__online-btn--ghost {
+  background: rgba(8, 18, 12, 0.5);
+  color: var(--gold-bright);
+}
+.setup__online-btn:active {
+  transform: translateY(2px);
+}
+
 .setup__link {
   font-family: var(--font-label);
   text-transform: uppercase;

@@ -213,6 +213,33 @@
 .opp--danger .opp__plate {
   border-color: var(--ember);
 }
+/* Online: highlight whose turn it is */
+.opp--active .opp__plate {
+  box-shadow:
+    0 0 0 2px var(--gold-bright),
+    var(--shadow-plate);
+}
+.opp--active {
+  animation: opp-pulse 1.6s ease-in-out infinite;
+}
+@keyframes opp-pulse {
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+/* Online: connecting placeholder */
+.board__connecting {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  letter-spacing: 0.08em;
+  color: var(--cream);
+}
 .opp__info {
   display: flex;
   flex-direction: column;

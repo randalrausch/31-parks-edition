@@ -17,6 +17,7 @@ import HeroBackground from "./HeroBackground";
 import { StarDivider } from "../art/Glyphs";
 import { titleImage } from "../titleArt";
 import { useAmbientAudio, hasAmbientAudio } from "../game/ambientAudio";
+import { multiplayerEnabled } from "../game/supabaseClient";
 import {
   DEFAULT_OPTIONS,
   type AITraits,
@@ -179,8 +180,14 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 export default function SetupScreen({
   onStart,
+  onCreateOnline,
+  onJoinOnline,
 }: {
   onStart: (c: GameConfig) => void;
+  /** Create an online game from the current config (multiplayer only). */
+  onCreateOnline?: (c: import("../game/supabaseClient").CreateConfig) => void;
+  /** Open the join-by-code modal (multiplayer only). */
+  onJoinOnline?: () => void;
 }) {
   const { theme, themeId } = useTheme();
   const [humans, setHumans] = useState(1);
@@ -247,6 +254,25 @@ export default function SetupScreen({
       });
     });
     onStart({ players, options });
+  };
+
+  const createOnline = () => {
+    if (!onCreateOnline) return;
+    onCreateOnline({
+      creatorName: names[0]?.trim() || "Player 1",
+      humans: Math.max(1, humans),
+      ai: aiCharIds.map((id) => {
+        const c = CHARACTERS_BY_ID[id] ?? AI_CHARACTERS[0];
+        return {
+          name: c.name,
+          avatarKey: "ranger",
+          emoji: c.emoji,
+          image: characterImage(c.id),
+          traits: c.traits,
+        };
+      }),
+      options,
+    });
   };
 
   return (
@@ -486,8 +512,27 @@ export default function SetupScreen({
           onClick={start}
           disabled={tooFew}
         >
-          Start Your Adventure
+          Start Solo Adventure
         </button>
+
+        {multiplayerEnabled && onCreateOnline && (
+          <div className="setup__online setup__arr setup__arr--5">
+            <button
+              className="setup__online-btn"
+              type="button"
+              onClick={createOnline}
+            >
+              Create Online Game
+            </button>
+            <button
+              className="setup__online-btn setup__online-btn--ghost"
+              type="button"
+              onClick={onJoinOnline}
+            >
+              Join with Code
+            </button>
+          </div>
+        )}
       </div>
 
       <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
