@@ -22,9 +22,11 @@ Name files `<park-id>-scene.<ext>` and `<park-id>-back.<ext>`:
 Notes:
 - **Format:** `.jpg`, `.jpeg`, `.png`, or `.webp` all work — the `<ext>` is
   matched automatically; no code change needed.
-- **Card backs:** generate the artwork only — the app draws the gold frame, the
-  park name, and the "31" on top. Leave margins and **don't bake text into the
-  card-back image.**
+- **Card backs:** a raster `*-back` image is rendered **edge-to-edge with no
+  overlay** — the app draws no frame, name, or "31" on top of it. So **bake your
+  own framing and any text (park name, "31") into the image.** (Only the SVG
+  `Emblem` fallback — used when no back image is present — draws a plain gold
+  frame, and even that has no text.)
 - **Backgrounds:** the table darkens the edges with a vignette and overlays the
   UI, so keep the focal subject roughly centered and the top corners
   uncluttered (the park badge sits top-left, round info top-right).
@@ -51,8 +53,12 @@ WPA National Parks poster look of the mockups.
   Prismatic thermal pool with concentric teal-green-orange rings, rolling ochre
   hills, lodgepole pines, a bison on a rise, golden-hour amber sky.*
 
-For a **card back**, append:
-`Tall vertical composition, simpler and more iconic, centered subject, generous margins.`
+For a **card back**, the image *is* the whole back (no overlay is added), so ask
+for the framing and lettering baked in — replace the base prompt's "no text, no
+border" with, e.g.:
+`Tall vertical playing-card back: a simple, iconic centered scene inside a
+decorative gold border, with the park name at top and a large "31" at the
+bottom; vintage WPA screen-print style.`
 
 ## Adding a brand-new park
 

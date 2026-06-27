@@ -327,9 +327,12 @@ function log(s, kind, card) {
 }
 function createGameState(players, options) {
   return {
-    players: players.map(
-      (p) => ({ ...p, lives: 3, grace: false, hand: [] })
-    ),
+    players: players.map((p) => ({
+      ...p,
+      lives: 3,
+      grace: false,
+      hand: []
+    })),
     deck: [],
     discard: [],
     cur: 0,

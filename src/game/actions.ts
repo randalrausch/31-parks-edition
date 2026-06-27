@@ -3,8 +3,8 @@
  *
  * `applyAction(state, action)` is the single source of truth for how the game
  * state changes — no timing, no animation, no AI, no React. It's fully
- * serializable, so the exact same function can run in the browser (local play),
- * on a server, or on a host peer for networked multiplayer. Presentation
+ * serializable, so the exact same function can run in the browser (local play)
+ * or in the Supabase Edge Function authority for networked multiplayer. Presentation
  * concerns (deal animation, "thinking" pauses, pass-the-device cover screens,
  * coin-sound staggering) live in the client layer that drives this.
  *
@@ -254,9 +254,12 @@ export function createGameState(
   options: GameState["options"],
 ): GameState {
   return {
-    players: players.map(
-      (p): GamePlayer => ({ ...p, lives: 3, grace: false, hand: [] }),
-    ),
+    players: players.map((p): GamePlayer => ({
+      ...p,
+      lives: 3,
+      grace: false,
+      hand: [],
+    })),
     deck: [],
     discard: [],
     cur: 0,

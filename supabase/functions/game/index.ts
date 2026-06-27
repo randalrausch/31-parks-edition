@@ -78,16 +78,36 @@ async function loadById(id: string) {
   return game && secret ? { game, secret } : null;
 }
 async function saveSecret(id: string, state: unknown, seatTokens: unknown) {
-  await admin
+  const { error } = await admin
     .from("game_secrets")
     .update({ state, seat_tokens: seatTokens })
     .eq("game_id", id);
+  if (error) throw new Error(`saveSecret: ${error.message}`);
 }
-async function bump(id: string, patch: Record<string, unknown>) {
-  await admin
+/**
+ * Optimistic-concurrency version bump. Updates `games` ONLY if its version is
+ * still `expectedVersion`, atomically setting it to expectedVersion + 1. Returns
+ * false when another writer moved first (the caller should report a conflict and
+ * let the client refetch). This is the lock that serializes concurrent writers —
+ * always call it BEFORE saveSecret so a loser never overwrites shared state.
+ */
+async function casBump(
+  id: string,
+  expectedVersion: number,
+  patch: Record<string, unknown>,
+): Promise<boolean> {
+  const { data, error } = await admin
     .from("games")
-    .update({ ...patch, updated_at: new Date().toISOString() })
-    .eq("id", id);
+    .update({
+      ...patch,
+      version: expectedVersion + 1,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("version", expectedVersion)
+    .select("id");
+  if (error) throw new Error(`casBump: ${error.message}`);
+  return (data?.length ?? 0) > 0;
 }
 
 Deno.serve(async (req: Request) => {
@@ -118,13 +138,22 @@ Deno.serve(async (req: Request) => {
         options: unknown;
       };
       const humans = Math.max(1, Math.min(8, config.humans | 0));
-      const ai = config.ai ?? [];
+      // 31 seats at most 8 players; cap AI to the remaining seats and clamp all
+      // client-supplied strings so a malicious caller can't balloon the state.
+      const clampName = (s: unknown, fallback: string) =>
+        (typeof s === "string" ? s.trim().slice(0, 40) : "") || fallback;
+      const clampKey = (s: unknown, fallback: string) =>
+        typeof s === "string" && /^[a-z0-9-]{1,32}$/.test(s) ? s : fallback;
+      const ai = (Array.isArray(config.ai) ? config.ai : []).slice(
+        0,
+        Math.max(0, 8 - humans),
+      );
       const players: Record<string, unknown>[] = [];
       const seats: Record<string, unknown>[] = [];
       for (let i = 0; i < humans; i++) {
         const isCreator = i === 0;
         const name = isCreator
-          ? config.creatorName?.trim() || "Player 1"
+          ? clampName(config.creatorName, "Player 1")
           : `Player ${i + 1}`;
         players.push({ id: `p${i}`, name, isAI: false, avatarKey: "ranger" });
         seats.push({
@@ -137,20 +166,24 @@ Deno.serve(async (req: Request) => {
       }
       ai.forEach((c, j) => {
         const idx = humans + j;
+        const aiName = clampName(c.name, `Bot ${j + 1}`);
+        const avatar = clampKey(c.avatarKey, "ranger");
+        const emoji =
+          typeof c.emoji === "string" ? c.emoji.slice(0, 8) : undefined;
         players.push({
           id: `p${idx}`,
-          name: c.name,
+          name: aiName,
           isAI: true,
-          avatarKey: c.avatarKey ?? "ranger",
+          avatarKey: avatar,
           traits: c.traits,
-          emoji: c.emoji,
+          emoji,
           image: c.image,
         });
         seats.push({
           idx,
-          name: c.name,
-          avatar: c.avatarKey,
-          emoji: c.emoji,
+          name: aiName,
+          avatar,
+          emoji,
           isAI: true,
           filled: true,
         });
@@ -165,11 +198,12 @@ Deno.serve(async (req: Request) => {
         .select()
         .single();
       if (error) return err(error.message, 500);
-      await admin.from("game_secrets").insert({
+      const { error: secretErr } = await admin.from("game_secrets").insert({
         game_id: game.id,
         state,
         seat_tokens: { [creatorToken]: 0 },
       });
+      if (secretErr) return err(secretErr.message, 500);
       return json({
         gameId: game.id,
         code,
@@ -189,7 +223,9 @@ Deno.serve(async (req: Request) => {
       const loaded = await loadById(game.id);
       if (!loaded) return err("Game state missing", 500);
       const idx = seat.idx as number;
-      const name = ((body.name as string) || `Player ${idx + 1}`).trim();
+      const name =
+        (typeof body.name === "string" ? body.name.trim().slice(0, 40) : "") ||
+        `Player ${idx + 1}`;
       seat.name = name;
       seat.filled = true;
       const state = loaded.secret.state;
@@ -197,8 +233,10 @@ Deno.serve(async (req: Request) => {
       const seatTokens = loaded.secret.seat_tokens;
       const t = token();
       seatTokens[t] = idx;
+      // Claim the version first so two players can't take the same seat.
+      if (!(await casBump(game.id, game.version, { seats })))
+        return err("Game changed, please retry", 409);
       await saveSecret(game.id, state, seatTokens);
-      await bump(game.id, { seats, version: game.version + 1 });
       return json({ gameId: game.id, seatIndex: idx, seatToken: t });
     }
 
@@ -220,12 +258,14 @@ Deno.serve(async (req: Request) => {
         }
       }
       const dealt = advanceAuthority(applyAction(state, { type: "deal" }));
+      if (
+        !(await casBump(loaded.game.id, loaded.game.version, {
+          seats,
+          status: "playing",
+        }))
+      )
+        return err("Game changed, please retry", 409);
       await saveSecret(loaded.game.id, dealt, loaded.secret.seat_tokens);
-      await bump(loaded.game.id, {
-        seats,
-        status: "playing",
-        version: loaded.game.version + 1,
-      });
       return json({ ok: true });
     }
 
@@ -235,13 +275,18 @@ Deno.serve(async (req: Request) => {
       if (!loaded) return err("No such game", 404);
       const idx = loaded.secret.seat_tokens[body.seatToken as string];
       if (idx === undefined) return err("Invalid seat token", 403);
+      if (typeof body.action !== "object" || body.action === null)
+        return err("Invalid action");
       const seatId = loaded.secret.state.players[idx].id;
       const next = applyPlayerAction(loaded.secret.state, seatId, body.action);
+      // Claim the version first; a concurrent/double submit gets a clean 409.
+      if (
+        !(await casBump(loaded.game.id, loaded.game.version, {
+          status: next.phase === "gameOver" ? "over" : "playing",
+        }))
+      )
+        return err("Game changed, please retry", 409);
       await saveSecret(loaded.game.id, next, loaded.secret.seat_tokens);
-      await bump(loaded.game.id, {
-        version: loaded.game.version + 1,
-        status: next.phase === "gameOver" ? "over" : "playing",
-      });
       return json({ ok: true });
     }
 

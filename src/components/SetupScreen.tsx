@@ -481,7 +481,7 @@ export default function SetupScreen({
           <div className="setup__rules">
             <Toggle
               label="Grace"
-              hint="Lose your last token and play on for one more round."
+              hint="Lose your last token and play on for one more deal."
               on={options.grace}
               onToggle={() => toggle("grace")}
             />

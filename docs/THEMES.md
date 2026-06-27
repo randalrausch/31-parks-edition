@@ -93,6 +93,9 @@ the easy path, use the generic `makePosterEmblem` for the card‑back/thumbnail
 (no SVG needed):
 
 ```ts
+// at the top of src/themes.ts (these imports already exist there):
+import type { ParkTheme } from "./types";
+import { parkSceneImage, parkBackImage } from "./parkArt";
 import { makePosterEmblem } from "./art/Emblems";
 import { MountainAvatar, RangerAvatar, BisonAvatar } from "./art/Avatars";
 

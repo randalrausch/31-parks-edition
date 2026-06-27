@@ -1,6 +1,6 @@
 /**
  * Game over — the last player with a token wins. Celebrates with the active
- * park's scene, then shows a per-round score chart for the whole game.
+ * park's scene, then shows a per-deal score chart for the whole game.
  */
 import Modal from "./Modal";
 import ParkScene from "./ParkScene";

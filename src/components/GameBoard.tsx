@@ -14,7 +14,7 @@ import Modal from "./Modal";
 import ParkScene from "./ParkScene";
 import ParkPicker from "./ParkPicker";
 import CoverScreen from "./CoverScreen";
-import RoundEndOverlay from "./RoundEndOverlay";
+import DealEndOverlay from "./DealEndOverlay";
 import GameOverOverlay from "./GameOverOverlay";
 import { TokenRow } from "./TokenRow";
 import LogFeed from "./LogFeed";
@@ -28,7 +28,7 @@ import {
   type GamePlayer,
   type GameState,
 } from "../game/engine";
-import type { GameApi } from "../game/useGame";
+import type { SoloGameApi } from "../game/useGame";
 import { useState } from "react";
 import "./GameBoard.css";
 
@@ -77,7 +77,7 @@ function Opponent({
   );
 }
 
-export default function GameBoard({ game }: { game: GameApi }) {
+export default function GameBoard({ game }: { game: SoloGameApi }) {
   const { theme } = useTheme();
   const [helpOpen, setHelpOpen] = useState(false);
   const [parksOpen, setParksOpen] = useState(false);
@@ -378,7 +378,7 @@ export default function GameBoard({ game }: { game: GameApi }) {
         />
       )}
       {s.phase === "dealEnd" && (
-        <RoundEndOverlay state={s as GameState} onNext={game.nextDeal} />
+        <DealEndOverlay state={s as GameState} onNext={game.nextDeal} />
       )}
       {s.phase === "gameOver" && (
         <GameOverOverlay state={s as GameState} onNewGame={game.newGame} />

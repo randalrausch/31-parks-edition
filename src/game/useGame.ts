@@ -47,7 +47,7 @@ export interface GameConfig {
   options: GameOptions;
 }
 
-export interface GameApi {
+export interface SoloGameApi {
   state: GameState | null;
   startGame: (config: GameConfig) => void;
   drawDeck: () => void;
@@ -76,7 +76,7 @@ const freshPres = (): Presentation => ({
   holdCur: null,
 });
 
-export function useGame(): GameApi {
+export function useGame(): SoloGameApi {
   const transportRef = useRef<Transport | null>(null);
   const authRef = useRef<GameState | null>(null);
   const presRef = useRef<Presentation>(freshPres());

@@ -98,7 +98,17 @@ export class NetworkTransport {
   }
 
   async act(action: GameAction): Promise<void> {
-    await this.api.act(this.gameId, this.seatToken, action);
+    try {
+      await this.api.act(this.gameId, this.seatToken, action);
+    } catch (e) {
+      // A version conflict (concurrent/duplicate submit) is recoverable: the
+      // authority already moved, so resync to the truth instead of erroring.
+      if (/\bretry\b/i.test((e as Error).message)) {
+        await this.refresh();
+        return;
+      }
+      throw e;
+    }
     await this.refresh(); // don't wait for the ping round-trip
   }
   async nextDeal(): Promise<void> {

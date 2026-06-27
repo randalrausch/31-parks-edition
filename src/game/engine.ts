@@ -1,7 +1,7 @@
 /**
- * 31 game engine — pure, framework-agnostic logic ported from the proven
- * single-file implementation. No React, no DOM. This is the seam a future
- * networked transport plugs into: the same rules run client- or server-side.
+ * 31 game engine — pure, framework-agnostic logic. No React, no DOM. The same
+ * rules run client-side (local play) and server-side (the Supabase Edge
+ * Function authority), which is what keeps online play tamper-resistant.
  */
 import type { CardModel, Rank, Suit } from "../types";
 import { cardValue } from "../types";
@@ -43,7 +43,7 @@ export const DEFAULT_TRAITS: AITraits = {
 export interface GameOptions {
   /** Three of a kind scores 30½ (beats everything except 31). */
   threeOfAKind: boolean;
-  /** Losing your last token grants one more round on "Grace". */
+  /** Losing your last token grants one more deal on "Grace". */
   grace: boolean;
   /** A knocker who ends up lowest loses two tokens instead of one. */
   knockPenalty: boolean;

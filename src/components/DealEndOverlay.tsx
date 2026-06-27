@@ -1,15 +1,14 @@
 /**
- * Round-end reveal — now every hand is shown face-up with its score and the
- * tokens each player lost. This is the only time opponents' cards/scores are
- * visible.
+ * Deal-end reveal — every hand is shown face-up with its score and the tokens
+ * each player lost. This is the only time opponents' cards/scores are visible.
  */
 import Modal from "./Modal";
 import Card from "./Card";
 import { TokenRow } from "./TokenRow";
 import { formatScore, isAlive, type GameState } from "../game/engine";
-import "./RoundEndOverlay.css";
+import "./DealEndOverlay.css";
 
-export default function RoundEndOverlay({
+export default function DealEndOverlay({
   state,
   onNext,
 }: {

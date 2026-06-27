@@ -13,7 +13,7 @@ import HelpPanel from "./HelpPanel";
 import Modal from "./Modal";
 import ParkScene from "./ParkScene";
 import ParkPicker from "./ParkPicker";
-import RoundEndOverlay from "./RoundEndOverlay";
+import DealEndOverlay from "./DealEndOverlay";
 import GameOverOverlay from "./GameOverOverlay";
 import { TokenRow } from "./TokenRow";
 import LogFeed from "./LogFeed";
@@ -382,7 +382,7 @@ export default function OnlineGameBoard({
       </div>
 
       {s.phase === "dealEnd" && (
-        <RoundEndOverlay state={s} onNext={game.nextDeal} />
+        <DealEndOverlay state={s} onNext={game.nextDeal} />
       )}
       {s.phase === "gameOver" && (
         <GameOverOverlay state={s} onNewGame={onLeave} />
