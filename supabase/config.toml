@@ -1,0 +1,8 @@
+# Supabase local config. `supabase link` ties this to the remote project.
+project_id = "31-parks"
+
+# The game function authenticates with its own per-seat tokens (not Supabase
+# Auth JWTs), so callers don't present a Supabase user JWT. Disable JWT
+# verification; the function is still the only thing holding the service key.
+[functions.game]
+verify_jwt = false

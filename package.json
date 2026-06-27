@@ -7,9 +7,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:edge": "esbuild src/game/edgeEntry.ts --bundle --format=esm --platform=neutral --outfile=supabase/functions/_shared/engine.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.108.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
