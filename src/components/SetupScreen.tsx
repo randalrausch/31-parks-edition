@@ -17,7 +17,7 @@ import HeroBackground from "./HeroBackground";
 import { StarDivider } from "../art/Glyphs";
 import { titleImage } from "../titleArt";
 import { useAmbientAudio, hasAmbientAudio } from "../game/ambientAudio";
-import { multiplayerEnabled } from "../game/supabaseClient";
+import { multiplayerEnabled } from "../game/multiplayerConfig";
 import {
   DEFAULT_OPTIONS,
   type AITraits,

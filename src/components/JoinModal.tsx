@@ -4,7 +4,7 @@
 import { useState } from "react";
 import Modal from "./Modal";
 import { gameApi } from "../game/supabaseClient";
-import type { OnlineSession } from "./OnlineGame";
+import type { OnlineSession } from "../game/onlineSession";
 import "./JoinModal.css";
 
 export default function JoinModal({

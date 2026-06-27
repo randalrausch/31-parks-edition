@@ -1,19 +1,14 @@
 /**
  * Orchestrates one online game session: subscribes via useNetworkGame and shows
  * the Lobby while status is "lobby", then the OnlineGameBoard once it's playing.
+ * If the session can't be loaded (game gone/expired), it drops back to the menu.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNetworkGame } from "../game/useNetworkGame";
 import { gameApi } from "../game/supabaseClient";
+import type { OnlineSession } from "../game/onlineSession";
 import Lobby from "./Lobby";
 import OnlineGameBoard from "./OnlineGameBoard";
-
-export interface OnlineSession {
-  gameId: string;
-  seatToken: string;
-  code: string;
-  seatIndex: number;
-}
 
 export default function OnlineGame({
   session,
@@ -24,6 +19,11 @@ export default function OnlineGame({
 }) {
   const game = useNetworkGame(session.gameId, session.seatToken);
   const [starting, setStarting] = useState(false);
+
+  // A dead/expired game (e.g. a stale resumed session) → return to the menu.
+  useEffect(() => {
+    if (game.error) onLeave();
+  }, [game.error, onLeave]);
 
   const start = async () => {
     if (starting) return;
@@ -42,7 +42,14 @@ export default function OnlineGame({
     return (
       <div className="lobby">
         <div className="lobby__panel">
-          <h1 className="lobby__title">Connecting…</h1>
+          <h1 className="lobby__title">
+            {game.error ? "Game not found" : "Connecting…"}
+          </h1>
+          {game.error && (
+            <button className="lobby__leave" type="button" onClick={onLeave}>
+              Back to menu
+            </button>
+          )}
         </div>
       </div>
     );

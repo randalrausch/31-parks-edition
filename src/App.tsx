@@ -1,30 +1,28 @@
 /**
  * 31 · National Parks Edition — app shell.
  *
- * Flow: SetupScreen (pick park, players, rules) → GameBoard (play). The board
- * owns the in-game overlays (pass-the-device cover, round-end reveal, game
- * over). State lives in the useGame hook so it survives screen switches.
- *
- * TODO(multiplayer): the game already runs on a pure engine behind useGame.
- * A networked transport would feed/return the same GameState so each human can
- * play from their own device.
+ * Solo: SetupScreen → GameBoard (via useGame). Online: a lazily-loaded
+ * OnlineRoot holds everything that needs Supabase, so the common solo path
+ * never downloads the SDK. A saved session resumes online play after a refresh.
  */
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { ParkThemeProvider } from "./components/ParkThemeProvider";
 import SetupScreen from "./components/SetupScreen";
 import GameBoard from "./components/GameBoard";
-import JoinModal from "./components/JoinModal";
-import OnlineGame, { type OnlineSession } from "./components/OnlineGame";
 import { useGame } from "./game/useGame";
-import { gameApi } from "./game/supabaseClient";
 import { AI_CHARACTERS } from "./game/aiCharacters";
+import { loadSession } from "./game/onlineSession";
+import type { CreateConfig } from "./game/supabaseClient";
+import type { OnlineIntent } from "./components/OnlineRoot";
 import "./App.css";
+
+const OnlineRoot = lazy(() => import("./components/OnlineRoot"));
 
 function Shell() {
   const game = useGame();
-  const [session, setSession] = useState<OnlineSession | null>(null);
-  const [joinOpen, setJoinOpen] = useState(false);
-  // DEV: #demo auto-starts a sample game (for screenshots). Harmless deep-link.
+  const [intent, setIntent] = useState<OnlineIntent | null>(null);
+
+  // DEV: #demo auto-starts a sample solo game (for screenshots).
   useEffect(() => {
     if (
       typeof window !== "undefined" &&
@@ -49,44 +47,42 @@ function Shell() {
           sound: false,
         },
       });
+      return;
     }
+    // Resume a saved online session after a page refresh.
+    const saved = loadSession();
+    if (saved) setIntent({ type: "resume", session: saved });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  if (session) {
-    return <OnlineGame session={session} onLeave={() => setSession(null)} />;
+
+  if (intent) {
+    return (
+      <Suspense fallback={<OnlineFallback />}>
+        <OnlineRoot intent={intent} onExit={() => setIntent(null)} />
+      </Suspense>
+    );
   }
   if (game.state) {
     return <GameBoard game={game} />;
   }
   return (
-    <>
-      <SetupScreen
-        onStart={game.startGame}
-        onCreateOnline={async (config) => {
-          if (!gameApi) return;
-          try {
-            const r = await gameApi.create(config);
-            setSession({
-              gameId: r.gameId,
-              seatToken: r.seatToken,
-              code: r.code,
-              seatIndex: r.seatIndex,
-            });
-          } catch (e) {
-            console.error("create online failed", e);
-          }
-        }}
-        onJoinOnline={() => setJoinOpen(true)}
-      />
-      <JoinModal
-        open={joinOpen}
-        onClose={() => setJoinOpen(false)}
-        onJoined={(s) => {
-          setJoinOpen(false);
-          setSession(s);
-        }}
-      />
-    </>
+    <SetupScreen
+      onStart={game.startGame}
+      onCreateOnline={(config: CreateConfig) =>
+        setIntent({ type: "create", config })
+      }
+      onJoinOnline={() => setIntent({ type: "join" })}
+    />
+  );
+}
+
+function OnlineFallback() {
+  return (
+    <div className="lobby">
+      <div className="lobby__panel">
+        <h1 className="lobby__title">Loading…</h1>
+      </div>
+    </div>
   );
 }
 

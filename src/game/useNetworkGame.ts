@@ -11,6 +11,8 @@ import type { GameAction } from "./actions";
 
 export interface NetworkGameApi {
   snap: NetworkSnapshot | null;
+  /** Set if the game couldn't be loaded (e.g. a stale/expired session). */
+  error: string | null;
   /** Submit a turn action (only meaningful on your turn). */
   act: (a: GameAction) => void;
   /** Advance from a finished deal to the next one. */
@@ -24,14 +26,20 @@ export function useNetworkGame(
   seatToken: string,
 ): NetworkGameApi {
   const [snap, setSnap] = useState<NetworkSnapshot | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const ref = useRef<NetworkTransport | null>(null);
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase) {
+      setError("Multiplayer not configured");
+      return;
+    }
+    setError(null);
     const t = new NetworkTransport(supabase, gameId, seatToken);
     ref.current = t;
     const unsub = t.subscribe(setSnap);
-    void t.connect();
+    // The initial connect fetch can reject (game gone) — surface it.
+    t.connect().catch((e) => setError(String((e as Error)?.message ?? e)));
     return () => {
       unsub();
       t.destroy();
@@ -53,5 +61,5 @@ export function useNetworkGame(
       .catch((e) => console.error("refresh failed", e));
   }, []);
 
-  return { snap, act, nextDeal, refresh };
+  return { snap, error, act, nextDeal, refresh };
 }
