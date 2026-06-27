@@ -1,16 +1,31 @@
 # 31 · National Parks Edition
 
 A vintage **WPA‑poster**‑styled implementation of the classic card game **31** —
-play solo against characterful AI rangers, or online with friends. Built as a
-fast, self‑contained **React + TypeScript + Vite** app with an optional
-**Supabase** backend for real‑time, asynchronous multiplayer.
+play solo against characterful AI rangers, pass‑and‑play with friends on one
+device, or online across devices. Built as a fast, self‑contained
+**React + TypeScript + Vite** app with an *optional* **Supabase** backend for
+real‑time, asynchronous online multiplayer.
 
 > Build the highest hand you can in a single suit — as close to **31** as
 > possible. Knock when you're confident; each deal the lowest hand loses a
 > token. The last player holding a token wins.
 
+### Three ways to play
+
+| Mode | Players | Setup |
+|------|---------|-------|
+| **Solo vs AI** | You + AI rangers | ✅ none |
+| **Pass‑and‑play** | 2–8 humans sharing one device (hidden‑hand "pass the device" screens) | ✅ none |
+| **Online** | Friends on their own devices, real‑time or async | needs a free Supabase project |
+
+**Two of the three modes — including local multiplayer — work with zero
+configuration.** You only need Supabase if you want to play *online across
+devices*.
+
 - 🎴 **Complete game of 31** — draw/discard/knock, Grace, knock penalty, instant
   31, elimination, end‑of‑game score chart.
+- 👥 **Pass‑and‑play** — 2–8 humans on one device, with pass‑the‑device cover
+  screens so nobody sees another's hand. No internet, no accounts.
 - 🤖 **10 AI characters** with distinct, trait‑driven personalities (bluff,
   memory, patience, aggression, risk).
 - 🏔 **Themed national parks** (Glacier, Yellowstone, Theodore Roosevelt) with
@@ -34,9 +49,11 @@ npm install
 npm run dev          # http://localhost:5173
 ```
 
-That's it — **solo play (vs. AI) works with zero configuration**. Online
-multiplayer is optional and needs a free Supabase project; see
-[docs/SUPABASE.md](docs/SUPABASE.md).
+That's it — **solo play and local pass‑and‑play work with zero configuration.**
+On the home screen choose how many humans and AI rangers to seat and hit *Start
+Solo Adventure*; with two or more humans you'll pass the device between turns
+with hidden‑hand cover screens. Online multiplayer is optional and needs a free
+Supabase project; see [docs/SUPABASE.md](docs/SUPABASE.md).
 
 ## Scripts
 
