@@ -79,7 +79,8 @@ Drop two images into `src/assets/parks/` named by your theme `id`:
 | `<id>-scene.jpg` | Table background | 1600×1000 landscape | keep the top corners calm (the badge/round info sit there); the board adds a vignette |
 | `<id>-back.jpg`  | Card‑back artwork | 600×840 portrait | optional; if omitted, the SVG `Emblem` is used. **Bake any "31"/title text into the image yourself** — the app does not overlay text on raster card backs |
 
-`.jpg`, `.png`, and `.webp` all work; the extension is matched automatically.
+`.jpg`, `.jpeg`, `.png`, and `.webp` all work; the extension is matched
+automatically.
 Optimize before committing (aim < 400 KB per image; `cwebp -q 82` is great). See
 `src/assets/parks/README.md` for a ready‑made WPA art‑generation prompt.
 

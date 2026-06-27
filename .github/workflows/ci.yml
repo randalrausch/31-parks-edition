@@ -21,3 +21,8 @@ jobs:
         run: npm test
       - name: Production build
         run: npm run build
+      - name: Edge bundle is in sync with the engine source
+        run: |
+          npm run build:edge
+          git diff --exit-code supabase/functions/_shared/engine.mjs \
+            || (echo "::error::supabase/functions/_shared/engine.mjs is stale. Run 'npm run build:edge' and commit the result." && exit 1)

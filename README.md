@@ -139,7 +139,8 @@ serializable TypeScript shared by the client and the server.
 ## Credits and license
 
 Original artwork is inspired by the public-domain visual language of 1930s WPA
-national-park posters; no copyrighted poster art is used. Sound effects, if
-added, should be CC0/public-domain (see `src/assets/sfx/README.md`).
+national-park posters; no copyrighted poster art is used. The bundled sound
+effects are CC0/public-domain samples (with a synthesized fallback); any
+replacements should also be CC0 (see `src/assets/sfx/README.md`).
 
 Licensed under the [MIT License](LICENSE).

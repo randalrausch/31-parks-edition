@@ -7,19 +7,7 @@ import type { ComponentType } from "react";
 export type Suit = "spades" | "hearts" | "diamonds" | "clubs";
 
 export type Rank =
-  | "A"
-  | "2"
-  | "3"
-  | "4"
-  | "5"
-  | "6"
-  | "7"
-  | "8"
-  | "9"
-  | "10"
-  | "J"
-  | "Q"
-  | "K";
+  "A" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "J" | "Q" | "K";
 
 export interface CardModel {
   id: string;
@@ -38,21 +26,8 @@ export function cardValue(rank: Rank): number {
    Players
    ────────────────────────────────────────────────────────────────────────── */
 
-/** Where a seat is rendered around the immersive table. */
-export type SeatPosition = "top" | "left" | "right" | "bottom";
-
-export interface PlayerModel {
-  id: string;
-  name: string;
-  /** Key into the active theme's avatar set (e.g. "goat", "bison", "ranger"). */
-  avatarKey: string;
-  score: number;
-  /** Tokens remaining ("lives"). Last player with a token wins. */
-  tokens: number;
-  hand: CardModel[];
-  seat: SeatPosition;
-  isYou: boolean;
-}
+/* The authoritative player shape lives in the game core as `GamePlayer`
+   (src/game/engine.ts); the UI renders directly from that redacted state. */
 
 /* ──────────────────────────────────────────────────────────────────────────
    Themes — each national park is one registry entry. See themes.ts.
@@ -80,7 +55,7 @@ export interface ThemePalette {
 }
 
 export interface AvatarArt {
-  /** Stable key referenced by PlayerModel.avatarKey. */
+  /** Stable key referenced by a player's `avatarKey`. */
   key: string;
   /** Small medallion illustration (drawn inside a circular clip). */
   Art: ComponentType;
@@ -100,12 +75,13 @@ export interface ParkTheme {
   /**
    * Optional raster background (WPA-style painting). When present it renders as
    * the table background; if it fails to load (or is absent) the SVG `Scene`
-   * is used instead. Path is resolved via `parkAsset()`.
+   * is used instead. Path is resolved via `parkSceneImage()` (see parkArt.ts).
    */
   sceneImage?: string;
   /** Optional raster card-back artwork; falls back to the SVG `Emblem`. */
   backImage?: string;
-  /** Full-bleed background scene for the table (SVG). Present for playable parks. */
+  /** Optional full-bleed vector background; a park may instead ship a raster
+   * `sceneImage`. ParkScene prefers `sceneImage` and falls back to this. */
   Scene?: ComponentType<{ className?: string }>;
   /** Compact scene used on card backs and picker thumbnails. */
   Emblem: ComponentType<{ className?: string }>;

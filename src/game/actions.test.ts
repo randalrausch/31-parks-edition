@@ -1,9 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { createGameState, applyAction, type NewGamePlayer } from "./actions";
+import {
+  createGameState,
+  applyAction,
+  dealtBlitzIndex,
+  type NewGamePlayer,
+} from "./actions";
 import {
   DEFAULT_OPTIONS,
   isAlive,
   type AITraits,
+  type GamePlayer,
   type GameState,
 } from "./engine";
 
@@ -49,6 +55,40 @@ describe("createGameState + deal", () => {
   });
 });
 
+describe("dealt 31 (blitz) detection", () => {
+  const card = (rank: string, suit: string) => ({
+    id: `${rank}-${suit}`,
+    rank: rank as GamePlayer["hand"][number]["rank"],
+    suit: suit as GamePlayer["hand"][number]["suit"],
+  });
+  const stub = (hand: GamePlayer["hand"]): GamePlayer => ({
+    id: "x",
+    name: "x",
+    isAI: true,
+    avatarKey: "ranger",
+    lives: 3,
+    grace: false,
+    hand,
+  });
+
+  it("finds a natural 31 on any seat, not just the opener", () => {
+    const players = [
+      stub([card("2", "clubs"), card("3", "clubs"), card("4", "diamonds")]),
+      stub([card("A", "hearts"), card("K", "hearts"), card("Q", "hearts")]), // 31
+    ];
+    expect(dealtBlitzIndex(players, DEFAULT_OPTIONS)).toBe(1);
+  });
+
+  it("does not mistake three of a kind (30½) for a 31", () => {
+    const trips = [
+      stub([card("A", "hearts"), card("A", "spades"), card("A", "clubs")]),
+    ];
+    expect(
+      dealtBlitzIndex(trips, { ...DEFAULT_OPTIONS, threeOfAKind: true }),
+    ).toBe(-1);
+  });
+});
+
 describe("turn actions", () => {
   it("drawDeck moves to discarding with a 4-card hand", () => {
     const s = applyAction(createGameState(aiPlayers(2), DEFAULT_OPTIONS), {
@@ -80,6 +120,17 @@ describe("turn actions", () => {
     const knocker = s.cur;
     const after = applyAction(s, { type: "knock" });
     expect(after.knocker).toBe(knocker);
+  });
+
+  it("rotates the opening seat each deal", () => {
+    let s = createGameState(aiPlayers(3), { ...DEFAULT_OPTIONS, sound: false });
+    const openers: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      s = applyAction(s, { type: "deal" });
+      openers.push(s.dealer);
+      expect(s.cur).toBe(s.dealer); // play opens on the rotated seat
+    }
+    expect(openers).toEqual([0, 1, 2, 0]); // advances each deal, then wraps
   });
 });
 

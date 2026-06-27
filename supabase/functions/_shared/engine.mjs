@@ -29,10 +29,20 @@ var DEFAULT_TRAITS = {
   aggression: 3,
   risk: 3
 };
+function randomInt(n) {
+  const limit = Math.floor(4294967295 / n) * n;
+  const buf = new Uint32Array(1);
+  let x;
+  do {
+    crypto.getRandomValues(buf);
+    x = buf[0];
+  } while (x >= limit);
+  return x % n;
+}
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = randomInt(i + 1);
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
@@ -237,13 +247,27 @@ function dealCards(s) {
   s.dealPlayers = dealt.length;
   for (let r = 0; r < 3; r++) for (const p of dealt) p.hand.push(s.deck.pop());
   s.discard.push(s.deck.pop());
-  s.cur = 0;
-  while (isEliminated(s.players[s.cur])) s.cur = (s.cur + 1) % s.players.length;
-  if (scoreHand(s.players[s.cur].hand, s.options) === 31) {
-    resolveDeal(s, s.cur);
+  s.dealer = s.dealNum <= 1 ? firstLivingFrom(s, 0) : firstLivingFrom(s, s.dealer + 1);
+  s.cur = s.dealer;
+  const blitz = dealtBlitzIndex(s.players, s.options);
+  if (blitz >= 0) {
+    resolveDeal(s, blitz);
   } else {
     s.phase = "drawing";
   }
+}
+function dealtBlitzIndex(players, options) {
+  return players.findIndex(
+    (p) => p.hand.length > 0 && scoreHand(p.hand, options) === 31
+  );
+}
+function firstLivingFrom(s, from) {
+  const n = s.players.length;
+  let i = (from % n + n) % n;
+  for (let guard = 0; guard < n && isEliminated(s.players[i]); guard++) {
+    i = (i + 1) % n;
+  }
+  return i;
 }
 var MAX_ROUNDS_PER_DEAL = 20;
 function endTurn(s) {
@@ -336,6 +360,7 @@ function createGameState(players, options) {
     deck: [],
     discard: [],
     cur: 0,
+    dealer: 0,
     knocker: null,
     queue: [],
     phase: "dealEnd",

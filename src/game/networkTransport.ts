@@ -41,9 +41,6 @@ export class NetworkTransport {
     this.api = makeGameApi(client);
   }
 
-  getSnapshot() {
-    return this.snap;
-  }
   getState(): GameState | null {
     return this.snap?.state ?? null;
   }

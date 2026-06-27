@@ -1,8 +1,8 @@
 /**
  * Renders a park's table background. Prefers the raster `sceneImage` (a
- * WPA-style painting dropped into public/parks/); if that's missing or fails to
- * load, it gracefully falls back to the vector `Scene`. This lets real artwork
- * drop in with zero code changes while never leaving a blank table.
+ * WPA-style painting in src/assets/parks/); if that's missing or fails to load,
+ * it gracefully falls back to the vector `Scene`. This lets real artwork drop in
+ * with zero code changes while never leaving a blank table.
  */
 import { useState } from "react";
 import type { ParkTheme } from "../types";

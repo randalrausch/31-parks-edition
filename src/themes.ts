@@ -2,13 +2,16 @@
  * Theme registry — one entry per national park.
  *
  * Adding a new park is a single registry entry: give it a palette, a tagline,
- * a `Scene` (full background) and `Emblem` (card-back / thumbnail), a set of
- * avatars, and victory copy. It then appears automatically in the in-game Park
- * Picker. Parks without a bespoke `Scene` are listed as `coming-soon` and are
- * shown — but not yet selectable — in the picker.
+ * a background (a raster `sceneImage` and/or a vector `Scene`), an `Emblem`
+ * (card-back / picker thumbnail), a set of avatars, and victory copy. It then
+ * appears automatically in the in-game Park Picker. A park is selectable when
+ * its `status` is "available" and a non-selectable preview when "coming-soon" —
+ * availability is driven by `status`, not by which background kind it ships.
  *
- * Glacier and Yellowstone are fully implemented. Yosemite, Zion, Grand Canyon,
- * and Acadia are scaffolded placeholders that demonstrate the extension path.
+ * Glacier, Yellowstone, and Theodore Roosevelt are fully implemented and
+ * available (Glacier and Yellowstone use vector `Scene`s, Theodore Roosevelt a
+ * raster `sceneImage`). Yosemite, Zion, Grand Canyon, and Acadia are
+ * coming-soon placeholders that demonstrate the extension path.
  */
 import type { ParkTheme } from "./types";
 import GlacierScene from "./art/GlacierScene";

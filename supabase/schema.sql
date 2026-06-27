@@ -29,9 +29,22 @@ alter table public.games enable row level security;
 alter table public.game_secrets enable row level security;
 
 -- Anon may READ the public lobby row (for Realtime pings + lobby display).
+-- Realtime requires row-level SELECT access, so this policy is permissive.
 drop policy if exists "games are readable by anyone" on public.games;
 create policy "games are readable by anyone"
   on public.games for select using (true);
+
+-- PRIVACY NOTE: because the SELECT above is open, an anon client with the
+-- public key can enumerate open lobbies and their join `code`s. Codes are
+-- unguessable CSPRNG values, so this only matters if you treat a code as a
+-- private invite. No card data is ever here (it lives in game_secrets, which
+-- anon cannot touch at all). OPTIONAL HARDENING — hide the code from REST
+-- enumeration while keeping Realtime working (the client never reads `code`
+-- from the table; it comes from the create/join Edge Function responses).
+-- Apply, then verify online sync still works:
+--   revoke select on public.games from anon, authenticated;
+--   grant  select (id, status, version, seats, created_at, updated_at)
+--     on public.games to anon, authenticated;
 
 -- No anon write policies on games, and NO policies at all on game_secrets, so
 -- anon is fully denied there. The Edge Function uses the service-role key,

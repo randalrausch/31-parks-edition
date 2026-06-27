@@ -86,6 +86,9 @@ export function applyPlayerAction(
 ): GameState {
   if (action.type === "nextDeal") {
     if (state.phase !== "dealEnd") return state;
+    // Intentionally not seat-restricted: from the deal-end reveal ANY seated
+    // player may advance to the next deal, so one idle/away player can't stall
+    // an async game. (Callers still pass a valid seat token to reach here.)
     return advanceAuthority(applyAction(state, action));
   }
   // Reject anything that isn't a legal turn action — notably "deal", which

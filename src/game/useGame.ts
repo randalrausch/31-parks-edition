@@ -2,9 +2,10 @@
  * useGame — presentation layer over a Transport.
  *
  * The authoritative game state lives in the Transport (LocalTransport runs the
- * pure `applyAction` reducer; a future NetworkTransport would run it on a
- * server). This hook NEVER mutates game state directly — every change is a
- * dispatched GameAction. What lives here is purely presentational: the staggered
+ * pure `applyAction` reducer in-process; online play uses NetworkTransport +
+ * useNetworkGame instead). This hook NEVER mutates game state directly — every
+ * change is a dispatched GameAction. What lives here is purely presentational:
+ * the staggered
  * deal animation, AI "thinking" pauses, the pass-the-device cover, sound
  * effects, and the knock beat.
  *
@@ -17,7 +18,7 @@
  *                  so the reducer's atomic turn-advance never flashes the next
  *                  player's hand.
  */
-import { useCallback, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 import {
   type GameOptions,
   type GameState,
@@ -66,6 +67,9 @@ interface Presentation {
   status: string;
   dealReveal: number;
   holdCur: number | null;
+  /** True while a committed move is animating (e.g. a knock) — locks input so a
+   * follow-up click can't be applied or silently dropped before it resolves. */
+  committing: boolean;
 }
 
 const freshPres = (): Presentation => ({
@@ -74,6 +78,7 @@ const freshPres = (): Presentation => ({
   status: "",
   dealReveal: 0,
   holdCur: null,
+  committing: false,
 });
 
 export function useGame(): SoloGameApi {
@@ -91,6 +96,11 @@ export function useGame(): SoloGameApi {
     timers.current.forEach(clearTimeout);
     timers.current = [];
   }, []);
+
+  // Cancel any pending deal/AI/knock timers when the hook unmounts so they
+  // can't fire render()/dispatch() on an unmounted component (e.g. switching
+  // from a solo game to online play).
+  useEffect(() => clearTimers, [clearTimers]);
 
   const A = () => authRef.current;
   const P = () => presRef.current;
@@ -112,6 +122,7 @@ export function useGame(): SoloGameApi {
     const a = A();
     const pres = P();
     if (!a) return;
+    pres.committing = false; // the committed move has resolved; re-enable input
     if (a.phase === "drawing") {
       const p = a.players[a.cur];
       if (p.isAI) {
@@ -272,7 +283,8 @@ export function useGame(): SoloGameApi {
 
   const drawDeck = useCallback(() => {
     const a = A();
-    if (!a || a.phase !== "drawing" || a.players[a.cur].isAI) return;
+    if (!a || P().committing || a.phase !== "drawing" || a.players[a.cur].isAI)
+      return;
     dispatch({ type: "drawDeck" });
     beep(sndDeal);
     P().selected = null;
@@ -282,7 +294,8 @@ export function useGame(): SoloGameApi {
 
   const drawDiscard = useCallback(() => {
     const a = A();
-    if (!a || a.phase !== "drawing" || a.players[a.cur].isAI) return;
+    if (!a || P().committing || a.phase !== "drawing" || a.players[a.cur].isAI)
+      return;
     if (a.discard.length === 0) return;
     dispatch({ type: "takeDiscard" });
     beep(sndDeal);
@@ -304,7 +317,13 @@ export function useGame(): SoloGameApi {
   const confirmDiscard = useCallback(() => {
     const a = A();
     const pres = P();
-    if (!a || pres.selected === null || a.phase !== "discarding") return;
+    if (
+      !a ||
+      pres.committing ||
+      pres.selected === null ||
+      a.phase !== "discarding"
+    )
+      return;
     const card = a.players[a.cur].hand[pres.selected];
     if (!card) return;
     pres.selected = null;
@@ -318,11 +337,15 @@ export function useGame(): SoloGameApi {
     const pres = P();
     if (
       !a ||
+      pres.committing ||
       a.phase !== "drawing" ||
       a.players[a.cur].isAI ||
       a.knocker !== null
     )
       return;
+    // Lock input immediately so a stray draw/second-knock click during the
+    // announcement beat can't be applied (and silently drop the queued knock).
+    pres.committing = true;
     // Hold on the knocker's own board for the announcement, THEN dispatch so the
     // next player's hand is never shown before the cover/thinking goes up.
     pres.status = `${a.players[a.cur].name} knocks!`;

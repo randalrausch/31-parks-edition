@@ -10,7 +10,9 @@ breaks while art is in progress, and there are no 404s.
 
 ## Files the app looks for
 
-Name files `<park-id>-scene.<ext>` and `<park-id>-back.<ext>`:
+Name files `<park-id>-scene.<ext>` and `<park-id>-back.<ext>` (the rows below
+are illustrative — any park `id` from `themes.ts` works; the extension is
+auto-matched, so the committed art being `.webp` is fine):
 
 | File | Used for | Recommended size | Orientation |
 |------|----------|------------------|-------------|
@@ -18,6 +20,8 @@ Name files `<park-id>-scene.<ext>` and `<park-id>-back.<ext>`:
 | `glacier-back.jpg` | Glacier card back artwork | 600 × 840 px | portrait (5:7) |
 | `yellowstone-scene.jpg` | Yellowstone table background | 1600 × 1000 px | landscape (16:10) |
 | `yellowstone-back.jpg` | Yellowstone card back artwork | 600 × 840 px | portrait (5:7) |
+| `theodoreroosevelt-scene.jpg` | Theodore Roosevelt table background | 1600 × 1000 px | landscape (16:10) |
+| `theodoreroosevelt-back.jpg` | Theodore Roosevelt card back artwork | 600 × 840 px | portrait (5:7) |
 
 Notes:
 - **Format:** `.jpg`, `.jpeg`, `.png`, or `.webp` all work — the `<ext>` is
@@ -65,5 +69,8 @@ bottom; vintage WPA screen-print style.`
 1. Drop `mypark-scene.jpg` (+ optional `mypark-back.jpg`) here.
 2. Add a theme entry in `src/themes.ts` with
    `sceneImage: parkSceneImage("mypark")`, `backImage: parkBackImage("mypark")`,
-   a palette, tagline, avatars, and victory line.
+   a palette, tagline, avatars, and victory line — **and add it to the
+   `PARK_THEMES` array** (without that it won't appear).
 3. Restart the dev server. It appears in the Park Picker automatically.
+
+See [docs/THEMES.md](../../../docs/THEMES.md) for the full, step-by-step guide.

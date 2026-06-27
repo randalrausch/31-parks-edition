@@ -1,11 +1,12 @@
 /**
  * Game sound effects.
  *
- * Each effect prefers a real audio sample if one is dropped into
- * `src/assets/sfx/<name>.{mp3,ogg,wav}` (e.g. deal.mp3, knock.mp3, coin.mp3) —
- * use public-domain / CC0 clips (see that folder's README). If no sample is
- * present it falls back to a synthesized Web Audio version, tuned to be soft
- * and realistic for the deal and a solid wooden "tock" for the knock.
+ * CC0 audio samples ship in `src/assets/sfx/` and are used by default. Each
+ * effect loads `src/assets/sfx/<name>.{mp3,ogg,wav,m4a}` (e.g. deal.wav,
+ * knock.mp3, coin.mp3) — replace those files with your own CC0 clips to
+ * customize (see that folder's README). If a sample is absent the effect falls
+ * back to a synthesized Web Audio version, tuned to be soft and realistic for
+ * the deal and a solid wooden "tock" for the knock.
  */
 
 /* ── Optional sample overrides (build-time glob) ── */

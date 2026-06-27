@@ -144,6 +144,42 @@ Deno.serve(async (req: Request) => {
         (typeof s === "string" ? s.trim().slice(0, 40) : "") || fallback;
       const clampKey = (s: unknown, fallback: string) =>
         typeof s === "string" && /^[a-z0-9-]{1,32}$/.test(s) ? s : fallback;
+      const clampImage = (s: unknown) =>
+        typeof s === "string" && s.length <= 512 ? s : undefined;
+      const TRAIT_KEYS = [
+        "bluff",
+        "memory",
+        "patience",
+        "aggression",
+        "risk",
+      ] as const;
+      const clampTraits = (t: unknown) => {
+        if (!t || typeof t !== "object") return undefined;
+        const src = t as Record<string, unknown>;
+        const out: Record<string, number> = {};
+        for (const k of TRAIT_KEYS) {
+          const v = Number(src[k]);
+          out[k] = Number.isFinite(v)
+            ? Math.max(1, Math.min(5, Math.round(v)))
+            : 3;
+        }
+        return out;
+      };
+      const BOOL_OPTS = [
+        "threeOfAKind",
+        "grace",
+        "knockPenalty",
+        "sound",
+      ] as const;
+      const sanitizeOptions = (o: unknown) => {
+        const src = (o && typeof o === "object" ? o : {}) as Record<
+          string,
+          unknown
+        >;
+        const out: Record<string, boolean> = {};
+        for (const k of BOOL_OPTS) out[k] = src[k] === true;
+        return out;
+      };
       const ai = (Array.isArray(config.ai) ? config.ai : []).slice(
         0,
         Math.max(0, 8 - humans),
@@ -175,9 +211,9 @@ Deno.serve(async (req: Request) => {
           name: aiName,
           isAI: true,
           avatarKey: avatar,
-          traits: c.traits,
+          traits: clampTraits(c.traits),
           emoji,
-          image: c.image,
+          image: clampImage(c.image),
         });
         seats.push({
           idx,
@@ -189,7 +225,7 @@ Deno.serve(async (req: Request) => {
         });
       });
 
-      const state = createGameState(players, config.options);
+      const state = createGameState(players, sanitizeOptions(config.options));
       const code = makeCode();
       const creatorToken = token();
       const { data: game, error } = await admin
@@ -279,6 +315,11 @@ Deno.serve(async (req: Request) => {
         return err("Invalid action");
       const seatId = loaded.secret.state.players[idx].id;
       const next = applyPlayerAction(loaded.secret.state, seatId, body.action);
+      // Illegal/no-op actions (wrong turn, unknown type) return the same state
+      // object unchanged. Don't bump the version, rewrite state, or broadcast a
+      // Realtime ping for those — just report it wasn't applied.
+      if (next === loaded.secret.state)
+        return json({ ok: false, reason: "not-applied" });
       // Claim the version first; a concurrent/double submit gets a clean 409.
       if (
         !(await casBump(loaded.game.id, loaded.game.version, {

@@ -16,6 +16,7 @@ import type { CardModel } from "../types";
 import {
   type GameState,
   type GamePlayer,
+  type GameOptions,
   type DamageOutcome,
   type LogEntry,
   makeDeck,
@@ -125,14 +126,48 @@ function dealCards(s: GameState): void {
   s.dealPlayers = dealt.length;
   for (let r = 0; r < 3; r++) for (const p of dealt) p.hand.push(s.deck.pop()!);
   s.discard.push(s.deck.pop()!);
-  s.cur = 0;
-  while (isEliminated(s.players[s.cur])) s.cur = (s.cur + 1) % s.players.length;
-  // A dealt 31 wins immediately.
-  if (scoreHand(s.players[s.cur].hand, s.options) === 31) {
-    resolveDeal(s, s.cur);
+
+  // Rotate who acts first each deal. Acting first is a disadvantage in 31 (you
+  // make the earliest, least-informed knock decision), so it must not sit on
+  // one seat: the first deal opens on the lowest living seat, later deals on
+  // the next living seat after the previous opener.
+  s.dealer =
+    s.dealNum <= 1 ? firstLivingFrom(s, 0) : firstLivingFrom(s, s.dealer + 1);
+  s.cur = s.dealer;
+
+  // A natural (dealt) 31 wins instantly. With a single 52-card deck only one
+  // seat can hold it, but scan every dealt hand so the win is caught no matter
+  // who holds it — not just the opener.
+  const blitz = dealtBlitzIndex(s.players, s.options);
+  if (blitz >= 0) {
+    resolveDeal(s, blitz);
   } else {
     s.phase = "drawing";
   }
+}
+
+/**
+ * Index of a seat holding a natural (dealt) 31, or -1. Exported for testing.
+ * A dealt 31 (an ace plus two ten-value cards of one suit) wins the deal
+ * instantly; three-of-a-kind scores 30½, so it never false-triggers here.
+ */
+export function dealtBlitzIndex(
+  players: GamePlayer[],
+  options: GameOptions,
+): number {
+  return players.findIndex(
+    (p) => p.hand.length > 0 && scoreHand(p.hand, options) === 31,
+  );
+}
+
+/** Index of the first non-eliminated seat at or after `from` (wraps around). */
+function firstLivingFrom(s: GameState, from: number): number {
+  const n = s.players.length;
+  let i = ((from % n) + n) % n;
+  for (let guard = 0; guard < n && isEliminated(s.players[i]); guard++) {
+    i = (i + 1) % n;
+  }
+  return i;
 }
 
 /** Safety net: if nobody knocks, force a showdown after this many rounds. */
@@ -263,6 +298,7 @@ export function createGameState(
     deck: [],
     discard: [],
     cur: 0,
+    dealer: 0,
     knocker: null,
     queue: [],
     phase: "dealEnd", // a no-op starting phase; "deal" begins play

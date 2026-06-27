@@ -87,6 +87,8 @@ export interface GameState {
   deck: CardModel[];
   discard: CardModel[];
   cur: number;
+  /** Seat that opens the current deal; rotates each deal for fairness. */
+  dealer: number;
   knocker: number | null;
   /** Remaining seats to play after a knock. */
   queue: number[];
@@ -145,10 +147,27 @@ export type DamageOutcome = "lost" | "grace" | "eliminated";
 
 /* ── Cards & scoring ────────────────────────────────────────────────────── */
 
+/**
+ * Unbiased random integer in [0, n) from the platform CSPRNG. Used for the
+ * deck shuffle: on the server authority the deck order must not be predictable,
+ * so we draw from crypto (available in browsers, Deno, and Node 18+) rather
+ * than the predictable `Math.random`. Rejection sampling avoids modulo bias.
+ */
+function randomInt(n: number): number {
+  const limit = Math.floor(0xffffffff / n) * n;
+  const buf = new Uint32Array(1);
+  let x: number;
+  do {
+    crypto.getRandomValues(buf);
+    x = buf[0];
+  } while (x >= limit);
+  return x % n;
+}
+
 export function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = randomInt(i + 1);
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;

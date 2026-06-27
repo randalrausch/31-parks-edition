@@ -18,6 +18,10 @@ const viteEnv = (
 const url = viteEnv?.VITE_SUPABASE_URL;
 const key = viteEnv?.VITE_SUPABASE_KEY;
 
+// Note: the eager/solo code path must NOT import this module (it pulls in the
+// Supabase SDK). It uses the SDK-free `multiplayerEnabled` from
+// multiplayerConfig.ts instead; this copy is for code that already needs the
+// client. Both derive from the same two env vars and agree.
 export const multiplayerEnabled = Boolean(url && key);
 export const supabase: SupabaseClient | null = multiplayerEnabled
   ? createClient(url!, key!, { realtime: { params: { eventsPerSecond: 5 } } })

@@ -1,12 +1,14 @@
 /**
  * Transport — the seam between the UI and the authoritative game.
  *
- * The UI never mutates state directly; it sends GameActions through a Transport
- * and re-renders whatever state the transport publishes. LocalTransport runs
- * the reducer in-process (single device: hotseat + AI). NetworkTransport (see
- * networkTransport.ts) implements the same interface against Supabase — sending
- * actions to an Edge Function authority that runs the very same `applyAction`
- * and broadcasts the resulting state — with zero UI changes.
+ * The UI never mutates state directly; it sends GameActions through a transport
+ * and re-renders whatever state the transport publishes. LocalTransport (below)
+ * implements this synchronous interface and runs the reducer in-process (single
+ * device: hotseat + AI). Online play is the same idea over the network but with
+ * an async, lobby-oriented shape, so it lives in a sibling type, NetworkTransport
+ * (networkTransport.ts), rather than implementing this interface directly — it
+ * forwards actions to the Edge Function authority that runs the very same
+ * `applyAction` and broadcasts the resulting (redacted) state.
  */
 import { type GameState } from "./engine";
 import {
