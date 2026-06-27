@@ -18,9 +18,9 @@ cd "$(dirname "$0")/.."
 REF="${1:-}"
 KEY="${2:-}"
 
-err() { printf '\033[31m✖ %s\033[0m\n' "$1" >&2; }
-ok()  { printf '\033[32m✔ %s\033[0m\n' "$1"; }
-step(){ printf '\n\033[1m▶ %s\033[0m\n' "$1"; }
+err() { printf '\033[31mError: %s\033[0m\n' "$1" >&2; }
+ok()  { printf '\033[32mOK: %s\033[0m\n' "$1"; }
+step(){ printf '\n\033[1m==> %s\033[0m\n' "$1"; }
 
 # 1. CLI present?
 if ! command -v supabase >/dev/null 2>&1; then
@@ -77,5 +77,5 @@ VITE_SUPABASE_KEY=${KEY}
 EOF
 ok ".env.local written"
 
-printf '\n\033[32m✅ Multiplayer backend ready.\033[0m  Run: npm run dev\n'
+printf '\n\033[32mMultiplayer backend ready.\033[0m  Run: npm run dev\n'
 echo "   The home screen will show Create Online Game / Join with Code."

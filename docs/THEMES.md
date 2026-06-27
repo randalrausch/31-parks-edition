@@ -180,4 +180,4 @@ Themes are purely cosmetic and **client‑side** — each player can pick their 
 park view in an online game; it doesn't affect shared game state. So adding a
 theme never touches the backend.
 
-Open a PR with a screenshot of your park's board — we'd love to see it. 🏔
+Open a PR with a screenshot of your park's board.

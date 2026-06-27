@@ -52,7 +52,7 @@ const entry = `export const ${constName}: ParkTheme = {
   victoryMessage: "TODO: a celebratory one-liner for the winner.",
 };`;
 
-console.log(`\n🏔  New theme scaffold: ${displayName} (${id})\n`);
+console.log(`\nNew theme scaffold: ${displayName} (${id})\n`);
 console.log("1) Add this art to src/assets/parks/ (any of .jpg/.png/.webp):");
 console.log(`     ${id}-scene.jpg   (table background, ~1600x1000 landscape)`);
 console.log(`     ${id}-back.jpg    (card back, ~600x840 portrait — optional)\n`);
