@@ -1,0 +1,183 @@
+/* ════════════════════════════════════════════════════════════════════════
+   31 · National Parks Edition — global design system
+   WPA-poster vocabulary: cream paper, deep forest chrome, gold linework,
+   burnt-orange calls to action. iPad-first, touch-optimized, fully responsive.
+   ════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Type */
+  --font-display: "Bebas Neue", "Oswald", system-ui, sans-serif;
+  --font-label: "Oswald", system-ui, sans-serif;
+  --font-body: "Roboto Slab", Georgia, "Times New Roman", serif;
+
+  /* Constant app chrome (outside the themed table) — deep forest */
+  --chrome-bg: #0a1813;
+  --chrome-bg-2: #0e2017;
+  --chrome-surface: #11271c;
+  --chrome-line: rgba(214, 168, 79, 0.26);
+  --chrome-line-strong: rgba(214, 168, 79, 0.55);
+
+  /* Shared poster constants */
+  --cream: #f4e3b2;
+  --cream-dim: #d9c99a;
+  --gold: #d6a84f;
+  --gold-bright: #e8c068;
+  --ember: #c9571c;
+  --ember-bright: #e4671f;
+  --ink: #16100a;
+
+  /* Theme palette — overridden per-park by ParkThemeProvider */
+  --c-base: #0b211c;
+  --c-surface: #13322b;
+  --c-primary: #1f5145;
+  --c-secondary: #2f7e8c;
+  --c-soft: #8fa395;
+  --c-cream: #f4e3b2;
+  --c-gold: #d6a84f;
+  --c-ember: #c9571c;
+  --c-draw: #2f6b6b;
+
+  /* Elevation */
+  --shadow-card: 0 6px 16px rgba(0, 0, 0, 0.45);
+  --shadow-panel: 0 18px 48px rgba(0, 0, 0, 0.5);
+  --shadow-plate: 0 3px 0 rgba(0, 0, 0, 0.35), 0 8px 18px rgba(0, 0, 0, 0.45);
+
+  --radius: 14px;
+  --radius-lg: 22px;
+
+  /* Safe-area insets (iPhone notch / home indicator) */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--chrome-bg);
+  color: var(--cream);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Touch polish: no tap flash, no accidental text selection on game chrome */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  /* Comfortable touch targets everywhere */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.theme-root {
+  min-height: 100%;
+  background:
+    radial-gradient(
+      1200px 600px at 50% -10%,
+      var(--chrome-bg-2),
+      transparent 70%
+    ),
+    var(--chrome-bg);
+}
+
+/* Headings */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 0.96;
+  text-wrap: balance;
+}
+
+/* ── Paper grain overlay ──
+   A subtle fractal-noise texture for the WPA "printed paper" feel.
+   Applied as a fixed, non-interactive layer; opacity kept low. */
+.paper-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.06;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Gold-rule label, used above section titles */
+.eyebrow {
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.32em;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--gold);
+}
+
+/* Accessible focus ring */
+:focus-visible {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 2px;
+}
+
+/* Respect reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Vintage scrollbar (desktop) */
+@media (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--chrome-bg);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #243d2e;
+    border: 3px solid var(--chrome-bg);
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #2f5340;
+  }
+}

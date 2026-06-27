@@ -1,0 +1,57 @@
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: calc(20px + var(--safe-t)) 16px calc(20px + var(--safe-b));
+  background: rgba(5, 12, 8, 0.78);
+  backdrop-filter: blur(3px);
+  animation: modal-fade 0.18s ease;
+  overflow-y: auto;
+}
+@keyframes modal-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.modal__panel {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: 100%;
+  background: linear-gradient(180deg, var(--chrome-surface), var(--chrome-bg));
+  border: 1.5px solid var(--chrome-line-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+  padding: 28px;
+  animation: modal-rise 0.22s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@keyframes modal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+}
+
+.modal__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  color: var(--cream-dim);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--chrome-line);
+  z-index: 2;
+}
+@media (hover: hover) {
+  .modal__close:hover {
+    color: var(--cream);
+    border-color: var(--chrome-line-strong);
+  }
+}

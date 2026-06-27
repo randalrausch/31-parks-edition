@@ -1,0 +1,99 @@
+.cover {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(18, 39, 28, 0.6), transparent 60%),
+    rgba(5, 12, 8, 0.96);
+  backdrop-filter: blur(6px);
+  animation: cover-fade 0.2s ease;
+}
+@keyframes cover-fade {
+  from {
+    opacity: 0;
+  }
+}
+.cover__inner {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.cover__eyebrow {
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  font-size: 0.82rem;
+  color: var(--gold);
+}
+.cover__avatar {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--gold);
+  box-shadow: var(--shadow-panel);
+  margin: 6px 0;
+}
+.cover__avatar svg {
+  width: 100%;
+  height: 100%;
+}
+.cover__name {
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 9vw, 4rem);
+  color: var(--cream);
+  letter-spacing: 0.04em;
+}
+.cover__hint {
+  color: var(--cream-dim);
+  font-size: 0.95rem;
+}
+.cover__report {
+  width: min(360px, 86vw);
+  max-height: 32vh;
+  overflow-y: auto;
+  margin: 18px 0 4px;
+  padding: 12px 14px;
+  text-align: left;
+  background: rgba(8, 18, 12, 0.6);
+  border: 1px solid var(--chrome-line);
+  border-radius: 12px;
+}
+.cover__report-title {
+  display: block;
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.66rem;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+
+.cover__btn {
+  margin-top: 18px;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  letter-spacing: 0.06em;
+  color: var(--cream);
+  background: linear-gradient(
+    180deg,
+    var(--c-draw),
+    color-mix(in srgb, var(--c-draw) 70%, black)
+  );
+  padding: 15px 40px;
+  min-height: 58px;
+  border-radius: 12px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 5px 0 rgba(0, 0, 0, 0.3),
+    0 12px 24px rgba(0, 0, 0, 0.45);
+  transition: transform 0.1s ease;
+}
+.cover__btn:active {
+  transform: translateY(4px);
+}

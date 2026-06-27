@@ -1,0 +1,12 @@
+# Netlify free-tier static deploy for 31: National Parks Edition.
+# Vite outputs a fully static SPA bundle — no server, no functions, no env required.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA fallback: every path serves the built index.html.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

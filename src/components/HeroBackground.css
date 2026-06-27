@@ -1,0 +1,267 @@
+.hero {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: var(--c-base);
+}
+
+/* Base scene layers (crossfade) */
+.hero__img,
+.hero__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hero__img--cur {
+  /* gentle Ken-Burns drift — kept tiny */
+  animation:
+    hero-kenburns 38s ease-in-out infinite alternate,
+    hero-fade-in 0.9s ease both;
+}
+.hero__img--prev {
+  animation: hero-fade-out 0.9s ease both;
+}
+@keyframes hero-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes hero-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes hero-kenburns {
+  from {
+    transform: scale(1.02) translate(0, 0);
+  }
+  to {
+    transform: scale(1.05) translate(-3px, 2px);
+  }
+}
+
+/* Blurred, masked copy → only the edges show blurred */
+.hero__edge {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(14px);
+  transform: scale(1.08);
+  -webkit-mask-image: radial-gradient(
+    ellipse 62% 60% at 50% 48%,
+    transparent 60%,
+    #000 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 62% 60% at 50% 48%,
+    transparent 60%,
+    #000 100%
+  );
+  pointer-events: none;
+}
+
+/* Vignette + dark edges so the menu stays readable */
+.hero__vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 70% 66% at 50% 46%,
+      transparent 52%,
+      rgba(6, 13, 9, 0.66) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(6, 13, 9, 0.42) 0%,
+      transparent 26%,
+      transparent 64%,
+      rgba(6, 13, 9, 0.58) 100%
+    );
+}
+
+/* ── Ambient motion ── */
+.hero__fog,
+.hero__rays,
+.hero__accent,
+.hero__dust,
+.hero__eagle {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hero__fog {
+  background:
+    radial-gradient(
+      60% 40% at 30% 70%,
+      rgba(244, 240, 230, 0.1),
+      transparent 70%
+    ),
+    radial-gradient(
+      50% 35% at 75% 60%,
+      rgba(244, 240, 230, 0.08),
+      transparent 70%
+    );
+  animation: hero-fog 26s ease-in-out infinite alternate;
+}
+@keyframes hero-fog {
+  from {
+    transform: translate(-3px, 0);
+    opacity: 0.7;
+  }
+  to {
+    transform: translate(3px, -2px);
+    opacity: 1;
+  }
+}
+
+.hero__rays {
+  background: repeating-linear-gradient(
+    66deg,
+    rgba(255, 248, 222, 0) 0px,
+    rgba(255, 248, 222, 0) 60px,
+    rgba(255, 248, 222, 0.05) 80px,
+    rgba(255, 248, 222, 0) 110px
+  );
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: hero-rays 14s ease-in-out infinite alternate;
+}
+@keyframes hero-rays {
+  from {
+    opacity: 0.25;
+    transform: translateX(-2px);
+  }
+  to {
+    opacity: 0.5;
+    transform: translateX(2px);
+  }
+}
+
+/* Floating dust motes */
+.hero__mote {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 248, 222, 0.55);
+  box-shadow: 0 0 4px rgba(255, 248, 222, 0.5);
+  animation-name: hero-mote;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+@keyframes hero-mote {
+  from {
+    transform: translateY(0);
+    opacity: 0.2;
+  }
+  to {
+    transform: translateY(-3px);
+    opacity: 0.7;
+  }
+}
+
+/* Occasional eagle — small, slow, low opacity */
+.hero__eagle {
+  inset: auto auto auto 0;
+  top: 16%;
+  width: 64px;
+  height: 24px;
+  opacity: 0;
+  animation: hero-eagle 34s linear infinite;
+}
+@keyframes hero-eagle {
+  0% {
+    transform: translateX(8vw) translateY(0);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.5;
+  }
+  46% {
+    transform: translateX(82vw) translateY(-10px);
+    opacity: 0.45;
+  }
+  54% {
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(82vw) translateY(-10px);
+    opacity: 0;
+  }
+}
+
+/* ── Per-park accent layer ── */
+/* Glacier: moving light rays already via .hero__rays (kept subtle for all);
+   add a brighter cool sheen. */
+.hero--glacier .hero__accent {
+  background: linear-gradient(
+    115deg,
+    rgba(190, 220, 235, 0.06),
+    transparent 40%
+  );
+  animation: hero-sheen 12s ease-in-out infinite alternate;
+}
+/* Yellowstone: warm steam drifting up from the geyser (center-right). */
+.hero--yellowstone .hero__accent {
+  background: radial-gradient(
+    26% 42% at 62% 52%,
+    rgba(247, 244, 236, 0.18),
+    transparent 72%
+  );
+  animation: hero-steam 9s ease-in-out infinite alternate;
+}
+/* Theodore Roosevelt: a soft warm prairie haze that gently waves at the base. */
+.hero--theodoreroosevelt .hero__accent {
+  background: linear-gradient(0deg, rgba(201, 163, 106, 0.14), transparent 26%);
+  animation: hero-grass 7s ease-in-out infinite alternate;
+}
+@keyframes hero-sheen {
+  from {
+    opacity: 0.5;
+    transform: translateX(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(2px);
+  }
+}
+@keyframes hero-steam {
+  from {
+    opacity: 0.55;
+    transform: translateY(2px) scale(1);
+  }
+  to {
+    opacity: 0.95;
+    transform: translateY(-3px) scale(1.04);
+  }
+}
+@keyframes hero-grass {
+  from {
+    transform: translateX(-2px);
+  }
+  to {
+    transform: translateX(2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__img--cur,
+  .hero__fog,
+  .hero__rays,
+  .hero__accent,
+  .hero__mote,
+  .hero__eagle {
+    animation: none !important;
+  }
+  .hero__eagle {
+    opacity: 0;
+  }
+}

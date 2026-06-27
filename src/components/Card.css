@@ -1,0 +1,123 @@
+/* Aged-cream WPA playing card */
+.card {
+  --card-cream: #f6ecd2;
+  --card-cream-2: #ecdcb6;
+  --card-red: #b23a2e;
+  --card-ink: #1b150d;
+
+  position: relative;
+  display: block;
+  flex: none;
+  width: var(--card-w, 86px);
+  height: calc(var(--card-w, 86px) * 1.4);
+  border-radius: 9px;
+  padding: 0;
+  background: radial-gradient(
+    120% 90% at 50% 0%,
+    var(--card-cream) 0%,
+    var(--card-cream-2) 100%
+  );
+  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(120, 92, 40, 0.4);
+  color: var(--card-ink);
+  overflow: hidden;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+/* faint printed-paper speckle */
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='80' height='80' filter='url(%23c)'/%3E%3C/svg%3E");
+}
+
+/* Sizes are relative to --card-unit (set by the board for responsive scaling;
+   falls back to a sensible value outside the board, e.g. in the promo). */
+.card--sm {
+  --card-w: calc(var(--card-unit, 84px) * 0.66);
+  border-radius: 7px;
+}
+.card--md {
+  --card-w: var(--card-unit, 86px);
+}
+.card--lg {
+  --card-w: calc(var(--card-unit, 90px) * 1.2);
+}
+
+.card__corner {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 0.9;
+  z-index: 1;
+}
+.card__corner--tl {
+  top: 7px;
+  left: 8px;
+}
+.card__corner--br {
+  bottom: 7px;
+  right: 8px;
+  transform: rotate(180deg);
+}
+.card__rank {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: calc(var(--card-w) * 0.24);
+}
+.card__corner-suit {
+  width: calc(var(--card-w) * 0.15);
+  height: calc(var(--card-w) * 0.15);
+  margin-top: 2px;
+}
+
+.card__center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.card__center-suit {
+  width: calc(var(--card-w) * 0.46);
+  height: calc(var(--card-w) * 0.46);
+}
+.card__court {
+  width: 78%;
+  height: 84%;
+}
+
+/* States */
+.card--interactive {
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .card--interactive:hover {
+    transform: translateY(-12px) scale(1.03);
+    box-shadow: 0 16px 30px rgba(0, 0, 0, 0.5);
+  }
+}
+.card--interactive:active {
+  transform: translateY(-6px) scale(1.01);
+}
+
+/* Counting-suit highlight — subtle gold ring (shown while choosing an action) */
+.card--counting {
+  box-shadow:
+    0 0 0 2.5px var(--gold),
+    var(--shadow-card);
+}
+
+/* Selected-to-discard — distinct ember ring (the card is also lifted and the
+   others dimmed via inline styles in GameBoard, so it's unmistakable). */
+.card--selected,
+.card--counting.card--selected {
+  box-shadow:
+    0 0 0 3.5px var(--ember-bright),
+    0 24px 38px rgba(0, 0, 0, 0.6);
+}

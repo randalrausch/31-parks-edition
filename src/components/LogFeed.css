@@ -1,0 +1,43 @@
+.logfeed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.logfeed__line {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--cream);
+}
+.logfeed__actor {
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: var(--gold-bright);
+}
+.logfeed__knock {
+  color: var(--ember-bright);
+  font-weight: 700;
+}
+.logfeed__card {
+  display: inline-block;
+  background: #f6ecd2;
+  color: #1b150d;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 0 5px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+.logfeed__card--red {
+  color: #b23a2e;
+}
+.logfeed__empty {
+  font-style: italic;
+  color: var(--cream-dim);
+  font-size: 0.82rem;
+}

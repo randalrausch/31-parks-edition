@@ -1,0 +1,122 @@
+.picker__head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  color: var(--gold);
+  margin-bottom: 16px;
+}
+.picker__rule {
+  width: 100%;
+  height: 12px;
+}
+.picker__title {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cream);
+  white-space: nowrap;
+}
+
+.picker__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.park-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  border-radius: 12px;
+  text-align: center;
+  transition:
+    transform 0.16s ease,
+    filter 0.16s ease;
+}
+.park-card:not(:disabled) {
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .park-card:not(:disabled):hover {
+    transform: translateY(-3px);
+  }
+}
+
+.park-card__art {
+  position: relative;
+  display: block;
+  aspect-ratio: 3 / 2;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid var(--chrome-line);
+  box-shadow: var(--shadow-card);
+}
+.park-card__emblem {
+  width: 100%;
+  height: 100%;
+}
+.park-card--active .park-card__art {
+  border-color: var(--gold-bright);
+  box-shadow:
+    0 0 0 2px var(--gold-bright),
+    var(--shadow-card);
+}
+.park-card__check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--gold-bright);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+.park-card__ribbon {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(6, 14, 9, 0.62);
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--cream);
+}
+.park-card--soon {
+  filter: saturate(0.85);
+}
+
+.park-card__label {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+.park-card__name {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  color: var(--cream);
+}
+.park-card__desig {
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.6rem;
+  color: var(--gold);
+}
+
+@media (max-width: 560px) {
+  .picker__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

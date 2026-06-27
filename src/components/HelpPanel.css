@@ -1,0 +1,114 @@
+/* Parchment variant of the modal panel */
+.modal--parchment {
+  --parchment: #efdcb0;
+  background: linear-gradient(180deg, #f3e6c2, #e7d2a4);
+  border-color: #b9974f;
+  color: #2b1b10;
+}
+.modal--parchment .modal__close {
+  color: #5a4426;
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(90, 68, 38, 0.4);
+}
+
+.help {
+  color: #2b1b10;
+}
+.help__title {
+  font-family: var(--font-display);
+  font-size: 2.1rem;
+  text-align: center;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+  color: #3a2412;
+}
+.help p {
+  font-family: var(--font-body);
+  font-size: 0.96rem;
+  line-height: 1.55;
+  color: #3a2814;
+}
+.help__lead {
+  margin-bottom: 6px;
+}
+.help__section {
+  margin-top: 16px;
+}
+.help__h {
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #7c3a1e;
+  margin-bottom: 7px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(124, 58, 30, 0.28);
+}
+.help__values {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 5px 16px;
+  font-size: 0.95rem;
+  color: #3a2814;
+}
+.help__vk {
+  font-weight: 700;
+  color: #5a2f14;
+}
+.help__example {
+  background: rgba(124, 58, 30, 0.1);
+  border: 1px solid rgba(124, 58, 30, 0.25);
+  border-radius: 9px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.92rem;
+}
+.help__cards {
+  font-family: "Palatino Linotype", Palatino, Georgia, serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #5a2f14;
+}
+.help__example em,
+.help__fine {
+  color: #6a543a;
+  font-style: italic;
+}
+.help__fine {
+  font-size: 0.86rem;
+  margin-top: 6px;
+}
+.help__list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #3a2814;
+}
+.help__cta {
+  margin-top: 22px;
+  width: 100%;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  letter-spacing: 0.05em;
+  color: var(--cream);
+  background: linear-gradient(180deg, var(--ember-bright), var(--ember));
+  padding: 13px;
+  min-height: 52px;
+  border-radius: 11px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 4px 0 rgba(0, 0, 0, 0.25);
+  transition: transform 0.1s ease;
+}
+.help__cta:active {
+  transform: translateY(3px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
