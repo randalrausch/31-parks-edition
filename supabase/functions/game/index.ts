@@ -43,11 +43,14 @@ const json = (body: unknown, status = 200) =>
   });
 const err = (msg: string, status = 400) => json({ error: msg }, status);
 
-const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I/O/0/1
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 32 chars, no I/O/0/1
 function makeCode(): string {
+  // 32 is a power of two, so (byte % 32) is unbiased. Cryptographic RNG.
+  const bytes = new Uint8Array(5);
+  crypto.getRandomValues(bytes);
   let c = "";
   for (let i = 0; i < 5; i++)
-    c += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
+    c += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
   return c;
 }
 const token = () => crypto.randomUUID();
@@ -162,13 +165,11 @@ Deno.serve(async (req: Request) => {
         .select()
         .single();
       if (error) return err(error.message, 500);
-      await admin
-        .from("game_secrets")
-        .insert({
-          game_id: game.id,
-          state,
-          seat_tokens: { [creatorToken]: 0 },
-        });
+      await admin.from("game_secrets").insert({
+        game_id: game.id,
+        state,
+        seat_tokens: { [creatorToken]: 0 },
+      });
       return json({
         gameId: game.id,
         code,

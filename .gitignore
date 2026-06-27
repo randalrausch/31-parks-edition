@@ -27,3 +27,7 @@ dist-ssr
 
 # Local Claude Code settings (machine-specific permissions)
 .claude/settings.local.json
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/

@@ -71,6 +71,14 @@ export function advanceAuthority(s: GameState): GameState {
  * then settle AI turns. Returns the original state unchanged if the action is
  * not legal for that seat right now (e.g. not your turn).
  */
+/** Actions a player may submit on their turn. "deal" is server-internal only. */
+const PLAYER_TURN_ACTIONS = new Set<GameAction["type"]>([
+  "drawDeck",
+  "takeDiscard",
+  "discard",
+  "knock",
+]);
+
 export function applyPlayerAction(
   state: GameState,
   seatId: string,
@@ -80,6 +88,9 @@ export function applyPlayerAction(
     if (state.phase !== "dealEnd") return state;
     return advanceAuthority(applyAction(state, action));
   }
+  // Reject anything that isn't a legal turn action — notably "deal", which
+  // would otherwise let a player re-deal the game mid-turn.
+  if (!PLAYER_TURN_ACTIONS.has(action.type)) return state;
   // Turn actions must come from the player whose turn it is.
   if (state.phase !== "drawing" && state.phase !== "discarding") return state;
   if (state.players[state.cur].id !== seatId) return state;
