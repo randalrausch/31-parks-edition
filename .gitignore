@@ -31,3 +31,7 @@ dist-ssr
 # Supabase CLI local state
 supabase/.temp/
 supabase/.branches/
+
+# Local dev tooling (not part of the project)
+.claude/
+.mcp.json
