@@ -1,53 +1,112 @@
 # 31 · National Parks Edition
 
-A fast classic card game reimagined with the wonder of America's wild places — a
-vintage **WPA-poster**-inspired front-end prototype.
+A vintage **WPA‑poster**‑styled implementation of the classic card game **31** —
+play solo against characterful AI rangers, or online with friends. Built as a
+fast, self‑contained **React + TypeScript + Vite** app with an optional
+**Supabase** backend for real‑time, asynchronous multiplayer.
 
-Built with **React + TypeScript + Vite** and plain CSS modules. No backend, no
-database, no paid APIs. Deploys directly to Netlify's free tier.
+> Build the highest hand you can in a single suit — as close to **31** as
+> possible. Knock when you're confident; each deal the lowest hand loses a
+> token. The last player holding a token wins.
 
-## Develop
+- 🎴 **Complete game of 31** — draw/discard/knock, Grace, knock penalty, instant
+  31, elimination, end‑of‑game score chart.
+- 🤖 **10 AI characters** with distinct, trait‑driven personalities (bluff,
+  memory, patience, aggression, risk).
+- 🏔 **Themed national parks** (Glacier, Yellowstone, Theodore Roosevelt) with
+  original WPA‑style art — and a **one‑file path to add your own** (see below).
+- 🌐 **Online multiplayer** (optional) — server‑authoritative and **async**: take
+  your turn whenever; the saved game waits for you.
+- 📱 **Installable PWA** — add it to your phone's home screen; works offline for
+  solo play.
+- ✅ **Tested** — pure game logic covered by unit + fuzz tests; CI on every push.
+
+---
+
+## Quick start
+
+Requires **Node 20+**.
 
 ```bash
+git clone <your-fork-url> 31-parks-edition
+cd 31-parks-edition
 npm install
-npm run dev      # http://localhost:5173
+npm run dev          # http://localhost:5173
 ```
 
-## Build
+That's it — **solo play (vs. AI) works with zero configuration**. Online
+multiplayer is optional and needs a free Supabase project; see
+[docs/SUPABASE.md](docs/SUPABASE.md).
 
-```bash
-npm run build    # type-checks, then emits a static bundle to ./dist
-npm run preview  # serve the production build locally
+## Scripts
+
+| Script | What it does |
+|--------|--------------|
+| `npm run dev` | Start the dev server |
+| `npm run build` | Type‑check + build a static bundle to `dist/` |
+| `npm run preview` | Serve the production build locally |
+| `npm test` | Run the unit + fuzz test suite (Vitest) |
+| `npm run test:watch` | Watch‑mode tests |
+| `npm run typecheck` | Type‑check only |
+| `npm run build:edge` | Re‑bundle the shared engine for the Supabase Edge Function |
+
+## Deploy
+
+`npm run build` emits a plain static site in `dist/` — host it **anywhere**
+(Netlify, Vercel, Cloudflare Pages, GitHub Pages, S3, …). See
+[docs/DEPLOY.md](docs/DEPLOY.md) for per‑host instructions and the SPA redirect
+rule.
+
+## Project structure
+
+```text
+src/
+  game/            Framework-free game core (engine, reducer, AI, transports)
+    engine.ts        Rules: scoring, tokens/grace, AI trait→behaviour mappings
+    actions.ts       Pure reducer: applyAction(state, action) — the authority
+    authority.ts     Server brain: redactState / advanceAuthority / applyPlayerAction
+    useGame.ts       Solo presentation layer over the reducer (animation, AI, sound)
+    transport.ts     Transport interface + LocalTransport
+    networkTransport.ts / useNetworkGame.ts   Online sync over Supabase
+    *.test.ts        Unit + fuzz tests
+  components/       React UI (board, lobby, setup, overlays)
+  art/             Original SVG scenes, emblems, avatars, glyphs
+  themes.ts        The park theme registry  ← add a park here
+  assets/          Raster art (park scenes, character portraits, audio, sfx)
+supabase/          Schema migration + the `game` Edge Function (optional backend)
+docs/              Architecture, theming, Supabase, deployment guides
 ```
 
-## Deploy to Netlify
+## Documentation
 
-Push to GitHub and connect the repo, or drag the `dist/` folder onto Netlify.
-Build settings are pre-configured in `netlify.toml` (`npm run build` → `dist`).
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — how the pure engine,
+  reducer, transports, and authority fit together (and how hidden information is
+  enforced).
+- **[docs/THEMES.md](docs/THEMES.md)** — **add your own national park theme.**
+  Contributions welcome and encouraged!
+- **[docs/SUPABASE.md](docs/SUPABASE.md)** — set up the optional multiplayer
+  backend (with a one‑command helper script).
+- **[docs/DEPLOY.md](docs/DEPLOY.md)** — deploy the static build to any host.
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — dev workflow, tests, conventions.
 
-## Targets
+## How to play
 
-iPad-first and touch-optimized, responsive down to iPhone and up to laptop/
-desktop. Uses `dvh` units and safe-area insets so the immersive table extends
-cleanly under the iOS notch and home indicator.
+Open the in‑app **Learn to Play** for a full tutorial, or
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the terminology
+(Turn → Round → Deal → Game). In short: each turn you draw one card and discard
+one, always holding three; collect the highest total you can in a single suit;
+knock to end the deal; lowest hand loses a token; last player with a token wins.
 
-## Architecture
+## Tech
 
-The game logic is intentionally **mocked** — deterministic sample data so the UI
-always looks presentation-ready. Search for `TODO:` comments to find the seams
-where real game logic, multiplayer, auth, matchmaking, and score persistence
-would be wired in.
+React 18 · TypeScript · Vite 6 · plain CSS · Supabase (optional, for
+multiplayer) · Vitest. No game‑logic dependencies — the rules are pure,
+serializable TypeScript shared by the client and the server.
 
-### Themes
+## Credits & license
 
-Each national park is a self-contained entry in `src/themes.ts`. **Glacier** and
-**Yellowstone** are fully implemented; the registry is built so adding any other
-park (Yosemite, Zion, Grand Canyon, Acadia, …) is a single new entry — palette,
-scene component, tagline, avatars, and victory copy — and it appears
-automatically in the in-game Park Picker.
+Original artwork is inspired by the public‑domain visual language of 1930s WPA
+national‑park posters; no copyrighted poster art is used. Sound effects (if
+added) should be CC0/public‑domain — see `src/assets/sfx/README.md`.
 
-### Components
-
-`App` · `PromoLanding` · `GameBoard` · `ParkThemeProvider` · `ParkBackground` ·
-`Card` · `CardBack` · `PlayerSeat` · `CenterPiles` · `Controls` · `Scoreboard` ·
-`ThemeToggle` (Park Picker) · `HelpPanel` · `VictoryPanel`
+Licensed under the [MIT License](LICENSE).
