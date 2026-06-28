@@ -24,12 +24,9 @@ import {
   type GameState,
   type AITraits,
   isAlive,
-  planAITurn,
-  aiDiscardIndex,
-  aiPlayRandomChance,
-  DEFAULT_TRAITS,
 } from "./engine";
 import { LocalTransport, type Transport } from "./transport";
+import { aiTurnActions } from "./authority";
 import type { GameAction, NewGamePlayer } from "./actions";
 import { sndShuffle, sndDeal, sndKnock, sndCoin } from "./sound";
 
@@ -151,58 +148,35 @@ export function useGame(): SoloGameApi {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [after, render]);
 
-  // Drive one AI turn by dispatching actions, with presentational beats.
+  // Drive one AI turn by dispatching the shared AI action sequence (same logic
+  // the server uses), but spaced out with presentational beats.
   const runAITurn = useCallback(() => {
     const a = A();
     const pres = P();
     if (!a || a.phase !== "drawing") return;
     const aiIdx = a.cur;
     const p = a.players[aiIdx];
-    const plan = planAITurn(a);
+    const actions = aiTurnActions(a);
 
-    if (plan.kind === "knock") {
+    if (actions[0].type === "knock") {
       pres.status = `${p.name} knocks!`;
       beep(sndKnock);
       render();
       after(800, () => {
-        dispatch({ type: "knock" });
+        dispatch(actions[0]);
         advance();
       });
       return;
     }
 
-    if (plan.kind === "takeDiscard") {
-      const cardId = p.hand[plan.handIndex].id;
-      dispatch({ type: "takeDiscard" });
-      beep(sndDeal);
-      render();
-      after(700, () => {
-        dispatch({ type: "discard", cardId });
-        beep(sndDeal);
-        pres.holdCur = aiIdx; // keep showing the AI while its discard sits
-        render();
-        after(600, () => {
-          pres.holdCur = null;
-          advance();
-        });
-      });
-      return;
-    }
-
-    // drawDeck — draw, then pick a discard from the new hand.
-    dispatch({ type: "drawDeck" });
+    // Draw (deck or discard), beat, then discard while holding on the AI.
+    dispatch(actions[0]);
     beep(sndDeal);
     render();
     after(700, () => {
-      const a2 = A();
-      if (!a2) return;
-      const pp = a2.players[a2.cur];
-      const playRandom =
-        Math.random() < aiPlayRandomChance(pp.traits ?? DEFAULT_TRAITS);
-      const idx = aiDiscardIndex(pp.hand, a2.options, playRandom);
-      dispatch({ type: "discard", cardId: pp.hand[idx].id });
+      dispatch(actions[1]);
       beep(sndDeal);
-      pres.holdCur = aiIdx;
+      pres.holdCur = aiIdx; // keep showing the AI while its discard sits
       render();
       after(600, () => {
         pres.holdCur = null;

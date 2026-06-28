@@ -384,21 +384,21 @@ var HIDDEN_CARD = {
   rank: "A",
   suit: "spades"
 };
-function stepAI(s) {
+function aiTurnActions(s) {
   const plan = planAITurn(s);
-  if (plan.kind === "knock") return applyAction(s, { type: "knock" });
+  if (plan.kind === "knock") return [{ type: "knock" }];
   if (plan.kind === "takeDiscard") {
     const cardId = s.players[s.cur].hand[plan.handIndex].id;
-    return applyAction(applyAction(s, { type: "takeDiscard" }), {
-      type: "discard",
-      cardId
-    });
+    return [{ type: "takeDiscard" }, { type: "discard", cardId }];
   }
   const drew = applyAction(s, { type: "drawDeck" });
   const p = drew.players[drew.cur];
   const playRandom = Math.random() < aiPlayRandomChance(p.traits ?? DEFAULT_TRAITS);
   const idx = aiDiscardIndex(p.hand, drew.options, playRandom);
-  return applyAction(drew, { type: "discard", cardId: p.hand[idx].id });
+  return [{ type: "drawDeck" }, { type: "discard", cardId: p.hand[idx].id }];
+}
+function stepAI(s) {
+  return aiTurnActions(s).reduce((state, a) => applyAction(state, a), s);
 }
 function advanceAuthority(s) {
   let state = s;

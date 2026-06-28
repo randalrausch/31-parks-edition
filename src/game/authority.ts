@@ -28,24 +28,32 @@ export const HIDDEN_CARD: CardModel = {
   suit: "spades",
 };
 
-/** Run a single AI player's full turn, returning the resulting state. */
-function stepAI(s: GameState): GameState {
+/**
+ * The full ordered sequence of actions the current AI takes on its turn: either
+ * a single `knock`, or a draw (deck or discard) followed by the `discard` chosen
+ * from the resulting hand. Pure and shared so the AI plays identically on the
+ * server (stepAI applies these immediately) and in the solo UI (useGame applies
+ * them with animation beats between) — one source of truth for AI sequencing.
+ */
+export function aiTurnActions(s: GameState): GameAction[] {
   const plan = planAITurn(s);
-  if (plan.kind === "knock") return applyAction(s, { type: "knock" });
+  if (plan.kind === "knock") return [{ type: "knock" }];
   if (plan.kind === "takeDiscard") {
     const cardId = s.players[s.cur].hand[plan.handIndex].id;
-    return applyAction(applyAction(s, { type: "takeDiscard" }), {
-      type: "discard",
-      cardId,
-    });
+    return [{ type: "takeDiscard" }, { type: "discard", cardId }];
   }
-  // drawDeck → choose a discard from the new hand
+  // drawDeck → simulate the draw so the discard is chosen from the new hand.
   const drew = applyAction(s, { type: "drawDeck" });
   const p = drew.players[drew.cur];
   const playRandom =
     Math.random() < aiPlayRandomChance(p.traits ?? DEFAULT_TRAITS);
   const idx = aiDiscardIndex(p.hand, drew.options, playRandom);
-  return applyAction(drew, { type: "discard", cardId: p.hand[idx].id });
+  return [{ type: "drawDeck" }, { type: "discard", cardId: p.hand[idx].id }];
+}
+
+/** Run a single AI player's full turn, returning the resulting state. */
+function stepAI(s: GameState): GameState {
+  return aiTurnActions(s).reduce((state, a) => applyAction(state, a), s);
 }
 
 /**
