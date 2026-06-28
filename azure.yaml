@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+#
+# Azure Developer CLI (`azd`) project for the OPTIONAL Azure backend. Netlify +
+# Supabase remain fully supported (see docs/DEPLOY.md); this is only used when you
+# choose Azure. `azd up` provisions infra/ then deploys both services.
+name: 31-parks-edition
+metadata:
+  template: 31-parks-edition@0.2.0
+
+services:
+  # The authority — standalone Azure Functions app.
+  api:
+    project: ./api
+    language: ts
+    host: function
+
+  # The static SPA — Azure Static Web Apps (Free). Built with VITE_API_BASE set to
+  # the Function App URL (see hooks below).
+  web:
+    project: .
+    language: js
+    host: staticwebapp
+    dist: dist
+
+# Build the web with the provisioned Function App URL so the SPA talks to your API.
+hooks:
+  prepackage:
+    posix:
+      shell: sh
+      run: |
+        if [ -n "$VITE_API_BASE" ]; then
+          echo "Building web against API base: $VITE_API_BASE"
+        fi
+    windows:
+      shell: pwsh
+      run: |
+        if ($env:VITE_API_BASE) { Write-Host "Building web against API base: $($env:VITE_API_BASE)" }

@@ -25,7 +25,16 @@
     "api:install": "npm --prefix api install",
     "api:typecheck": "npm --prefix api run typecheck",
     "api:build": "npm --prefix api run build",
-    "api:test": "npm --prefix api test"
+    "api:test": "npm --prefix api test",
+    "api:start": "npm --prefix api start",
+    "azure:provision": "azd provision",
+    "azure:deploy": "npm run api:build && azd deploy",
+    "azure:up": "azd up",
+    "dev:online:azure": "swa start http://localhost:5173 --run \"npm run dev\" --api-location http://localhost:7071",
+    "supabase:setup": "./scripts/setup-supabase.sh",
+    "supabase:push": "npx --yes supabase db push",
+    "supabase:deploy": "npm run build:edge && npx --yes supabase functions deploy game",
+    "netlify:deploy": "npm run build && npx --yes netlify-cli deploy --prod --dir=dist"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",
