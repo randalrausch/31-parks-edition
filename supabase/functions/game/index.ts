@@ -43,6 +43,44 @@ const json = (body: unknown, status = 200) =>
   });
 const err = (msg: string, status = 400) => json({ error: msg }, status);
 
+/** Bump with releases (the deployed function's version, shown in About). */
+const FN_VERSION = "0.1.0";
+
+/**
+ * Best-effort, per-instance rate limiting. Edge instances are ephemeral and not
+ * shared, so this is a first line against accidental floods / simple abuse, not
+ * a hard guarantee (a persistent limiter would need a DB table). Fixed window.
+ */
+const hits = new Map<string, { n: number; reset: number }>();
+function rateLimited(key: string, max: number, windowMs: number): boolean {
+  const now = Date.now();
+  const e = hits.get(key);
+  if (!e || now > e.reset) {
+    hits.set(key, { n: 1, reset: now + windowMs });
+    if (hits.size > 5000)
+      for (const [k, v] of hits) if (now > v.reset) hits.delete(k);
+    return false;
+  }
+  e.n += 1;
+  return e.n > max;
+}
+const clientIp = (req: Request) =>
+  req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+  req.headers.get("cf-connecting-ip") ||
+  "unknown";
+
+/**
+ * Opportunistically delete abandoned games so the database doesn't fill up on a
+ * free tier. Runs on a small fraction of creates (no cron needed); failures are
+ * ignored. Cascades to game_secrets via the FK.
+ */
+async function sweepOldGames(): Promise<void> {
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { error } = await admin.from("games").delete().lt("updated_at", cutoff);
+  if (error) logEvent("sweep.error", { message: error.message });
+  else logEvent("sweep.ok", {});
+}
+
 /**
  * Structured application log line. Supabase captures stdout in the function's
  * logs (Dashboard → Edge Functions → game → Logs), so emitting JSON here gives
@@ -144,6 +182,14 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return err("POST only", 405);
 
+  // Lightweight health/version probe (used by the in-app About dialog).
+  // Cheap and unauthenticated; still rate-limited below.
+  const ip = clientIp(req);
+  if (rateLimited(ip, 90, 60_000))
+    return fail("rate-limited", "Too many requests — please slow down.", 429, {
+      ip,
+    });
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -151,7 +197,18 @@ Deno.serve(async (req: Request) => {
     return fail("bad-request", "We couldn't read that request.", 400);
   }
   const op = body.op as string;
-  if (op !== "state") logEvent("request", { op }); // state is high-volume; skip
+  if (op === "version") return json({ ok: true, version: FN_VERSION });
+  // state/version are high-volume / trivial; don't log them as requests.
+  if (op !== "state" && op !== "version") logEvent("request", { op });
+
+  // Creating games is the costliest op — limit it more tightly per IP.
+  if (op === "create" && rateLimited(`create:${ip}`, 15, 600_000))
+    return fail(
+      "rate-limited",
+      "You're creating games too quickly — try again in a few minutes.",
+      429,
+      { ip },
+    );
 
   try {
     /* ── create ── */
@@ -255,6 +312,9 @@ Deno.serve(async (req: Request) => {
           filled: true,
         });
       });
+
+      // Occasionally sweep abandoned games so the DB doesn't grow unbounded.
+      if (Math.random() < 0.05) await sweepOldGames();
 
       const state = createGameState(players, sanitizeOptions(config.options));
       const code = makeCode();
