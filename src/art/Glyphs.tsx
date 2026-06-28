@@ -5,6 +5,19 @@
  */
 import type { Suit } from "../types";
 
+/** Suit outlines in a 0–100 viewBox. Exported so cards can reuse the exact
+ * shapes (e.g. the suit mark on a court card) instead of re-drawing them. */
+export const SUIT_PATHS: Record<Suit, string> = {
+  spades:
+    "M50 6 C 38 30 8 40 8 62 C 8 78 26 84 40 74 C 36 84 32 90 24 94 L 76 94 C 68 90 64 84 60 74 C 74 84 92 78 92 62 C 92 40 62 30 50 6 Z",
+  hearts:
+    "M50 92 C 16 64 8 46 8 30 C 8 14 24 6 38 16 C 44 20 48 26 50 32 C 52 26 56 20 62 16 C 76 6 92 14 92 30 C 92 46 84 64 50 92 Z",
+  diamonds:
+    "M50 4 C 66 30 80 44 96 50 C 80 56 66 70 50 96 C 34 70 20 56 4 50 C 20 44 34 30 50 4 Z",
+  clubs:
+    "M50 6 C 36 6 26 22 33 36 C 22 28 6 34 6 50 C 6 64 22 70 34 60 C 30 74 26 84 18 94 L 82 94 C 74 84 70 74 66 60 C 78 70 94 64 94 50 C 94 34 78 28 67 36 C 74 22 64 6 50 6 Z",
+};
+
 export function SuitGlyph({
   suit,
   className,
@@ -15,16 +28,6 @@ export function SuitGlyph({
   color?: string;
 }) {
   const fill = color ?? "currentColor";
-  const paths: Record<Suit, string> = {
-    spades:
-      "M50 6 C 38 30 8 40 8 62 C 8 78 26 84 40 74 C 36 84 32 90 24 94 L 76 94 C 68 90 64 84 60 74 C 74 84 92 78 92 62 C 92 40 62 30 50 6 Z",
-    hearts:
-      "M50 92 C 16 64 8 46 8 30 C 8 14 24 6 38 16 C 44 20 48 26 50 32 C 52 26 56 20 62 16 C 76 6 92 14 92 30 C 92 46 84 64 50 92 Z",
-    diamonds:
-      "M50 4 C 66 30 80 44 96 50 C 80 56 66 70 50 96 C 34 70 20 56 4 50 C 20 44 34 30 50 4 Z",
-    clubs:
-      "M50 6 C 36 6 26 22 33 36 C 22 28 6 34 6 50 C 6 64 22 70 34 60 C 30 74 26 84 18 94 L 82 94 C 74 84 70 74 66 60 C 78 70 94 64 94 50 C 94 34 78 28 67 36 C 74 22 64 6 50 6 Z",
-  };
   return (
     <svg
       className={className}
@@ -32,7 +35,7 @@ export function SuitGlyph({
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
-      <path d={paths[suit]} fill={fill} />
+      <path d={SUIT_PATHS[suit]} fill={fill} />
     </svg>
   );
 }
