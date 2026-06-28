@@ -109,16 +109,16 @@ local `supabase link` / `netlify link` state) — no IDs are hardcoded.
 
 | Command | What it does |
 |---------|--------------|
-| `npm run db:push` | Apply pending DB migrations to the linked Supabase project |
-| `npm run deploy:edge` | Re-bundle the engine and deploy the `game` Edge Function |
-| `npm run deploy:backend` | `db:push` then `deploy:edge` (the whole backend) |
-| `npm run deploy:web` | Build the site and upload the prebuilt `dist/` to Netlify |
-| `npm run deploy` | Backend **then** frontend — a full release, in the safe order |
+| `npm run supabase:push` | Apply pending DB migrations to the linked Supabase project |
+| `npm run supabase:deploy` | Re-bundle the engine and deploy the `game` Edge Function |
+| `npm run netlify:deploy` | Build the site and upload the prebuilt `dist/` to Netlify |
+| `npm run azure:up` | Provision + deploy the whole **Azure** backend (`azd up`) |
 
-`deploy:web` and the Supabase commands shell out to `netlify-cli` / `supabase`
-via `npx`, so contributors who only run the game locally don't pay for those
-CLIs. To target a specific Netlify site without an interactive `netlify link`,
-set `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` in your environment.
+The Supabase/Netlify commands shell out to `supabase` / `netlify-cli` via `npx`,
+so contributors who only run the game locally don't pay for those CLIs. To target
+a specific Netlify site without an interactive `netlify link`, set
+`NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` in your environment. For the Azure
+backend instead, see [AZURE.md](AZURE.md).
 
 ## Automated deploys (GitHub Actions)
 
@@ -175,12 +175,14 @@ on the production build over HTTPS (localhost counts as secure for testing).
 
 ## Updating online multiplayer after deploy
 
-The web app and the Supabase backend deploy independently. If you change shared
-game logic, redeploy the Edge Function too:
+The web app and the backend deploy independently. If you change shared game
+logic, redeploy the backend too:
 
 ```bash
-npm run deploy:edge      # re-bundles the engine + deploys the game function
+npm run supabase:deploy   # Supabase: re-bundle the engine + deploy the game function
+# or, on Azure:
+npm run azure:deploy      # build the api + azd deploy
 ```
 
-If automated deploys are set up (above), pushing a change under `supabase/**` to
-`main` does this for you. See [SUPABASE.md](SUPABASE.md).
+If automated deploys are set up (above), pushing to `main` does this for you. See
+[SUPABASE.md](SUPABASE.md) or [AZURE.md](AZURE.md).
