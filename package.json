@@ -22,12 +22,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build:edge": "esbuild src/game/edgeEntry.ts --bundle --format=esm --platform=neutral --outfile=supabase/functions/_shared/engine.mjs",
-    "setup:supabase": "./scripts/setup-supabase.sh",
-    "db:push": "npx --yes supabase db push",
-    "deploy:edge": "npm run build:edge && npx --yes supabase functions deploy game",
-    "deploy:backend": "npm run db:push && npm run deploy:edge",
-    "deploy:web": "npm run build && npx --yes netlify-cli deploy --prod --dir=dist",
-    "deploy": "npm run deploy:backend && npm run deploy:web"
+    "api:install": "npm --prefix api install",
+    "api:typecheck": "npm --prefix api run typecheck",
+    "api:build": "npm --prefix api run build",
+    "api:test": "npm --prefix api test"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",

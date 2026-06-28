@@ -25,6 +25,12 @@ dist-ssr
 # TypeScript incremental build cache
 *.tsbuildinfo
 
+# Local Azurite (Table Storage emulator) state
+.azurite/
+
+# Azure Functions local settings (may hold secrets)
+api/local.settings.json
+
 # Local Claude Code settings (machine-specific permissions)
 .claude/settings.local.json
 
