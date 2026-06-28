@@ -244,7 +244,9 @@ export function Piles({
             aria-label="Take discard"
           >
             {topDiscard ? (
-              <Card card={topDiscard} size="md" />
+              // Key by id so a new top card remounts and plays the land-in
+              // animation (see .piles__discard .card in GameBoard.css).
+              <Card key={topDiscard.id} card={topDiscard} size="md" />
             ) : (
               <span className="piles__label">Discard</span>
             )}

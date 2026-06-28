@@ -585,3 +585,43 @@
     font-size: 1.05rem;
   }
 }
+
+/* ── Card motion ──
+   The discard top remounts on change (keyed by id) so it plays a quick "land"
+   each time a card hits the pile — your own discards and, during the online
+   opponent replay, each AI's discard as it's narrated. Newly dealt/drawn hand
+   cards fade in (opacity only, so the fan transform in their inline style is
+   left intact). */
+@keyframes discard-land {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) rotate(-7deg) scale(1.07);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.piles__discard .card {
+  animation: discard-land 0.34s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+@keyframes hand-deal-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.board__hand .card {
+  animation: hand-deal-in 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .piles__discard .card,
+  .board__hand .card,
+  .opp--active {
+    animation: none;
+  }
+}

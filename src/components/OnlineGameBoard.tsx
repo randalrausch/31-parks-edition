@@ -28,6 +28,7 @@ import {
 } from "./BoardParts";
 import { bestSuit, scoreHand, isAlive, type GameState } from "../game/engine";
 import type { NetworkGameApi } from "../game/useNetworkGame";
+import { useTurnReplay } from "./useTurnReplay";
 import "./GameBoard.css";
 
 export default function OnlineGameBoard({
@@ -69,6 +70,12 @@ export default function OnlineGameBoard({
     }
   }, [s]);
 
+  // Pace opponent (AI/remote) turns: the server settles them atomically, so we
+  // replay the new public log moves one beat at a time for natural flow.
+  const viewerName =
+    s && viewer >= 0 ? (s.players[viewer]?.name ?? null) : null;
+  const replay = useTurnReplay(snap, viewerName);
+
   if (!s) {
     return (
       <section className="board-fold">
@@ -86,11 +93,20 @@ export default function OnlineGameBoard({
     .map((p, i) => ({ p, i }))
     .filter((x) => x.i !== viewer && isAlive(x.p));
   const aliveCount = s.players.filter(isAlive).length;
-  const topDiscard = s.discard[s.discard.length - 1] ?? null;
   const current = s.players[s.cur];
+  // While opponents are being replayed, lock controls and show the stepped
+  // discard pile / acting seat rather than the (already-settled) live values.
+  const busy = replay.busy;
+  const topDiscard = busy
+    ? replay.discardTop
+    : (s.discard[s.discard.length - 1] ?? null);
+  const activeSeat = busy ? replay.actingSeat : s.cur;
   const myTurn =
-    s.cur === viewer && (s.phase === "drawing" || s.phase === "discarding");
+    !busy &&
+    s.cur === viewer &&
+    (s.phase === "drawing" || s.phase === "discarding");
   const canDraw = myTurn && s.phase === "drawing";
+  const discarding = myTurn && s.phase === "discarding";
   const counting = me ? bestSuit(me.hand) : null;
   const handScore = me ? scoreHand(me.hand, s.options) : 0;
   const roundNo =
@@ -98,11 +114,13 @@ export default function OnlineGameBoard({
       ? Math.max(1, Math.ceil(s.turnInDeal / s.dealPlayers))
       : 1;
 
-  const turnLabel = myTurn
-    ? s.phase === "discarding"
-      ? "Your turn · discard a card"
-      : "Your turn"
-    : `Waiting for ${current?.name ?? "…"}`;
+  const turnLabel = busy
+    ? (replay.note ?? "Playing…")
+    : myTurn
+      ? s.phase === "discarding"
+        ? "Your turn · discard a card"
+        : "Your turn"
+      : `Waiting for ${current?.name ?? "…"}`;
 
   // Dismiss this player's reveal; the first to do so advances the shared deal.
   const dismissReveal = () => {
@@ -147,7 +165,7 @@ export default function OnlineGameBoard({
               key={p.id}
               player={p}
               isKnocker={s.knocker === i}
-              isCurrent={s.cur === i}
+              isCurrent={activeSeat === i}
             />
           ))}
         </div>
@@ -168,16 +186,16 @@ export default function OnlineGameBoard({
               <PlayerHead player={me} turnText=" (You)" />
               <HandFan
                 hand={me.hand}
-                interactive={myDiscard}
+                interactive={discarding}
                 counting={counting}
                 selected={selected}
                 onSelect={(i) =>
-                  myDiscard && setSelected(selected === i ? null : i)
+                  discarding && setSelected(selected === i ? null : i)
                 }
               />
               <HandHud score={handScore} />
               <ActionBar
-                discarding={myDiscard}
+                discarding={discarding}
                 canDraw={canDraw}
                 hasDiscard={!!topDiscard}
                 canKnock={canDraw && s.knocker === null}
