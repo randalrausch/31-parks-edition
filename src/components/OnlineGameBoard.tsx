@@ -5,7 +5,7 @@
  * pass-the-device cover (the server owns turn flow; each device is one player).
  * Shares the board's leaf components with the solo board via BoardParts.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTheme } from "./ParkThemeProvider";
 import HelpPanel from "./HelpPanel";
 import Modal from "./Modal";
@@ -26,7 +26,7 @@ import {
   HandHud,
   ActionBar,
 } from "./BoardParts";
-import { bestSuit, scoreHand, isAlive } from "../game/engine";
+import { bestSuit, scoreHand, isAlive, type GameState } from "../game/engine";
 import type { NetworkGameApi } from "../game/useNetworkGame";
 import "./GameBoard.css";
 
@@ -51,6 +51,23 @@ export default function OnlineGameBoard({
   useEffect(() => {
     if (!myDiscard && selected !== null) setSelected(null);
   }, [myDiscard, selected]);
+
+  // Capture each deal-end reveal locally so one player clicking "continue"
+  // doesn't yank the reveal away from everyone — each player dismisses it in
+  // their own time. The first to dismiss advances the shared game; the rest keep
+  // viewing the captured reveal and rejoin the live game when they dismiss.
+  const [revealDeal, setRevealDeal] = useState<GameState | null>(null);
+  const dismissedDeal = useRef(-1);
+  useEffect(() => {
+    if (
+      s &&
+      s.phase === "dealEnd" &&
+      s.result &&
+      s.dealNum !== dismissedDeal.current
+    ) {
+      setRevealDeal((prev) => (prev && prev.dealNum === s.dealNum ? prev : s));
+    }
+  }, [s]);
 
   if (!s) {
     return (
@@ -86,6 +103,15 @@ export default function OnlineGameBoard({
       ? "Your turn · discard a card"
       : "Your turn"
     : `Waiting for ${current?.name ?? "…"}`;
+
+  // Dismiss this player's reveal; the first to do so advances the shared deal.
+  const dismissReveal = () => {
+    const r = revealDeal;
+    if (!r) return;
+    dismissedDeal.current = r.dealNum;
+    if (s.phase === "dealEnd" && s.dealNum === r.dealNum) game.nextDeal();
+    setRevealDeal(null);
+  };
 
   return (
     <section className="board-fold">
@@ -170,11 +196,12 @@ export default function OnlineGameBoard({
         </div>
       </div>
 
-      {s.phase === "dealEnd" && (
-        <DealEndOverlay state={s} onNext={game.nextDeal} />
-      )}
-      {s.phase === "gameOver" && (
-        <GameOverOverlay state={s} onNewGame={onLeave} />
+      {revealDeal ? (
+        <DealEndOverlay state={revealDeal} onNext={dismissReveal} />
+      ) : (
+        s.phase === "gameOver" && (
+          <GameOverOverlay state={s} onNewGame={onLeave} />
+        )
       )}
       <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
       <Modal
