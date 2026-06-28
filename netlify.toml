@@ -5,7 +5,15 @@
   command = "npm run build"
   publish = "dist"
 
-# SPA fallback: every path serves the built index.html.
+# Hashed build assets must never fall back to index.html — a missing chunk
+# should 404 loudly, not silently return HTML (which the browser would try to
+# parse as JS/CSS and ignore). Static files that exist are served before this.
+[[redirects]]
+  from = "/assets/*"
+  to = "/assets/:splat"
+  status = 404
+
+# SPA fallback: every other path serves the built index.html.
 [[redirects]]
   from = "/*"
   to = "/index.html"

@@ -1,1 +1,4 @@
+# Missing hashed assets must 404 (not fall back to index.html as HTML).
+/assets/*  /assets/:splat  404
+# SPA fallback for everything else.
 /*  /index.html  200

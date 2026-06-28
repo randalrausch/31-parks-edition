@@ -7,7 +7,10 @@
  * forever). Online gameplay still needs the network — Supabase calls are never
  * cached.
  */
-const CACHE = "parks31-v1";
+// Bump this when the caching logic changes so existing clients drop stale (or
+// poisoned) caches on activate. v2: never cache SPA-fallback HTML under an
+// asset URL (see the fetch handler).
+const CACHE = "parks31-v2";
 const SHELL = [
   "/",
   "/index.html",
@@ -62,7 +65,13 @@ self.addEventListener("fetch", (e) => {
       (cached) =>
         cached ||
         fetch(req).then((res) => {
-          if (res.ok && res.type === "basic") {
+          // Guard against caching a SPA-fallback page (index.html, served with
+          // 200 for a missing asset) under a JS/CSS URL — that would poison the
+          // cache so the asset is "broken" forever. Only cache real assets.
+          const isHtml = (res.headers.get("content-type") || "").includes(
+            "text/html",
+          );
+          if (res.ok && res.type === "basic" && !isHtml) {
             const copy = res.clone();
             caches.open(CACHE).then((c) => c.put(req, copy));
           }
