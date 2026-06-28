@@ -34,6 +34,16 @@ export class NetworkTransport {
   private lastVersion = -1;
   private fetching = false;
   private refetchQueued = false;
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  /**
+   * Poll interval (ms) as a safety net under Realtime. Realtime delivery is
+   * best-effort — a dropped change event would otherwise leave a waiting player
+   * stuck forever (each side "waiting for the other"). A modest poll guarantees
+   * everyone converges within a few seconds even if a ping is missed. refresh()
+   * is version-gated and deduped, so an unchanged poll is cheap.
+   */
+  private static readonly POLL_MS = 4000;
 
   constructor(
     private client: SupabaseClient,
@@ -111,6 +121,11 @@ export class NetworkTransport {
         () => void this.refresh(),
       )
       .subscribe();
+    // Safety-net poll in case a Realtime event is dropped.
+    this.pollTimer = setInterval(
+      () => void this.refresh(),
+      NetworkTransport.POLL_MS,
+    );
   }
 
   async act(action: GameAction): Promise<void> {
@@ -136,6 +151,8 @@ export class NetworkTransport {
   }
 
   destroy(): void {
+    if (this.pollTimer) clearInterval(this.pollTimer);
+    this.pollTimer = null;
     if (this.channel) this.client.removeChannel(this.channel);
     this.channel = null;
     this.listeners.clear();
