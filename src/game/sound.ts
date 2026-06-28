@@ -47,7 +47,24 @@ function ac(): AudioContext | null {
     if (!Ctor) return null;
     ctx = new Ctor();
   }
+  // Browsers (esp. iOS/Chrome) start the context suspended until a user gesture;
+  // resume so queued sounds actually play.
+  if (ctx.state === "suspended") void ctx.resume();
   return ctx;
+}
+
+// Unlock audio on the first user interaction — until then the AudioContext is
+// suspended and the very first sound would be dropped silently.
+if (typeof window !== "undefined") {
+  const unlock = () => {
+    ac();
+    window.removeEventListener("pointerdown", unlock);
+    window.removeEventListener("keydown", unlock);
+    window.removeEventListener("touchstart", unlock);
+  };
+  window.addEventListener("pointerdown", unlock);
+  window.addEventListener("keydown", unlock);
+  window.addEventListener("touchstart", unlock);
 }
 
 /** Soft card-deal "swish" — low, brief, gentle (not tinny). */

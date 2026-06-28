@@ -24,6 +24,7 @@ export default function ParkScene({
         src={theme.sceneImage}
         alt=""
         aria-hidden="true"
+        decoding="async"
         style={{ objectFit: "cover", width: "100%", height: "100%" }}
         onError={() => setFailed(true)}
       />

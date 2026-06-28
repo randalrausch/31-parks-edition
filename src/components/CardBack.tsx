@@ -42,6 +42,7 @@ export default function CardBack({
           src={t.backImage}
           alt=""
           aria-hidden="true"
+          decoding="async"
           onError={() => setImgFailed(true)}
         />
       ) : (
