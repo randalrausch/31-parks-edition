@@ -12,6 +12,7 @@ import { useTheme } from "./ParkThemeProvider";
 import ParkPicker from "./ParkPicker";
 import HelpPanel from "./HelpPanel";
 import HistoryPanel from "./HistoryPanel";
+import About from "./About";
 import Modal from "./Modal";
 import HeroBackground from "./HeroBackground";
 import { StarDivider } from "../art/Glyphs";
@@ -201,6 +202,7 @@ export default function SetupScreen({
   const [helpOpen, setHelpOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [ambientOn, setAmbientOn] = useState(false);
   useAmbientAudio(themeId, ambientOn);
 
@@ -533,10 +535,21 @@ export default function SetupScreen({
             </button>
           </div>
         )}
+
+        <footer className="setup__footer">
+          <button
+            type="button"
+            className="setup__about-link"
+            onClick={() => setAboutOpen(true)}
+          >
+            About
+          </button>
+        </footer>
       </div>
 
       <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
       <HistoryPanel open={historyOpen} onClose={() => setHistoryOpen(false)} />
+      <About open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <Modal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}

@@ -197,7 +197,8 @@ Deno.serve(async (req: Request) => {
     return fail("bad-request", "We couldn't read that request.", 400);
   }
   const op = body.op as string;
-  if (op === "version") return json({ ok: true, version: FN_VERSION });
+  if (op === "version")
+    return json({ ok: true, version: FN_VERSION, provider: "Supabase" });
   // state/version are high-volume / trivial; don't log them as requests.
   if (op !== "state" && op !== "version") logEvent("request", { op });
 

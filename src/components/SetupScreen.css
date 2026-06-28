@@ -691,3 +691,24 @@
     height: 90px;
   }
 }
+
+/* ── Footer (About link) ── */
+.setup__footer {
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+}
+.setup__about-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.66rem;
+  color: var(--cream-dim, rgba(244, 227, 178, 0.6));
+  padding: 6px 10px;
+}
+.setup__about-link:hover {
+  color: var(--gold-bright);
+}
