@@ -15,7 +15,7 @@ Supabase backend adds real-time, asynchronous online play.
 |------|---------|-------|
 | Solo vs AI | You and AI opponents | None |
 | Pass-and-play | 2–8 humans sharing one device (with "pass the device" hidden-hand screens) | None |
-| Online | Friends on their own devices, real-time or async | Free Supabase project |
+| Online | Friends on their own devices, real-time or async | Free Azure **or** Supabase backend |
 
 Two of the three modes, including local multiplayer, run with no configuration.
 Supabase is only needed for online play across devices.
@@ -63,40 +63,58 @@ npm run build && npm run preview
 
 ### 2. Put it online
 
-For a shareable URL and online play across devices, deploy the static build to a
-web host and connect a free Supabase project:
+Online play needs two things: a **static host** for the site and a **backend**
+for the authoritative game server. The app auto-selects a backend from
+environment variables, so you can pick whichever you prefer — **you don't need
+all of them**:
 
-- Host the site. `npm run build` produces a static site in `dist/` that runs on
-  any static host. Step-by-step guides for Azure Static Web Apps, Netlify, and
-  Vercel, including pointing your own custom domain at it, are in
+| Backend | Set these env vars | Host pairing | Guide |
+|---------|--------------------|--------------|-------|
+| **Azure** (Functions + Table Storage) | `VITE_API_BASE` | Azure Static Web Apps | [docs/AZURE.md](docs/AZURE.md) |
+| **Supabase** (Edge Function + Postgres) | `VITE_SUPABASE_URL`, `VITE_SUPABASE_KEY` | Netlify / Vercel / any static host | [docs/SUPABASE.md](docs/SUPABASE.md) |
+
+If both are configured, **Azure wins**; if neither is set, the site still builds
+and serves **solo + pass-and-play** (the online buttons hide). The server is
+authoritative and enforces hidden hands either way.
+
+- **Azure** is the lowest-maintenance choice — everything scales to zero and
+  **auto-wakes after long gaps with no manual un-pausing**. One command:
+  `azd up` (or `npm run azure:up`). See [docs/AZURE.md](docs/AZURE.md).
+- **Supabase + a static host** (Netlify/Vercel/Azure SWA/Cloudflare) also works;
+  note a free Supabase project **pauses after 7 days idle** and must be un-paused
+  from its dashboard. See [docs/SUPABASE.md](docs/SUPABASE.md) and
   [docs/DEPLOY.md](docs/DEPLOY.md).
-- Enable online multiplayer. Create a free Supabase project (real-time,
-  asynchronous play; the server is authoritative and enforces hidden hands). A
-  helper script sets it up: see [docs/SUPABASE.md](docs/SUPABASE.md).
-
-You can host the site without Supabase as well; visitors then get solo and
-pass-and-play on a public URL. Supabase is only what enables online,
-cross-device games.
 
 ## Scripts
 
+`npm` is the single entry point for every target — no Makefile needed.
+
 | Script | What it does |
 |--------|--------------|
-| `npm run dev` | Start the dev server |
+| `npm run dev` | Start the dev server (solo/pass-and-play; online if env vars set) |
 | `npm run build` | Type-check and build a static bundle to `dist/` |
 | `npm run preview` | Serve the production build locally |
-| `npm test` | Run the unit and fuzz test suite (Vitest) |
-| `npm run test:watch` | Watch-mode tests |
+| `npm test` | Run the unit + fuzz test suite (Vitest) |
 | `npm run typecheck` | Type-check only |
+| **Azure backend** | |
+| `npm run api:install` / `api:build` / `api:test` | Install / bundle / test the Functions app (`api/`) |
+| `npm run api:start` | Run the Functions host locally (`func start`) |
+| `npm run dev:online:azure` | SWA CLI: Vite + local `/api` proxy (online dev) |
+| `npm run azure:up` | `azd up` — provision + deploy the whole Azure stack |
+| `npm run azure:deploy` | Build the api and `azd deploy` |
+| **Supabase backend** | |
 | `npm run build:edge` | Re-bundle the shared engine for the Supabase Edge Function |
-| `npm run deploy:backend` | Push DB migrations + deploy the `game` Edge Function |
-| `npm run deploy:web` | Build and upload `dist/` to Netlify |
-| `npm run deploy` | Full release: backend then frontend (the safe order) |
+| `npm run supabase:setup` | One-command Supabase project setup |
+| `npm run supabase:deploy` | Bundle the engine + deploy the `game` Edge Function |
+| `npm run supabase:push` | Apply DB migrations |
+| **Static hosting** | |
+| `npm run netlify:deploy` | Build and upload `dist/` to Netlify |
 
-Pushing to `main` deploys automatically via GitHub Actions (build in CI, upload
-the prebuilt site so Netlify uses no build minutes; backend only when
-`supabase/**` changed). Setup and the "deploy your own" guide are in
-[docs/DEPLOY.md](docs/DEPLOY.md).
+**Automated deploys (GitHub Actions):** the existing **Netlify + Supabase**
+pipeline runs on push to `main` (see [docs/DEPLOY.md](docs/DEPLOY.md)). The
+**Azure** workflow (`.github/workflows/azure.yml`) is **opt-in** — set the repo
+variable `DEPLOY_AZURE=true` to enable it (full setup in
+[docs/AZURE.md](docs/AZURE.md)). They don't interfere with each other.
 
 ## Project structure
 
@@ -114,8 +132,10 @@ src/
   art/             Original SVG scenes, emblems, avatars, glyphs
   themes.ts        The park theme registry  (add a park here)
   assets/          Raster art (park scenes, character portraits, audio, sfx)
-supabase/          Schema migration and the `game` Edge Function (optional backend)
-docs/              Architecture, theming, Supabase, and deployment guides
+api/               Azure Functions backend — the authority (optional Azure path)
+supabase/          Schema migration and the `game` Edge Function (optional Supabase path)
+infra/             Bicep for the Azure backend (`azd up`)
+docs/              Architecture, theming, backend, and deployment guides
 ```
 
 ## Documentation
@@ -124,8 +144,10 @@ docs/              Architecture, theming, Supabase, and deployment guides
   transports, and authority fit together, and how hidden information is enforced.
 - [docs/THEMES.md](docs/THEMES.md) — how to add your own national park theme.
   Contributions are welcome.
-- [docs/SUPABASE.md](docs/SUPABASE.md) — set up the optional multiplayer backend
-  with a one-command helper script.
+- [docs/AZURE.md](docs/AZURE.md) — the optional **Azure** backend (Functions +
+  Table Storage + Static Web Apps) via one `azd up`; scales to zero and auto-wakes.
+- [docs/SUPABASE.md](docs/SUPABASE.md) — the optional **Supabase** backend
+  (Edge Function + Postgres) with a one-command helper script.
 - [docs/DEPLOY.md](docs/DEPLOY.md) — deploy the static build to any host.
 - [CONTRIBUTING.md](CONTRIBUTING.md) — dev workflow, tests, and conventions.
 
