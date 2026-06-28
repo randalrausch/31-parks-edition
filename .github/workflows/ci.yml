@@ -72,6 +72,15 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_KEY }}
 
+      # Azure Functions backend (api/) — type-checked, unit-tested, and bundled on
+      # every push/PR. Table Storage integration tests self-skip without Azurite.
+      - name: API quality gate
+        run: |
+          npm run api:install
+          npm run api:typecheck
+          npm run api:test
+          npm run api:build
+
       # ---- Deploy (only on push to main) ----
       # Backend first, and only when supabase/** changed.
       - name: Install Supabase CLI
