@@ -186,7 +186,7 @@ export default function SetupScreen({
 }: {
   onStart: (c: GameConfig) => void;
   /** Create an online game from the current config (multiplayer only). */
-  onCreateOnline?: (c: import("../game/supabaseClient").CreateConfig) => void;
+  onCreateOnline?: (c: import("../game/gameApi").CreateConfig) => void;
   /** Open the join-by-code modal (multiplayer only). */
   onJoinOnline?: () => void;
 }) {

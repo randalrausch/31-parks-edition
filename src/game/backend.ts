@@ -13,7 +13,8 @@
  * is optional — NetworkTransport also polls, so a provider with no push can
  * return a no-op from `subscribe()` and still work.
  */
-import type { GameApi } from "./supabaseClient";
+import type { GameApi } from "./gameApi";
+import { azureBackend } from "./azureClient";
 import { supabaseBackend } from "./supabaseClient";
 
 export interface GameBackend {
@@ -34,8 +35,10 @@ export interface GameBackend {
 }
 
 /**
- * The backend in use. Swapping providers is a one-line change here (plus a new
- * GameBackend implementation). `null` when no backend is configured → the app
- * runs solo / pass-and-play only.
+ * The backend in use, auto-selected by configuration: Azure (VITE_API_BASE) is
+ * preferred, then Supabase (VITE_SUPABASE_URL/_KEY). `null` when neither is
+ * configured → the app runs solo / pass-and-play only. Adding a provider means
+ * implementing GameBackend and slotting it into this preference chain.
  */
-export const activeBackend: GameBackend | null = supabaseBackend;
+export const activeBackend: GameBackend | null =
+  azureBackend ?? supabaseBackend ?? null;

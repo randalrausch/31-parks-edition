@@ -1,16 +1,26 @@
 /**
- * Multiplayer configuration + a tiny SDK-free backend probe. Derived from env
- * only, with NO import of @supabase/supabase-js, so the eager (solo) code path
- * can use it without pulling the Supabase SDK into the initial bundle. The
- * About dialog uses `fetchBackendInfo()` to show what backend is actually live.
+ * Multiplayer configuration + an SDK-free backend probe. Derived from env only,
+ * with NO provider SDK import, so the eager (solo) code path can use it without
+ * pulling any client into the initial bundle.
+ *
+ * Two providers are supported and auto-selected by which env vars are present:
+ *   - Azure    — set VITE_API_BASE (e.g. https://<func>.azurewebsites.net/api,
+ *                or "/api" when served same-origin behind Static Web Apps).
+ *   - Supabase — set VITE_SUPABASE_URL and VITE_SUPABASE_KEY.
+ * If both are set, Azure wins. If neither is set, online is disabled and the app
+ * runs solo / pass-and-play only.
  */
 const env = (
   import.meta as unknown as { env?: Record<string, string | undefined> }
 ).env;
-const url = env?.VITE_SUPABASE_URL;
-const key = env?.VITE_SUPABASE_KEY;
 
-export const multiplayerEnabled = Boolean(url && key);
+export const azureApiBase = (env?.VITE_API_BASE ?? "").replace(/\/+$/, "");
+export const supabaseUrl = env?.VITE_SUPABASE_URL;
+export const supabaseKey = env?.VITE_SUPABASE_KEY;
+
+export const azureEnabled = Boolean(azureApiBase);
+export const supabaseEnabled = Boolean(supabaseUrl && supabaseKey);
+export const multiplayerEnabled = azureEnabled || supabaseEnabled;
 
 export interface BackendInfo {
   provider: string;
@@ -23,15 +33,22 @@ export interface BackendInfo {
  * the eager bundle. Returns null if multiplayer isn't configured or unreachable.
  */
 export async function fetchBackendInfo(): Promise<BackendInfo | null> {
-  if (!url || !key) return null;
+  let url: string | null = null;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (azureEnabled) {
+    url = `${azureApiBase}/game`;
+  } else if (supabaseEnabled) {
+    url = `${supabaseUrl}/functions/v1/game`;
+    headers.apikey = supabaseKey!;
+    headers.Authorization = `Bearer ${supabaseKey}`;
+  }
+  if (!url) return null;
   try {
-    const res = await fetch(`${url}/functions/v1/game`, {
+    const res = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-      },
+      headers,
       body: JSON.stringify({ op: "version" }),
     });
     if (!res.ok) return null;

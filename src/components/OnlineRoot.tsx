@@ -7,7 +7,7 @@
  * session to localStorage so a reload drops you straight back into your seat.
  */
 import { useEffect, useState } from "react";
-import type { CreateConfig } from "../game/supabaseClient";
+import type { CreateConfig } from "../game/gameApi";
 import { activeBackend } from "../game/backend";
 import { elog } from "../game/debug";
 import {

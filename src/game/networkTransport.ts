@@ -14,7 +14,7 @@
  */
 import type { GameAction } from "./actions";
 import type { GameState } from "./engine";
-import type { SeatInfo } from "./supabaseClient";
+import type { SeatInfo } from "./gameApi";
 import type { GameBackend } from "./backend";
 import { dlog } from "./debug";
 

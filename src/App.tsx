@@ -13,7 +13,7 @@ import GameBoard from "./components/GameBoard";
 import { useGame } from "./game/useGame";
 import { AI_CHARACTERS } from "./game/aiCharacters";
 import { loadSession } from "./game/onlineSession";
-import type { CreateConfig } from "./game/supabaseClient";
+import type { CreateConfig } from "./game/gameApi";
 import type { OnlineIntent } from "./components/OnlineRoot";
 import "./App.css";
 

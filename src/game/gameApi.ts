@@ -1,0 +1,49 @@
+/**
+ * Provider-neutral online types. These describe the wire contract the app
+ * depends on; a concrete backend (azureClient.ts) implements GameApi, and
+ * backend.ts selects the active one. No provider SDK is referenced here.
+ */
+import type { GameAction, NewGamePlayer } from "./actions";
+import type { GameOptions, GameState } from "./engine";
+
+/** Public seat info shown in the lobby (no card data). */
+export interface SeatInfo {
+  idx: number;
+  name: string | null;
+  avatar?: string;
+  emoji?: string;
+  isAI: boolean;
+  filled: boolean;
+}
+
+export interface CreateConfig {
+  creatorName: string;
+  humans: number;
+  ai: Omit<NewGamePlayer, "id" | "isAI">[];
+  options: GameOptions;
+}
+
+export interface GameApi {
+  create(config: CreateConfig): Promise<{
+    gameId: string;
+    code: string;
+    seatIndex: number;
+    seatToken: string;
+  }>;
+  join(
+    code: string,
+    name: string,
+  ): Promise<{ gameId: string; seatIndex: number; seatToken: string }>;
+  start(gameId: string, seatToken: string): Promise<void>;
+  act(gameId: string, seatToken: string, action: GameAction): Promise<void>;
+  state(
+    gameId: string,
+    seatToken?: string,
+  ): Promise<{
+    status: string;
+    version: number;
+    seats: SeatInfo[];
+    seatIndex: number | null;
+    state: GameState;
+  }>;
+}
