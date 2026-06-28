@@ -35,3 +35,9 @@ supabase/.branches/
 # Local dev tooling (not part of the project)
 .claude/
 .mcp.json
+
+# Playwright E2E artifacts
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

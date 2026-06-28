@@ -21,6 +21,7 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "vite build && playwright test",
     "build:edge": "esbuild src/game/edgeEntry.ts --bundle --format=esm --platform=neutral --outfile=supabase/functions/_shared/engine.mjs",
     "setup:supabase": "./scripts/setup-supabase.sh",
     "db:push": "npx --yes supabase db push",
@@ -35,6 +36,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
