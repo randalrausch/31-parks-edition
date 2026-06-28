@@ -7,12 +7,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
 import { NetworkTransport, type NetworkSnapshot } from "./networkTransport";
+import { elog } from "./debug";
 import type { GameAction } from "./actions";
 
 export interface NetworkGameApi {
   snap: NetworkSnapshot | null;
   /** Set if the game couldn't be loaded (e.g. a stale/expired session). */
   error: string | null;
+  /** A transient, dismissible message when a move couldn't be sent. */
+  actionError: string | null;
+  /** Clear the transient action error (e.g. when the user dismisses it). */
+  clearActionError: () => void;
   /** Submit a turn action (only meaningful on your turn). */
   act: (a: GameAction) => void;
   /** Advance from a finished deal to the next one. */
@@ -21,45 +26,82 @@ export interface NetworkGameApi {
   refresh: () => void;
 }
 
+/** A short, human description of an action for error messages. */
+function describeAction(a: GameAction): string {
+  switch (a.type) {
+    case "drawDeck":
+      return "draw from the deck";
+    case "takeDiscard":
+      return "take the discard";
+    case "discard":
+      return "discard";
+    case "knock":
+      return "knock";
+    case "nextDeal":
+      return "continue to the next deal";
+    default:
+      return "do that";
+  }
+}
+
 export function useNetworkGame(
   gameId: string,
   seatToken: string,
 ): NetworkGameApi {
   const [snap, setSnap] = useState<NetworkSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const ref = useRef<NetworkTransport | null>(null);
+  const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flashError = useCallback((msg: string) => {
+    setActionError(msg);
+    if (errorTimer.current) clearTimeout(errorTimer.current);
+    errorTimer.current = setTimeout(() => setActionError(null), 6000);
+  }, []);
+  const clearActionError = useCallback(() => {
+    if (errorTimer.current) clearTimeout(errorTimer.current);
+    setActionError(null);
+  }, []);
 
   useEffect(() => {
     if (!supabase) {
-      setError("Multiplayer not configured");
+      setError("Multiplayer isn't configured for this site.");
       return;
     }
     setError(null);
     const t = new NetworkTransport(supabase, gameId, seatToken);
     ref.current = t;
     const unsub = t.subscribe(setSnap);
-    // The initial connect fetch can reject (game gone) — surface it.
-    t.connect().catch((e) => setError(String((e as Error)?.message ?? e)));
+    // The initial connect fetch can reject (game gone / network) — surface it.
+    t.connect().catch((e) => {
+      elog("net", "connect failed", e);
+      setError((e as Error)?.message || "Couldn't connect to the game.");
+    });
     return () => {
       unsub();
       t.destroy();
       ref.current = null;
+      if (errorTimer.current) clearTimeout(errorTimer.current);
     };
   }, [gameId, seatToken]);
 
-  const act = useCallback((a: GameAction) => {
-    void ref.current?.act(a).catch((e) => console.error("act failed", e));
-  }, []);
-  const nextDeal = useCallback(() => {
-    void ref.current
-      ?.nextDeal()
-      .catch((e) => console.error("nextDeal failed", e));
-  }, []);
+  const submit = useCallback(
+    (a: GameAction) => {
+      void ref.current?.act(a).catch((e) => {
+        elog("net", `${a.type} failed`, e);
+        flashError(
+          `Couldn't ${describeAction(a)} — check your connection and try again.`,
+        );
+      });
+    },
+    [flashError],
+  );
+  const act = submit;
+  const nextDeal = useCallback(() => submit({ type: "nextDeal" }), [submit]);
   const refresh = useCallback(() => {
-    void ref.current
-      ?.refresh()
-      .catch((e) => console.error("refresh failed", e));
+    void ref.current?.refresh().catch((e) => elog("net", "refresh failed", e));
   }, []);
 
-  return { snap, error, act, nextDeal, refresh };
+  return { snap, error, actionError, clearActionError, act, nextDeal, refresh };
 }

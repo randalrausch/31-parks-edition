@@ -7,6 +7,7 @@
  */
 import { lazy, Suspense, useEffect, useState } from "react";
 import { ParkThemeProvider } from "./components/ParkThemeProvider";
+import ErrorBoundary from "./components/ErrorBoundary";
 import SetupScreen from "./components/SetupScreen";
 import GameBoard from "./components/GameBoard";
 import { useGame } from "./game/useGame";
@@ -88,8 +89,10 @@ function OnlineFallback() {
 
 export default function App() {
   return (
-    <ParkThemeProvider>
-      <Shell />
-    </ParkThemeProvider>
+    <ErrorBoundary>
+      <ParkThemeProvider>
+        <Shell />
+      </ParkThemeProvider>
+    </ErrorBoundary>
   );
 }

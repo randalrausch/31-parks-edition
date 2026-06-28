@@ -666,3 +666,46 @@
     display: none;
   }
 }
+
+/* ── Error toast (online action failures) ── */
+.board__toast {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(92%, 30rem);
+  padding: 11px 14px;
+  background: rgba(40, 12, 8, 0.96);
+  border: 1px solid var(--ember, #c9571c);
+  border-radius: 12px;
+  color: #f4e3b2;
+  font-family: var(--font-label);
+  font-size: 0.82rem;
+  line-height: 1.3;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+  animation: toast-in 0.2s ease;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
+.board__toast-x {
+  flex: none;
+  background: none;
+  border: none;
+  color: var(--gold-bright, #e8c068);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .board__toast {
+    animation: none;
+  }
+}

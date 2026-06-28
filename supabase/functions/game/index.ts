@@ -59,6 +59,20 @@ function logEvent(event: string, data: Record<string, unknown> = {}): void {
   }
 }
 
+/**
+ * Log a rejection and return the (user-safe) error response in one step, so
+ * every client-visible failure also leaves a clear server log line.
+ */
+function fail(
+  event: string,
+  message: string,
+  status: number,
+  data: Record<string, unknown> = {},
+): Response {
+  logEvent(event, { ...data, status, message });
+  return err(message, status);
+}
+
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 32 chars, no I/O/0/1
 function makeCode(): string {
   // 32 is a power of two, so (byte % 32) is unbiased. Cryptographic RNG.
@@ -134,7 +148,7 @@ Deno.serve(async (req: Request) => {
   try {
     body = await req.json();
   } catch {
-    return err("invalid JSON");
+    return fail("bad-request", "We couldn't read that request.", 400);
   }
   const op = body.op as string;
   if (op !== "state") logEvent("request", { op }); // state is high-volume; skip
@@ -274,16 +288,28 @@ Deno.serve(async (req: Request) => {
     /* ── join ── */
     if (op === "join") {
       const game = await loadByCode(body.code as string);
-      if (!game) return err("No game with that code", 404);
-      if (game.status !== "lobby") return err("Game already started", 409);
+      if (!game) return fail("join.no-game", "No game with that code.", 404);
+      if (game.status !== "lobby")
+        return fail("join.started", "That game has already started.", 409, {
+          gameId: game.id,
+        });
       const seats = game.seats as Record<string, unknown>[];
       // Prefer an open human seat; otherwise let the joiner take over an AI seat
       // so "share this code so friends can join" holds while any AI is present.
       let seat = seats.find((s) => !s.isAI && !s.filled);
       if (!seat) seat = seats.find((s) => s.isAI);
-      if (!seat) return err("Game is full", 409);
+      if (!seat)
+        return fail("join.full", "That game is full.", 409, {
+          gameId: game.id,
+        });
       const loaded = await loadById(game.id);
-      if (!loaded) return err("Game state missing", 500);
+      if (!loaded)
+        return fail(
+          "join.no-state",
+          "Something went wrong opening that game.",
+          500,
+          { gameId: game.id },
+        );
       const idx = seat.idx as number;
       const name =
         (typeof body.name === "string" ? body.name.trim().slice(0, 40) : "") ||
@@ -310,7 +336,12 @@ Deno.serve(async (req: Request) => {
       seatTokens[t] = idx;
       // Claim the version first so two players can't take the same seat.
       if (!(await casBump(game.id, game.version, { seats })))
-        return err("Game changed, please retry", 409);
+        return fail(
+          "join.conflict",
+          "The game just changed — please try again.",
+          409,
+          { gameId: game.id },
+        );
       await saveSecret(game.id, state, seatTokens);
       logEvent("join", { gameId: game.id, seat: idx, tookAI });
       return json({ gameId: game.id, seatIndex: idx, seatToken: t });
@@ -319,10 +350,20 @@ Deno.serve(async (req: Request) => {
     /* ── start ── */
     if (op === "start") {
       const loaded = await loadById(body.gameId as string);
-      if (!loaded) return err("No such game", 404);
+      if (!loaded)
+        return fail("start.no-game", "That game no longer exists.", 404);
       const idx = loaded.secret.seat_tokens[body.seatToken as string];
-      if (idx !== 0) return err("Only the host can start", 403);
-      if (loaded.game.status !== "lobby") return err("Already started", 409);
+      if (idx !== 0)
+        return fail(
+          "start.not-host",
+          "Only the host can start the game.",
+          403,
+          { gameId: loaded.game.id },
+        );
+      if (loaded.game.status !== "lobby")
+        return fail("start.already", "The game has already started.", 409, {
+          gameId: loaded.game.id,
+        });
       const seats = loaded.game.seats as Record<string, unknown>[];
       const state = loaded.secret.state;
       // Any unfilled human seat becomes an AI so the game never stalls.
@@ -340,7 +381,12 @@ Deno.serve(async (req: Request) => {
           status: "playing",
         }))
       )
-        return err("Game changed, please retry", 409);
+        return fail(
+          "start.conflict",
+          "The game just changed — please try again.",
+          409,
+          { gameId: loaded.game.id },
+        );
       await saveSecret(loaded.game.id, dealt, loaded.secret.seat_tokens);
       logEvent("start", { gameId: loaded.game.id, phase: dealt.phase });
       return json({ ok: true });
@@ -349,11 +395,20 @@ Deno.serve(async (req: Request) => {
     /* ── act ── */
     if (op === "act") {
       const loaded = await loadById(body.gameId as string);
-      if (!loaded) return err("No such game", 404);
+      if (!loaded)
+        return fail("act.no-game", "That game no longer exists.", 404);
       const idx = loaded.secret.seat_tokens[body.seatToken as string];
-      if (idx === undefined) return err("Invalid seat token", 403);
+      if (idx === undefined)
+        return fail(
+          "act.bad-token",
+          "Your seat is no longer valid for this game.",
+          403,
+          { gameId: loaded.game.id },
+        );
       if (typeof body.action !== "object" || body.action === null)
-        return err("Invalid action");
+        return fail("act.bad-action", "That move wasn't understood.", 400, {
+          gameId: loaded.game.id,
+        });
       const seatId = loaded.secret.state.players[idx].id;
       const actionType = (body.action as { type?: string }).type;
       const next = applyPlayerAction(loaded.secret.state, seatId, body.action);
@@ -382,7 +437,9 @@ Deno.serve(async (req: Request) => {
           action: actionType,
           version: loaded.game.version,
         });
-        return err("Game changed, please retry", 409);
+        // NOTE: message must contain "retry" — the client treats an act
+        // conflict as recoverable (silently resyncs) by matching that word.
+        return err("The game just changed — please retry.", 409);
       }
       await saveSecret(loaded.game.id, next, loaded.secret.seat_tokens);
       logEvent("act.ok", {
@@ -398,7 +455,8 @@ Deno.serve(async (req: Request) => {
     /* ── state ── */
     if (op === "state") {
       const loaded = await loadById(body.gameId as string);
-      if (!loaded) return err("No such game", 404);
+      if (!loaded)
+        return fail("state.no-game", "That game no longer exists.", 404);
       const tok = body.seatToken as string | undefined;
       const idx =
         tok !== undefined ? loaded.secret.seat_tokens[tok] : undefined;
@@ -413,9 +471,15 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    return err(`Unknown op: ${op}`);
+    return fail("unknown-op", "Unsupported request.", 400, { op });
   } catch (e) {
-    logEvent("error", { op, message: (e as Error).message });
-    return err(`Server error: ${(e as Error).message}`, 500);
+    // Log the real cause (with stack) server-side; never leak internals to the
+    // client — they get a clear, generic message.
+    logEvent("error", {
+      op,
+      message: (e as Error).message,
+      stack: (e as Error).stack,
+    });
+    return err("Something went wrong on our end. Please try again.", 500);
   }
 });

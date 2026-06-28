@@ -1,0 +1,54 @@
+/* Self-contained styles (no theme vars) — the boundary may render when the
+   theme provider is unmounted. WPA palette baked in. */
+.errbound {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #0d1a12;
+  color: #f4e3b2;
+}
+.errbound__panel {
+  max-width: 30rem;
+  text-align: center;
+  background: rgba(8, 18, 12, 0.6);
+  border: 1px solid rgba(214, 168, 79, 0.4);
+  border-radius: 16px;
+  padding: 28px 26px;
+}
+.errbound__title {
+  font-family: "Bebas Neue", "Oswald", system-ui, sans-serif;
+  font-size: 2rem;
+  letter-spacing: 0.04em;
+  margin: 0 0 10px;
+  color: #f4e3b2;
+}
+.errbound__msg {
+  font-family: "Oswald", system-ui, sans-serif;
+  line-height: 1.4;
+  color: rgba(244, 227, 178, 0.85);
+  margin: 0 0 14px;
+}
+.errbound__detail {
+  font-family: "Oswald", system-ui, sans-serif;
+  font-size: 0.8rem;
+  color: rgba(244, 227, 178, 0.55);
+  word-break: break-word;
+  margin: 0 0 18px;
+}
+.errbound__btn {
+  font-family: "Oswald", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  color: #16100a;
+  background: #d6a84f;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 28px;
+  cursor: pointer;
+}
+.errbound__btn:hover {
+  background: #e8c068;
+}

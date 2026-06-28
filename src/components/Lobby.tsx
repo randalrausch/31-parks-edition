@@ -15,12 +15,14 @@ export default function Lobby({
   isHost,
   onStart,
   onLeave,
+  startError,
 }: {
   snap: NetworkSnapshot;
   code: string;
   isHost: boolean;
   onStart: () => void;
   onLeave: () => void;
+  startError?: string | null;
 }) {
   const { theme } = useTheme();
   const seats = snap.seats;
@@ -97,6 +99,7 @@ export default function Lobby({
                 Unfilled human seats will be played by AI.
               </p>
             )}
+            {startError && <p className="lobby__error">{startError}</p>}
           </>
         ) : (
           <p className="lobby__waiting">Waiting for the host to start…</p>

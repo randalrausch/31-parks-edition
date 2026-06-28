@@ -148,6 +148,12 @@
 .lobby__waiting {
   font-style: italic;
 }
+.lobby__error {
+  margin-top: 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ember, #c9571c);
+}
 .lobby__leave {
   margin-top: 16px;
   font-family: var(--font-label);

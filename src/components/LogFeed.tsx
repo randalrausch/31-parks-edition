@@ -54,13 +54,18 @@ export default function LogFeed({
   limit,
   className,
   emptyText,
+  newestFirst = false,
 }: {
   entries: LogEntry[];
   limit?: number;
   className?: string;
   emptyText?: string;
+  /** Show the most recent move first (for the live feed); the end-of-deal
+   * recap leaves this off to read chronologically. */
+  newestFirst?: boolean;
 }) {
-  const items = limit ? entries.slice(-limit) : entries;
+  const recent = limit ? entries.slice(-limit) : entries;
+  const items = newestFirst ? [...recent].reverse() : recent;
   return (
     <ul className={`logfeed ${className ?? ""}`}>
       {items.length === 0 && emptyText && (

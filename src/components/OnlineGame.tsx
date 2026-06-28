@@ -3,9 +3,10 @@
  * the Lobby while status is "lobby", then the OnlineGameBoard once it's playing.
  * If the session can't be loaded (game gone/expired), it drops back to the menu.
  */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNetworkGame } from "../game/useNetworkGame";
 import { gameApi } from "../game/supabaseClient";
+import { elog } from "../game/debug";
 import type { OnlineSession } from "../game/onlineSession";
 import Lobby from "./Lobby";
 import OnlineGameBoard from "./OnlineGameBoard";
@@ -19,37 +20,50 @@ export default function OnlineGame({
 }) {
   const game = useNetworkGame(session.gameId, session.seatToken);
   const [starting, setStarting] = useState(false);
-
-  // A dead/expired game (e.g. a stale resumed session) → return to the menu.
-  useEffect(() => {
-    if (game.error) onLeave();
-  }, [game.error, onLeave]);
+  const [startError, setStartError] = useState<string | null>(null);
 
   const start = async () => {
     if (starting) return;
     setStarting(true);
+    setStartError(null);
     try {
       await gameApi?.start(session.gameId, session.seatToken);
       game.refresh(); // transition to the board without waiting for the ping
     } catch (e) {
-      console.error("start failed", e);
+      elog("net", "start failed", e);
+      setStartError((e as Error)?.message || "Couldn't start the game.");
       setStarting(false);
     }
   };
 
   const snap = game.snap;
   if (!snap) {
-    return (
-      <div className="lobby">
-        <div className="lobby__panel">
-          <h1 className="lobby__title">
-            {game.error ? "Game not found" : "Connecting…"}
-          </h1>
-          {game.error && (
+    // No snapshot yet: either still connecting, or the initial load failed
+    // (game gone/expired, or a network problem). Show a clear, actionable state.
+    if (game.error) {
+      return (
+        <div className="lobby">
+          <div className="lobby__panel">
+            <h1 className="lobby__title">Can't open this game</h1>
+            <p className="lobby__waiting">{game.error}</p>
+            <button
+              className="lobby__start"
+              type="button"
+              onClick={() => window.location.reload()}
+            >
+              Try again
+            </button>
             <button className="lobby__leave" type="button" onClick={onLeave}>
               Back to menu
             </button>
-          )}
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="lobby">
+        <div className="lobby__panel">
+          <h1 className="lobby__title">Connecting…</h1>
         </div>
       </div>
     );
@@ -63,6 +77,7 @@ export default function OnlineGame({
         isHost={session.seatIndex === 0}
         onStart={start}
         onLeave={onLeave}
+        startError={startError}
       />
     );
   }

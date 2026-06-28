@@ -12,7 +12,7 @@
  * already-authoritative snapshot is revealed. The viewer's own move is shown
  * immediately (no self-narration); only opponents are paced.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { NetworkSnapshot } from "../game/networkTransport";
 import type { LogEntry } from "../game/engine";
 import type { CardModel, Suit } from "../types";
@@ -26,13 +26,18 @@ export interface ReplayView {
   note: string | null;
   /** True while opponents are animating — lock the viewer's controls. */
   busy: boolean;
+  /** Max log-entry id to reveal right now, so the "At the Table" feed steps in
+   * sync with the animation instead of dumping every move at once. */
+  logThrough: number;
 }
 
+const ALL_LOG = Number.MAX_SAFE_INTEGER;
 const IDLE: ReplayView = {
   discardTop: null,
   actingSeat: null,
   note: null,
   busy: false,
+  logThrough: ALL_LOG,
 };
 const STEP_MS = 950; // a beat per opponent turn
 const SETTLE_MS = 650; // hold on the last move before returning control
@@ -66,7 +71,9 @@ export function useTurnReplay(
   // Clear any pending beats on unmount.
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  useEffect(() => {
+  // useLayoutEffect so the initial clamped frame is applied before paint — the
+  // feed/discard never flash the full new state before the replay steps it in.
+  useLayoutEffect(() => {
     const s = snap?.state ?? null;
     if (!snap || !s) return;
     const clear = () => {
@@ -113,6 +120,15 @@ export function useTurnReplay(
     }
 
     clear();
+    // Initial frame (synchronous, pre-paint): show exactly what was on screen
+    // before this snapshot — old discard, old log — then step forward.
+    setView({
+      discardTop: top(shown.discard),
+      actingSeat: null,
+      note: null,
+      busy: true,
+      logThrough: shown.lastLogId,
+    });
     const running = [...shown.discard];
     let t = 0;
     for (const g of groups) {
@@ -132,11 +148,14 @@ export function useTurnReplay(
         : `${actor} ${took ? "took the discard" : "drew"}${
             drop ? `, dropped ${cardName(drop)}` : ""
           }`;
+      // Reveal the feed up through this turn's last move, in step with the beat.
+      const groupMaxId = g[g.length - 1].id;
       const step: ReplayView = {
         discardTop: top(running),
         actingSeat: mine ? null : seat,
         note: mine ? null : note,
         busy: true,
+        logThrough: groupMaxId,
       };
       t += mine ? 0 : STEP_MS; // the viewer's own move shows immediately
       timers.current.push(setTimeout(() => setView(step), t));

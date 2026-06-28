@@ -150,7 +150,11 @@ export default function OnlineGameBoard({
         {s.log.length > 0 && (
           <div className="board__log">
             <span className="board__log-title">At the Table</span>
-            <LogFeed entries={s.log} limit={5} />
+            <LogFeed
+              entries={s.log.filter((e) => e.id <= replay.logThrough)}
+              limit={5}
+              newestFirst
+            />
           </div>
         )}
 
@@ -224,6 +228,20 @@ export default function OnlineGameBoard({
           )}
         </div>
       </div>
+
+      {game.actionError && (
+        <div className="board__toast" role="alert">
+          <span>{game.actionError}</span>
+          <button
+            type="button"
+            className="board__toast-x"
+            onClick={game.clearActionError}
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {revealDeal ? (
         <DealEndOverlay state={revealDeal} onNext={dismissReveal} />

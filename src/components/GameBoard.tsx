@@ -74,7 +74,7 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
         {s.log.length > 0 && (
           <div className="board__log">
             <span className="board__log-title">At the Table</span>
-            <LogFeed entries={s.log} limit={5} />
+            <LogFeed entries={s.log} limit={5} newestFirst />
           </div>
         )}
 

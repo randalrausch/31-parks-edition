@@ -30,3 +30,17 @@ export function dlog(scope: string, message: string, data?: unknown): void {
   if (data !== undefined) console.debug(`[31:${scope}] ${message}`, data);
   else console.debug(`[31:${scope}] ${message}`);
 }
+
+/**
+ * Error-level logging — always on (errors matter in production too). Namespaced
+ * like dlog so it's filterable, and it unwraps Error objects to their message
+ * plus the full error for the stack.
+ */
+export function elog(scope: string, message: string, error?: unknown): void {
+  const detail = error instanceof Error ? error.message : error;
+  if (error !== undefined) {
+    console.error(`[31:${scope}] ${message}:`, detail, error);
+  } else {
+    console.error(`[31:${scope}] ${message}`);
+  }
+}

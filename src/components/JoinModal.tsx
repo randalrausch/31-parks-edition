@@ -4,6 +4,7 @@
 import { useState } from "react";
 import Modal from "./Modal";
 import { gameApi } from "../game/supabaseClient";
+import { elog } from "../game/debug";
 import type { OnlineSession } from "../game/onlineSession";
 import "./JoinModal.css";
 
@@ -39,7 +40,8 @@ export default function JoinModal({
         seatIndex: r.seatIndex,
       });
     } catch (e) {
-      setError((e as Error).message || "Could not join.");
+      elog("net", "join failed", e);
+      setError((e as Error).message || "Couldn't join the game.");
       setBusy(false);
     }
   };

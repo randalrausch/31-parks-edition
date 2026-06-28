@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from "react";
 import { gameApi, type CreateConfig } from "../game/supabaseClient";
+import { elog } from "../game/debug";
 import {
   type OnlineSession,
   saveSession,
@@ -54,7 +55,8 @@ export default function OnlineRoot({
       })
       .catch((e) => {
         if (!cancelled) {
-          setError((e as Error).message || "Could not create game.");
+          elog("net", "create failed", e);
+          setError((e as Error).message || "Couldn't create the game.");
           setCreating(false);
         }
       });
