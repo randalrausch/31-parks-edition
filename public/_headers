@@ -1,0 +1,16 @@
+# Security headers for the deployed static site (Netlify / Cloudflare Pages read
+# this file). Azure's equivalents live in public/staticwebapp.config.json.
+#
+# CSP notes:
+#  - script-src 'self'  — only our hashed Vite bundles; no inline/eval scripts.
+#  - style-src 'unsafe-inline' — the UI uses many inline style props (card fan
+#    transforms, etc.) and Vite-injected styles; Google Fonts serves the CSS.
+#  - connect-src includes *.supabase.co + wss for the Edge Function + Realtime.
+#  - img-src data: covers the card's inline SVG paper-grain texture.
+/*
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; manifest-src 'self'; worker-src 'self'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
