@@ -17,6 +17,7 @@ import LogFeed from "./LogFeed";
 import {
   Opponent,
   BoardBadge,
+  BoardWordmark,
   BoardToolbar,
   ToolButton,
   LeaveIcon,
@@ -145,6 +146,7 @@ export default function OnlineGameBoard({
         )}
 
         <BoardBadge />
+        <BoardWordmark />
 
         <BoardToolbar
           dealNum={s.dealNum}

@@ -23,6 +23,7 @@ import Avatar from "./Avatar";
 import {
   Opponent,
   BoardBadge,
+  BoardWordmark,
   BoardToolbar,
   ToolButton,
   NewGameIcon,
@@ -78,6 +79,7 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
         )}
 
         <BoardBadge />
+        <BoardWordmark />
 
         <BoardToolbar
           dealNum={s.dealNum}

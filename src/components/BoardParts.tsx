@@ -71,6 +71,16 @@ export function Opponent({
   );
 }
 
+/** Centered game wordmark so it's always clear which game this is. */
+export function BoardWordmark() {
+  return (
+    <div className="board__wordmark" aria-label="31 · National Parks Edition">
+      <span className="board__wordmark-31">31</span>
+      <span className="board__wordmark-sub">National Parks Edition</span>
+    </div>
+  );
+}
+
 /** Top-left park identity badge (reads the active theme). */
 export function BoardBadge() {
   const { theme } = useTheme();

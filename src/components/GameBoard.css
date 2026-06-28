@@ -625,3 +625,44 @@
     animation: none;
   }
 }
+
+/* ── Game wordmark (top-center): always shows which game this is ── */
+.board__wordmark {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 14px;
+  background: rgba(8, 18, 12, 0.5);
+  border: 1px solid var(--chrome-line);
+  border-radius: 999px;
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: 40%;
+  overflow: hidden;
+}
+.board__wordmark-31 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: var(--gold-bright);
+}
+.board__wordmark-sub {
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.56rem;
+  color: var(--cream);
+}
+@media (max-width: 720px) {
+  /* Keep just the "31" mark on narrow boards so it never crowds the corners. */
+  .board__wordmark-sub {
+    display: none;
+  }
+}
