@@ -417,12 +417,15 @@ var PLAYER_TURN_ACTIONS = /* @__PURE__ */ new Set([
 function applyPlayerAction(state, seatId, action) {
   if (action.type === "nextDeal") {
     if (state.phase !== "dealEnd") return state;
-    return advanceAuthority(applyAction(state, action));
+    return settledOrSame(state, advanceAuthority(applyAction(state, action)));
   }
   if (!PLAYER_TURN_ACTIONS.has(action.type)) return state;
   if (state.phase !== "drawing" && state.phase !== "discarding") return state;
   if (state.players[state.cur].id !== seatId) return state;
-  return advanceAuthority(applyAction(state, action));
+  return settledOrSame(state, advanceAuthority(applyAction(state, action)));
+}
+function settledOrSame(state, next) {
+  return JSON.stringify(next) === JSON.stringify(state) ? state : next;
 }
 function redactState(state, viewerId) {
   const revealAll = state.phase === "dealEnd" || state.phase === "gameOver";

@@ -113,6 +113,22 @@ describe("applyPlayerAction (authority)", () => {
     expect(after.phase).toBe("discarding");
   });
 
+  it("treats an out-of-phase action as a no-op (returns the same state ref)", () => {
+    // In "drawing", a discard is the right seat + an allowed action type, but
+    // wrong phase — the reducer no-ops it. Authority must collapse that back to
+    // the original reference so the server can skip persisting/broadcasting.
+    const s = applyAction(
+      createGameState(mixed(["h0", "h1"], 0), DEFAULT_OPTIONS),
+      { type: "deal" },
+    );
+    expect(s.phase).toBe("drawing");
+    const after = applyPlayerAction(s, s.players[s.cur].id, {
+      type: "discard",
+      cardId: "no-such-card",
+    });
+    expect(after).toBe(s);
+  });
+
   it("rejects the server-internal 'deal' action (no mid-turn re-deal)", () => {
     const s = applyAction(
       createGameState(mixed(["h0", "h1"], 0), DEFAULT_OPTIONS),

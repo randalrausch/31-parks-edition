@@ -89,7 +89,7 @@ export function applyPlayerAction(
     // Intentionally not seat-restricted: from the deal-end reveal ANY seated
     // player may advance to the next deal, so one idle/away player can't stall
     // an async game. (Callers still pass a valid seat token to reach here.)
-    return advanceAuthority(applyAction(state, action));
+    return settledOrSame(state, advanceAuthority(applyAction(state, action)));
   }
   // Reject anything that isn't a legal turn action — notably "deal", which
   // would otherwise let a player re-deal the game mid-turn.
@@ -97,7 +97,18 @@ export function applyPlayerAction(
   // Turn actions must come from the player whose turn it is.
   if (state.phase !== "drawing" && state.phase !== "discarding") return state;
   if (state.players[state.cur].id !== seatId) return state;
-  return advanceAuthority(applyAction(state, action));
+  return settledOrSame(state, advanceAuthority(applyAction(state, action)));
+}
+
+/**
+ * Return the original `state` reference when an action changed nothing. The
+ * reducer clones up front, so a no-op rejected *inside* applyAction (e.g. a
+ * discard submitted while still in "drawing", or an unknown card id) yields a
+ * new-but-identical object. Collapsing it back lets callers detect a no-op with
+ * `===` and skip persisting/broadcasting an unchanged state.
+ */
+function settledOrSame(state: GameState, next: GameState): GameState {
+  return JSON.stringify(next) === JSON.stringify(state) ? state : next;
 }
 
 /**

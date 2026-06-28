@@ -315,9 +315,9 @@ Deno.serve(async (req: Request) => {
         return err("Invalid action");
       const seatId = loaded.secret.state.players[idx].id;
       const next = applyPlayerAction(loaded.secret.state, seatId, body.action);
-      // Illegal/no-op actions (wrong turn, unknown type) return the same state
-      // object unchanged. Don't bump the version, rewrite state, or broadcast a
-      // Realtime ping for those — just report it wasn't applied.
+      // Any no-op (wrong turn, unknown type, or out-of-phase action) comes back
+      // as the same state reference. Don't bump the version, rewrite state, or
+      // broadcast a Realtime ping for those — just report it wasn't applied.
       if (next === loaded.secret.state)
         return json({ ok: false, reason: "not-applied" });
       // Claim the version first; a concurrent/double submit gets a clean 409.
