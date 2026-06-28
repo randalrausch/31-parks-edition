@@ -68,7 +68,8 @@ export interface GamePlayer {
   /** Optional portrait image URL (AI characters); preferred over emoji. */
   image?: string;
   avatarKey: string;
-  lives: number;
+  /** Tokens remaining. Lose your last one (without Grace) and you're out. */
+  tokens: number;
   grace: boolean;
   hand: CardModel[];
 }
@@ -223,7 +224,7 @@ export function bestSuit(hand: CardModel[]): Suit | null {
 /* ── Player helpers ─────────────────────────────────────────────────────── */
 
 export function isAlive(p: GamePlayer): boolean {
-  return p.lives > 0 || p.grace;
+  return p.tokens > 0 || p.grace;
 }
 export function isEliminated(p: GamePlayer): boolean {
   return !isAlive(p);
@@ -235,10 +236,10 @@ export function takeDamage(
   amount: number,
   opts: GameOptions,
 ): DamageOutcome {
-  const hadLives = player.lives;
-  player.lives = Math.max(0, player.lives - amount);
-  if (player.lives === 0) {
-    const overflow = amount - hadLives;
+  const hadTokens = player.tokens;
+  player.tokens = Math.max(0, player.tokens - amount);
+  if (player.tokens === 0) {
+    const overflow = amount - hadTokens;
     if (opts.grace && !player.grace && overflow <= 0) {
       player.grace = true;
       return "grace";
@@ -294,7 +295,7 @@ export function planAITurn(state: GameState): AIPlan {
   const top = state.discard[state.discard.length - 1] ?? null;
 
   // Desperation/clutch: on the last token, play more aggressively.
-  const desperate = !p.grace && p.lives === 1;
+  const desperate = !p.grace && p.tokens === 1;
   const knockAt = aiKnockTarget(t) - (desperate ? 2 : 0);
   const bluffChance = aiBluffChance(t) + (desperate ? 0.12 : 0);
 

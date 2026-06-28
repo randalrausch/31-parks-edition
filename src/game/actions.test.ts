@@ -66,7 +66,7 @@ describe("dealt 31 (blitz) detection", () => {
     name: "x",
     isAI: true,
     avatarKey: "ranger",
-    lives: 3,
+    tokens: 3,
     grace: false,
     hand,
   });
@@ -147,7 +147,7 @@ describe("invariants over many random full games", () => {
       let s = applyAction(createGameState(aiPlayers(n), options), {
         type: "deal",
       });
-      let prevTokens = s.players.reduce((t, p) => t + p.lives, 0);
+      let prevTokens = s.players.reduce((t, p) => t + p.tokens, 0);
       let steps = 0;
 
       while (s.phase !== "gameOver") {
@@ -158,7 +158,7 @@ describe("invariants over many random full games", () => {
           );
         }
         if (s.phase === "dealEnd") {
-          const tokens = s.players.reduce((t, p) => t + p.lives, 0);
+          const tokens = s.players.reduce((t, p) => t + p.tokens, 0);
           expect(tokens).toBeLessThanOrEqual(prevTokens); // tokens never increase
           prevTokens = tokens;
           s = applyAction(s, { type: "nextDeal" });

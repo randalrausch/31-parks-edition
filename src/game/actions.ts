@@ -291,7 +291,7 @@ export function createGameState(
   return {
     players: players.map((p): GamePlayer => ({
       ...p,
-      lives: 3,
+      tokens: 3,
       grace: false,
       hand: [],
     })),

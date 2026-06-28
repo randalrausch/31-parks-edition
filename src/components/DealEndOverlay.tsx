@@ -50,7 +50,7 @@ export default function DealEndOverlay({
                 ))}
               </div>
               <div className="re__score">{formatScore(row.score)}</div>
-              <TokenRow lives={p.lives} grace={p.grace} />
+              <TokenRow tokens={p.tokens} grace={p.grace} />
               {row.outcome === "grace" && (
                 <div className="re__note re__note--grace">Now on Grace 🕯</div>
               )}

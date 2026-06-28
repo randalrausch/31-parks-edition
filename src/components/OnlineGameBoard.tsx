@@ -38,7 +38,7 @@ function Opponent({
   isKnocker: boolean;
   isCurrent: boolean;
 }) {
-  const danger = !player.grace && player.lives === 1;
+  const danger = !player.grace && player.tokens === 1;
   return (
     <div
       className={`opp${player.grace ? " opp--grace" : ""}${danger ? " opp--danger" : ""}${
@@ -69,7 +69,7 @@ function Opponent({
         />
         <span className="opp__info">
           <span className="opp__name">{player.name}</span>
-          <TokenRow lives={player.lives} grace={player.grace} />
+          <TokenRow tokens={player.tokens} grace={player.grace} />
         </span>
         {isKnocker && <span className="opp__knock">Knocked</span>}
       </div>
@@ -290,7 +290,7 @@ export default function OnlineGameBoard({
                   {me.name}
                   <span className="board__you-turn"> (You)</span>
                 </span>
-                <TokenRow lives={me.lives} grace={me.grace} />
+                <TokenRow tokens={me.tokens} grace={me.grace} />
               </div>
 
               <div className="board__hand">

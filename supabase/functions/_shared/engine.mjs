@@ -65,16 +65,16 @@ function scoreHand(hand, opts) {
   return best;
 }
 function isAlive(p) {
-  return p.lives > 0 || p.grace;
+  return p.tokens > 0 || p.grace;
 }
 function isEliminated(p) {
   return !isAlive(p);
 }
 function takeDamage(player, amount, opts) {
-  const hadLives = player.lives;
-  player.lives = Math.max(0, player.lives - amount);
-  if (player.lives === 0) {
-    const overflow = amount - hadLives;
+  const hadTokens = player.tokens;
+  player.tokens = Math.max(0, player.tokens - amount);
+  if (player.tokens === 0) {
+    const overflow = amount - hadTokens;
     if (opts.grace && !player.grace && overflow <= 0) {
       player.grace = true;
       return "grace";
@@ -104,7 +104,7 @@ function planAITurn(state) {
   const hand = p.hand;
   const sc = scoreHand(hand, state.options);
   const top = state.discard[state.discard.length - 1] ?? null;
-  const desperate = !p.grace && p.lives === 1;
+  const desperate = !p.grace && p.tokens === 1;
   const knockAt = aiKnockTarget(t) - (desperate ? 2 : 0);
   const bluffChance = aiBluffChance(t) + (desperate ? 0.12 : 0);
   if (state.knocker === null) {
@@ -353,7 +353,7 @@ function createGameState(players, options) {
   return {
     players: players.map((p) => ({
       ...p,
-      lives: 3,
+      tokens: 3,
       grace: false,
       hand: []
     })),

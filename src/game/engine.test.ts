@@ -30,7 +30,7 @@ const player = (over: Partial<GamePlayer> = {}): GamePlayer => ({
   name: "P",
   isAI: false,
   avatarKey: "ranger",
-  lives: 3,
+  tokens: 3,
   grace: false,
   hand: [],
   ...over,
@@ -91,37 +91,37 @@ describe("bestSuit", () => {
 
 describe("takeDamage", () => {
   it("loses a token without elimination when tokens remain", () => {
-    const p = player({ lives: 3 });
+    const p = player({ tokens: 3 });
     expect(takeDamage(p, 1, opts())).toBe("lost");
-    expect(p.lives).toBe(2);
+    expect(p.tokens).toBe(2);
   });
   it("grants Grace when the last token is lost (grace on)", () => {
-    const p = player({ lives: 1 });
+    const p = player({ tokens: 1 });
     expect(takeDamage(p, 1, opts({ grace: true }))).toBe("grace");
-    expect(p.lives).toBe(0);
+    expect(p.tokens).toBe(0);
     expect(p.grace).toBe(true);
   });
   it("eliminates a player already on Grace", () => {
-    const p = player({ lives: 0, grace: true });
+    const p = player({ tokens: 0, grace: true });
     expect(takeDamage(p, 1, opts({ grace: true }))).toBe("eliminated");
     expect(p.grace).toBe(false);
   });
   it("eliminates immediately when grace is off", () => {
-    const p = player({ lives: 1 });
+    const p = player({ tokens: 1 });
     expect(takeDamage(p, 1, opts({ grace: false }))).toBe("eliminated");
   });
   it("punches through Grace when overflow damage exceeds tokens", () => {
     // Knock penalty: losing 2 with only 1 token does NOT grant grace.
-    const p = player({ lives: 1 });
+    const p = player({ tokens: 1 });
     expect(takeDamage(p, 2, opts({ grace: true }))).toBe("eliminated");
   });
 });
 
 describe("isAlive / isEliminated", () => {
   it("treats grace players as alive", () => {
-    expect(isAlive(player({ lives: 0, grace: true }))).toBe(true);
-    expect(isEliminated(player({ lives: 0, grace: false }))).toBe(true);
-    expect(isAlive(player({ lives: 1 }))).toBe(true);
+    expect(isAlive(player({ tokens: 0, grace: true }))).toBe(true);
+    expect(isEliminated(player({ tokens: 0, grace: false }))).toBe(true);
+    expect(isAlive(player({ tokens: 1 }))).toBe(true);
   });
 });
 

@@ -40,7 +40,7 @@ function Opponent({
   player: GamePlayer;
   isKnocker: boolean;
 }) {
-  const danger = !player.grace && player.lives === 1;
+  const danger = !player.grace && player.tokens === 1;
   return (
     <div
       className={`opp${player.grace ? " opp--grace" : ""}${danger ? " opp--danger" : ""}`}
@@ -69,7 +69,7 @@ function Opponent({
         />
         <span className="opp__info">
           <span className="opp__name">{player.name}</span>
-          <TokenRow lives={player.lives} grace={player.grace} />
+          <TokenRow tokens={player.tokens} grace={player.grace} />
         </span>
         {isKnocker && <span className="opp__knock">Knocked</span>}
       </div>
@@ -277,7 +277,7 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
                     {s.phase === "discarding" ? " · discard a card" : "'s turn"}
                   </span>
                 </span>
-                <TokenRow lives={cur.lives} grace={cur.grace} />
+                <TokenRow tokens={cur.tokens} grace={cur.grace} />
               </div>
 
               <div className="board__hand">
