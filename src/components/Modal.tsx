@@ -1,8 +1,10 @@
 /**
  * Lightweight modal overlay used by Help, Settings/Park Picker, and Victory.
- * Closes on backdrop click or Escape; locks nothing else (prototype scope).
+ * Accessible: it's a labelled dialog that moves focus inside on open, traps Tab
+ * within the panel, restores focus to the trigger on close, locks background
+ * scroll, and closes on backdrop click or Escape.
  */
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import "./Modal.css";
 
 export interface ModalProps {
@@ -14,6 +16,9 @@ export interface ModalProps {
   labelledBy?: string;
 }
 
+const FOCUSABLE =
+  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 export default function Modal({
   open,
   onClose,
@@ -21,27 +26,64 @@ export default function Modal({
   variant,
   labelledBy,
 }: ModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
+    const restoreTo = document.activeElement as HTMLElement | null;
+    const panel = panelRef.current;
+    panel?.focus(); // move focus into the dialog
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !panel) return;
+      // Keep Tab focus inside the dialog.
+      const items = Array.from(
+        panel.querySelectorAll<HTMLElement>(FOCUSABLE),
+      ).filter(
+        (el) => !el.hasAttribute("disabled") && el.offsetParent !== null,
+      );
+      if (items.length === 0) {
+        e.preventDefault();
+        panel.focus();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || active === panel)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
+
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+      restoreTo?.focus?.();
+    };
   }, [open, onClose]);
 
   if (!open) return null;
 
   return (
-    <div
-      className="modal"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={labelledBy}
-      onClick={onClose}
-    >
+    <div className="modal" onClick={onClose}>
       <div
+        ref={panelRef}
         className={["modal__panel", variant].filter(Boolean).join(" ")}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
         <button

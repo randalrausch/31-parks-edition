@@ -27,6 +27,11 @@
   padding: 28px;
   animation: modal-rise 0.22s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
+/* The panel is focused programmatically on open (for screen readers / focus
+   trap); it's a container, not an interactive control, so hide the ring. */
+.modal__panel:focus {
+  outline: none;
+}
 @keyframes modal-rise {
   from {
     opacity: 0;

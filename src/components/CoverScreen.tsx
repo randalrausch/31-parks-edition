@@ -40,7 +40,13 @@ export default function CoverScreen({
           />
         </div>
 
-        <button className="cover__btn" type="button" onClick={onReady}>
+        <button
+          className="cover__btn"
+          type="button"
+          onClick={onReady}
+          // eslint-disable-next-line jsx-a11y/no-autofocus
+          autoFocus
+        >
           Show My Hand
         </button>
       </div>
