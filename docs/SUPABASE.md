@@ -102,3 +102,22 @@ npm run build:edge && supabase functions deploy game
 Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_KEY` as build‑time environment
 variables in your static host (they're embedded at build time). See
 [DEPLOY.md](DEPLOY.md). Without them, the app simply builds as solo‑only.
+
+## Troubleshooting / observability
+
+When an online game misbehaves, there are three logs to check:
+
+- **Player-facing move log.** Every board shows a live "At the Table" feed of
+  public actions, and the end-of-deal screen has a **"Show moves this deal"**
+  toggle listing every public move (who drew/took/discarded/knocked).
+- **Edge Function logs (server).** The `game` function emits one structured JSON
+  line per request — `create`, `join`, `start`, and `act.ok` / `act.noop` /
+  `act.conflict`, plus `error`. View them in the Supabase Dashboard →
+  **Edge Functions → game → Logs**, or stream locally with
+  `supabase functions logs game`. They include game ids, seat indices, action
+  types, and versions — never seat tokens or card data.
+- **Client debug logs (browser).** Network sync is traced under the `[31:net]`
+  namespace. It's on automatically during `npm run dev`; on a deployed site,
+  enable it from the console with
+  `localStorage.setItem("parks31.debug", "1")` and reload (remove the key to
+  turn it off).

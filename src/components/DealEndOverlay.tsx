@@ -2,8 +2,10 @@
  * Deal-end reveal — every hand is shown face-up with its score and the tokens
  * each player lost. This is the only time opponents' cards/scores are visible.
  */
+import { useState } from "react";
 import Modal from "./Modal";
 import Card from "./Card";
+import LogFeed from "./LogFeed";
 import { TokenRow } from "./TokenRow";
 import { formatScore, isAlive, type GameState } from "../game/engine";
 import "./DealEndOverlay.css";
@@ -15,6 +17,7 @@ export default function DealEndOverlay({
   state: GameState;
   onNext: () => void;
 }) {
+  const [showMoves, setShowMoves] = useState(false);
   if (!state.result) return null;
   const { rows, title } = state.result;
   const aliveCount = state.players.filter(isAlive).length;
@@ -66,6 +69,23 @@ export default function DealEndOverlay({
           );
         })}
       </div>
+      {state.log.length > 0 && (
+        <div className="re__moves">
+          <button
+            type="button"
+            className="re__moves-toggle"
+            onClick={() => setShowMoves((v) => !v)}
+            aria-expanded={showMoves}
+          >
+            {showMoves ? "Hide" : "Show"} moves this deal ({state.log.length})
+          </button>
+          {showMoves && (
+            <div className="re__moves-list">
+              <LogFeed entries={state.log} />
+            </div>
+          )}
+        </div>
+      )}
       <button className="re__btn" type="button" onClick={onNext}>
         {gameEnding ? "See Winner" : "Next Deal"}
       </button>

@@ -16,6 +16,7 @@ import type { SupabaseClient, RealtimeChannel } from "@supabase/supabase-js";
 import type { GameAction } from "./actions";
 import type { GameState } from "./engine";
 import { makeGameApi, type GameApi, type SeatInfo } from "./supabaseClient";
+import { dlog } from "./debug";
 
 export interface NetworkSnapshot {
   status: string;
@@ -32,6 +33,7 @@ export class NetworkTransport {
   private listeners = new Set<(s: NetworkSnapshot) => void>();
   private lastVersion = -1;
   private fetching = false;
+  private refetchQueued = false;
 
   constructor(
     private client: SupabaseClient,
@@ -57,20 +59,37 @@ export class NetworkTransport {
     if (this.snap) for (const l of this.listeners) l(this.snap);
   }
 
-  /** Fetch the latest redacted snapshot (deduped against concurrent calls). */
+  /**
+   * Fetch the latest redacted snapshot. Concurrent calls are coalesced, but a
+   * refresh requested while one is in flight schedules exactly one more after it
+   * — so a post-action refresh is never dropped (which would leave the UI showing
+   * stale state even though the action applied).
+   */
   async refresh(): Promise<void> {
-    if (this.fetching) return;
+    if (this.fetching) {
+      this.refetchQueued = true;
+      return;
+    }
     this.fetching = true;
     try {
       const snap = await this.api.state(this.gameId, this.seatToken);
       // Ignore stale fetches that arrive out of order.
       if (snap.version >= this.lastVersion) {
+        const changed = snap.version !== this.lastVersion;
         this.lastVersion = snap.version;
         this.snap = snap;
         this.emit();
+        if (changed) dlog("net", `snapshot v${snap.version}`, snap.state.phase);
       }
+    } catch (e) {
+      dlog("net", "refresh failed", (e as Error).message);
+      throw e;
     } finally {
       this.fetching = false;
+      if (this.refetchQueued) {
+        this.refetchQueued = false;
+        void this.refresh();
+      }
     }
   }
 
@@ -95,15 +114,19 @@ export class NetworkTransport {
   }
 
   async act(action: GameAction): Promise<void> {
+    dlog("net", `act ${action.type}`);
     try {
       await this.api.act(this.gameId, this.seatToken, action);
     } catch (e) {
+      const msg = (e as Error).message;
       // A version conflict (concurrent/duplicate submit) is recoverable: the
       // authority already moved, so resync to the truth instead of erroring.
-      if (/\bretry\b/i.test((e as Error).message)) {
+      if (/\bretry\b/i.test(msg)) {
+        dlog("net", `act ${action.type} conflict — resyncing`);
         await this.refresh();
         return;
       }
+      dlog("net", `act ${action.type} failed`, msg);
       throw e;
     }
     await this.refresh(); // don't wait for the ping round-trip

@@ -99,3 +99,33 @@
 .re__btn:active {
   transform: translateY(3px);
 }
+
+/* ── "Moves this deal" — the deal's public action log ── */
+.re__moves {
+  margin-top: 4px;
+  text-align: center;
+}
+.re__moves-toggle {
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.66rem;
+  color: var(--gold);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.re__moves-toggle:hover {
+  color: var(--gold-bright);
+}
+.re__moves-list {
+  max-height: 30vh;
+  overflow-y: auto;
+  margin-top: 6px;
+  padding: 8px 12px;
+  text-align: left;
+  background: rgba(6, 14, 9, 0.5);
+  border: 1px solid var(--chrome-line);
+  border-radius: 10px;
+}

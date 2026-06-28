@@ -43,6 +43,22 @@ const json = (body: unknown, status = 200) =>
   });
 const err = (msg: string, status = 400) => json({ error: msg }, status);
 
+/**
+ * Structured application log line. Supabase captures stdout in the function's
+ * logs (Dashboard → Edge Functions → game → Logs), so emitting JSON here gives
+ * developers a queryable trail of every op, outcome, and error. Never logs seat
+ * tokens or card data — only ids, seat indices, action types, and versions.
+ */
+function logEvent(event: string, data: Record<string, unknown> = {}): void {
+  try {
+    console.log(
+      JSON.stringify({ ts: new Date().toISOString(), event, ...data }),
+    );
+  } catch {
+    console.log(`game ${event}`);
+  }
+}
+
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 32 chars, no I/O/0/1
 function makeCode(): string {
   // 32 is a power of two, so (byte % 32) is unbiased. Cryptographic RNG.
@@ -121,6 +137,7 @@ Deno.serve(async (req: Request) => {
     return err("invalid JSON");
   }
   const op = body.op as string;
+  if (op !== "state") logEvent("request", { op }); // state is high-volume; skip
 
   try {
     /* ── create ── */
@@ -240,6 +257,12 @@ Deno.serve(async (req: Request) => {
         seat_tokens: { [creatorToken]: 0 },
       });
       if (secretErr) return err(secretErr.message, 500);
+      logEvent("create", {
+        gameId: game.id,
+        code,
+        humans,
+        ai: ai.length,
+      });
       return json({
         gameId: game.id,
         code,
@@ -273,6 +296,7 @@ Deno.serve(async (req: Request) => {
       if (!(await casBump(game.id, game.version, { seats })))
         return err("Game changed, please retry", 409);
       await saveSecret(game.id, state, seatTokens);
+      logEvent("join", { gameId: game.id, seat: idx });
       return json({ gameId: game.id, seatIndex: idx, seatToken: t });
     }
 
@@ -302,6 +326,7 @@ Deno.serve(async (req: Request) => {
       )
         return err("Game changed, please retry", 409);
       await saveSecret(loaded.game.id, dealt, loaded.secret.seat_tokens);
+      logEvent("start", { gameId: loaded.game.id, phase: dealt.phase });
       return json({ ok: true });
     }
 
@@ -314,20 +339,43 @@ Deno.serve(async (req: Request) => {
       if (typeof body.action !== "object" || body.action === null)
         return err("Invalid action");
       const seatId = loaded.secret.state.players[idx].id;
+      const actionType = (body.action as { type?: string }).type;
       const next = applyPlayerAction(loaded.secret.state, seatId, body.action);
       // Any no-op (wrong turn, unknown type, or out-of-phase action) comes back
       // as the same state reference. Don't bump the version, rewrite state, or
       // broadcast a Realtime ping for those — just report it wasn't applied.
-      if (next === loaded.secret.state)
+      if (next === loaded.secret.state) {
+        logEvent("act.noop", {
+          gameId: loaded.game.id,
+          seat: idx,
+          action: actionType,
+          phase: loaded.secret.state.phase,
+          cur: loaded.secret.state.cur,
+        });
         return json({ ok: false, reason: "not-applied" });
+      }
       // Claim the version first; a concurrent/double submit gets a clean 409.
       if (
         !(await casBump(loaded.game.id, loaded.game.version, {
           status: next.phase === "gameOver" ? "over" : "playing",
         }))
-      )
+      ) {
+        logEvent("act.conflict", {
+          gameId: loaded.game.id,
+          seat: idx,
+          action: actionType,
+          version: loaded.game.version,
+        });
         return err("Game changed, please retry", 409);
+      }
       await saveSecret(loaded.game.id, next, loaded.secret.seat_tokens);
+      logEvent("act.ok", {
+        gameId: loaded.game.id,
+        seat: idx,
+        action: actionType,
+        version: loaded.game.version + 1,
+        phase: next.phase,
+      });
       return json({ ok: true });
     }
 
@@ -351,6 +399,7 @@ Deno.serve(async (req: Request) => {
 
     return err(`Unknown op: ${op}`);
   } catch (e) {
+    logEvent("error", { op, message: (e as Error).message });
     return err(`Server error: ${(e as Error).message}`, 500);
   }
 });
