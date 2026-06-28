@@ -72,7 +72,23 @@ export interface GameApi {
 export function makeGameApi(client: SupabaseClient): GameApi {
   async function call<T>(body: Record<string, unknown>): Promise<T> {
     const { data, error } = await client.functions.invoke("game", { body });
-    if (error) throw new Error(error.message);
+    if (error) {
+      // supabase-js wraps any non-2xx as a FunctionsHttpError whose generic
+      // message is "Edge Function returned a non-2xx status code". Our real
+      // reason (e.g. "Game is full") is the JSON body on the Response in
+      // `context` — surface that instead so users see something useful.
+      let message = error.message;
+      const ctx = (error as { context?: unknown }).context;
+      if (ctx instanceof Response) {
+        try {
+          const payload = await ctx.clone().json();
+          if (payload?.error) message = payload.error as string;
+        } catch {
+          /* body wasn't JSON — keep the generic message */
+        }
+      }
+      throw new Error(message);
+    }
     if (data?.error) throw new Error(data.error);
     return data as T;
   }

@@ -277,7 +277,10 @@ Deno.serve(async (req: Request) => {
       if (!game) return err("No game with that code", 404);
       if (game.status !== "lobby") return err("Game already started", 409);
       const seats = game.seats as Record<string, unknown>[];
-      const seat = seats.find((s) => !s.isAI && !s.filled);
+      // Prefer an open human seat; otherwise let the joiner take over an AI seat
+      // so "share this code so friends can join" holds while any AI is present.
+      let seat = seats.find((s) => !s.isAI && !s.filled);
+      if (!seat) seat = seats.find((s) => s.isAI);
       if (!seat) return err("Game is full", 409);
       const loaded = await loadById(game.id);
       if (!loaded) return err("Game state missing", 500);
@@ -285,10 +288,23 @@ Deno.serve(async (req: Request) => {
       const name =
         (typeof body.name === "string" ? body.name.trim().slice(0, 40) : "") ||
         `Player ${idx + 1}`;
-      seat.name = name;
+      const tookAI = seat.isAI === true;
+      seat.isAI = false;
       seat.filled = true;
+      seat.name = name;
+      seat.avatar = "ranger";
+      seat.emoji = null;
       const state = loaded.secret.state;
-      state.players[idx].name = name;
+      const player = state.players[idx] as Record<string, unknown>;
+      player.isAI = false;
+      player.name = name;
+      player.avatarKey = "ranger";
+      if (tookAI) {
+        // Strip the AI persona so the seat plays as a human from here on.
+        delete player.traits;
+        player.emoji = null;
+        player.image = null;
+      }
       const seatTokens = loaded.secret.seat_tokens;
       const t = token();
       seatTokens[t] = idx;
@@ -296,7 +312,7 @@ Deno.serve(async (req: Request) => {
       if (!(await casBump(game.id, game.version, { seats })))
         return err("Game changed, please retry", 409);
       await saveSecret(game.id, state, seatTokens);
-      logEvent("join", { gameId: game.id, seat: idx });
+      logEvent("join", { gameId: game.id, seat: idx, tookAI });
       return json({ gameId: game.id, seatIndex: idx, seatToken: t });
     }
 

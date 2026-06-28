@@ -28,6 +28,14 @@ export default function Lobby({
   const humans = seats.filter((s) => !s.isAI);
   const humansFilled = humans.filter((s) => s.filled).length;
   const canStart = filled >= 2;
+  // A friend can join while there's an open human seat OR an AI to take over.
+  const openHumanSeat = seats.some((s) => !s.isAI && !s.filled);
+  const hasAISeat = seats.some((s) => s.isAI);
+  const joinHint = openHumanSeat
+    ? "Share this code so friends can join."
+    : hasAISeat
+      ? "Share this code — a friend can take an AI's seat."
+      : "Every seat is taken.";
 
   return (
     <div className="lobby">
@@ -42,9 +50,7 @@ export default function Lobby({
         <div className="lobby__code-block">
           <span className="lobby__code-label">Room Code</span>
           <span className="lobby__code">{code}</span>
-          <span className="lobby__code-hint">
-            Share this code so friends can join.
-          </span>
+          <span className="lobby__code-hint">{joinHint}</span>
         </div>
 
         <div className="lobby__sectitle">
