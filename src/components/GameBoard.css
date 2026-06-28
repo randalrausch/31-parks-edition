@@ -748,3 +748,20 @@
     animation: none;
   }
 }
+
+/* ── Eliminated viewer (online): spectating notice ── */
+.board__spectating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.85;
+}
+.board__spectating-note {
+  margin: 0;
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.74rem;
+  color: var(--cream-dim, rgba(244, 227, 178, 0.7));
+}

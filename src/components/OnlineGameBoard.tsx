@@ -196,36 +196,46 @@ export default function OnlineGameBoard({
 
         {/* You — always at the bottom */}
         <div className="board__current">
-          {me && (
-            <>
-              <PlayerHead player={me} turnText=" (You)" />
-              <HandFan
-                hand={me.hand}
-                interactive={discarding}
-                counting={counting}
-                selected={selected}
-                onSelect={(i) =>
-                  discarding && setSelected(selected === i ? null : i)
-                }
-              />
-              <HandHud score={handScore} />
-              <ActionBar
-                discarding={discarding}
-                canDraw={canDraw}
-                hasDiscard={!!topDiscard}
-                canKnock={canDraw && s.knocker === null}
-                discardSelected={selected !== null}
-                onDrawDeck={() => game.act({ type: "drawDeck" })}
-                onTakeDiscard={() => game.act({ type: "takeDiscard" })}
-                onKnock={() => game.act({ type: "knock" })}
-                onConfirmDiscard={() => {
-                  if (selected === null) return;
-                  game.act({ type: "discard", cardId: me.hand[selected].id });
-                  setSelected(null);
-                }}
-              />
-            </>
-          )}
+          {me &&
+            (isAlive(me) || s.phase === "gameOver" ? (
+              <>
+                <PlayerHead player={me} turnText=" (You)" />
+                <HandFan
+                  hand={me.hand}
+                  interactive={discarding}
+                  counting={counting}
+                  selected={selected}
+                  onSelect={(i) =>
+                    discarding && setSelected(selected === i ? null : i)
+                  }
+                />
+                <HandHud score={handScore} />
+                <ActionBar
+                  discarding={discarding}
+                  canDraw={canDraw}
+                  hasDiscard={!!topDiscard}
+                  canKnock={canDraw && s.knocker === null}
+                  discardSelected={selected !== null}
+                  onDrawDeck={() => game.act({ type: "drawDeck" })}
+                  onTakeDiscard={() => game.act({ type: "takeDiscard" })}
+                  onKnock={() => game.act({ type: "knock" })}
+                  onConfirmDiscard={() => {
+                    if (selected === null) return;
+                    game.act({ type: "discard", cardId: me.hand[selected].id });
+                    setSelected(null);
+                  }}
+                />
+              </>
+            ) : (
+              // Eliminated but the game's still going — make "you're spectating"
+              // explicit instead of an empty hand + dead buttons.
+              <div className="board__spectating">
+                <PlayerHead player={me} turnText=" (You)" />
+                <p className="board__spectating-note">
+                  You're out — watching until the game ends.
+                </p>
+              </div>
+            ))}
         </div>
       </div>
 
@@ -254,7 +264,11 @@ export default function OnlineGameBoard({
         <DealEndOverlay state={revealDeal} onNext={dismissReveal} />
       ) : (
         s.phase === "gameOver" && (
-          <GameOverOverlay state={s} onNewGame={onLeave} />
+          <GameOverOverlay
+            state={s}
+            onNewGame={onLeave}
+            ctaLabel="Back to Menu"
+          />
         )
       )}
       <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />

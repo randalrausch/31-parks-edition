@@ -13,9 +13,12 @@ import "./VictoryPanel.css";
 export default function GameOverOverlay({
   state,
   onNewGame,
+  ctaLabel = "New Game",
 }: {
   state: GameState;
   onNewGame: () => void;
+  /** Button label — "New Game" solo, "Back to Menu" online (it leaves). */
+  ctaLabel?: string;
 }) {
   const { theme } = useTheme();
   const winner = state.players.find((p) => p.id === state.winnerId) ?? null;
@@ -67,7 +70,7 @@ export default function GameOverOverlay({
         type="button"
         onClick={onNewGame}
       >
-        New Game
+        {ctaLabel}
       </button>
     </Modal>
   );
