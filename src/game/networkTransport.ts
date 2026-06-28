@@ -1,21 +1,21 @@
 /**
- * NetworkTransport — drives an online game over Supabase.
+ * NetworkTransport — drives an online game over a provider-agnostic GameBackend.
  *
- * Reads: subscribes to Realtime on the public `games` row as a "something
- * changed" ping, then re-fetches the per-seat *redacted* state via the Edge
- * Function (the wire never carries another player's cards). Writes: submits
- * actions through the function's `act` / `nextDeal` ops. After a successful own
- * action it refetches immediately for snappiness rather than waiting for the
- * ping.
+ * Reads: subscribes to the backend's change pings, then re-fetches the per-seat
+ * *redacted* state via the backend API (the wire never carries another player's
+ * cards), plus a safety-net poll. Writes: submits actions through the backend's
+ * `act` op; after a successful own action it refetches immediately rather than
+ * waiting for a ping.
  *
- * Lifecycle differs from LocalTransport (games are created/joined via the lobby
- * API, not `start`), so this exposes connect()/getState()/subscribe()/act()/
- * destroy() — the pieces a network game hook consumes.
+ * It depends only on the GameBackend interface (see backend.ts), so swapping the
+ * provider (Supabase → Azure, etc.) needs no change here. Lifecycle differs from
+ * LocalTransport (games are created/joined via the lobby API, not `start`), so
+ * this exposes connect()/getState()/subscribe()/act()/destroy().
  */
-import type { SupabaseClient, RealtimeChannel } from "@supabase/supabase-js";
 import type { GameAction } from "./actions";
 import type { GameState } from "./engine";
-import { makeGameApi, type GameApi, type SeatInfo } from "./supabaseClient";
+import type { SeatInfo } from "./supabaseClient";
+import type { GameBackend } from "./backend";
 import { dlog } from "./debug";
 
 export interface NetworkSnapshot {
@@ -27,8 +27,7 @@ export interface NetworkSnapshot {
 }
 
 export class NetworkTransport {
-  private api: GameApi;
-  private channel: RealtimeChannel | null = null;
+  private unsubscribe: (() => void) | null = null;
   private snap: NetworkSnapshot | null = null;
   private listeners = new Set<(s: NetworkSnapshot) => void>();
   private statusListeners = new Set<(live: boolean) => void>();
@@ -48,12 +47,10 @@ export class NetworkTransport {
   private static readonly POLL_MS = 4000;
 
   constructor(
-    private client: SupabaseClient,
+    private backend: GameBackend,
     readonly gameId: string,
     readonly seatToken: string,
-  ) {
-    this.api = makeGameApi(client);
-  }
+  ) {}
 
   getState(): GameState | null {
     return this.snap?.state ?? null;
@@ -97,7 +94,7 @@ export class NetworkTransport {
     }
     this.fetching = true;
     try {
-      const snap = await this.api.state(this.gameId, this.seatToken);
+      const snap = await this.backend.api.state(this.gameId, this.seatToken);
       // Ignore stale fetches that arrive out of order.
       if (snap.version >= this.lastVersion) {
         const changed = snap.version !== this.lastVersion;
@@ -120,38 +117,21 @@ export class NetworkTransport {
     }
   }
 
-  /** Begin syncing: initial fetch + Realtime change pings. */
+  /** Begin syncing: initial fetch + backend change subscription + safety poll. */
   async connect(): Promise<void> {
     await this.refresh();
-    // Unique topic per transport instance so multiple transports never collide
-    // on a shared client (each device normally has its own client anyway).
-    this.channel = this.client
-      .channel(`game:${this.gameId}:${Math.random().toString(36).slice(2, 8)}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "games",
-          filter: `id=eq.${this.gameId}`,
-        },
-        () => void this.refresh(),
-      )
-      .subscribe((status) => {
-        // Realtime connection health feeds the "reconnecting" indicator; the
-        // poll below keeps state fresh regardless of Realtime.
-        if (status === "SUBSCRIBED") {
-          this.setLink(true);
-          void this.refresh(); // catch up on anything missed while reconnecting
-        } else if (
-          status === "CHANNEL_ERROR" ||
-          status === "TIMED_OUT" ||
-          status === "CLOSED"
-        ) {
-          this.setLink(false);
-        }
-      });
-    // Safety-net poll in case a Realtime event is dropped.
+    // The backend's change subscription (Realtime on Supabase; possibly a no-op
+    // elsewhere). Push health feeds the "reconnecting" indicator; on (re)connect
+    // we refetch to catch anything missed.
+    this.unsubscribe = this.backend.subscribe(
+      this.gameId,
+      () => void this.refresh(),
+      (live) => {
+        this.setLink(live);
+        if (live) void this.refresh();
+      },
+    );
+    // Safety-net poll in case a change event is dropped (or push isn't offered).
     this.pollTimer = setInterval(
       () => void this.refresh(),
       NetworkTransport.POLL_MS,
@@ -161,7 +141,7 @@ export class NetworkTransport {
   async act(action: GameAction): Promise<void> {
     dlog("net", `act ${action.type}`);
     try {
-      await this.api.act(this.gameId, this.seatToken, action);
+      await this.backend.api.act(this.gameId, this.seatToken, action);
     } catch (e) {
       const msg = (e as Error).message;
       // A version conflict (concurrent/duplicate submit) is recoverable: the
@@ -183,8 +163,8 @@ export class NetworkTransport {
   destroy(): void {
     if (this.pollTimer) clearInterval(this.pollTimer);
     this.pollTimer = null;
-    if (this.channel) this.client.removeChannel(this.channel);
-    this.channel = null;
+    this.unsubscribe?.();
+    this.unsubscribe = null;
     this.listeners.clear();
     this.statusListeners.clear();
     this.snap = null;

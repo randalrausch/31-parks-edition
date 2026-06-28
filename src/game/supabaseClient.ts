@@ -9,6 +9,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { GameAction, NewGamePlayer } from "./actions";
 import type { GameOptions, GameState } from "./engine";
+import type { GameBackend } from "./backend";
 
 // Guarded so the module is import-safe outside Vite (e.g. Node tests), where
 // import.meta.env is undefined.
@@ -106,3 +107,48 @@ export function makeGameApi(client: SupabaseClient): GameApi {
 
 /** The app-wide game API (null when multiplayer isn't configured). */
 export const gameApi: GameApi | null = supabase ? makeGameApi(supabase) : null;
+
+/**
+ * Subscribe to a game's public row changes via Supabase Realtime. Maps the
+ * channel status to the link-health callback for the reconnecting indicator.
+ */
+function subscribeToGame(
+  client: SupabaseClient,
+  gameId: string,
+  onChange: () => void,
+  onStatus?: (live: boolean) => void,
+): () => void {
+  const channel = client
+    .channel(`game:${gameId}:${Math.random().toString(36).slice(2, 8)}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "games",
+        filter: `id=eq.${gameId}`,
+      },
+      () => onChange(),
+    )
+    .subscribe((status) => {
+      if (status === "SUBSCRIBED") onStatus?.(true);
+      else if (
+        status === "CHANNEL_ERROR" ||
+        status === "TIMED_OUT" ||
+        status === "CLOSED"
+      )
+        onStatus?.(false);
+    });
+  return () => void client.removeChannel(channel);
+}
+
+/** Supabase implementation of the swappable backend seam (see backend.ts). */
+export const supabaseBackend: GameBackend | null =
+  supabase && gameApi
+    ? {
+        name: "Supabase",
+        api: gameApi,
+        subscribe: (gameId, onChange, onStatus) =>
+          subscribeToGame(supabase!, gameId, onChange, onStatus),
+      }
+    : null;

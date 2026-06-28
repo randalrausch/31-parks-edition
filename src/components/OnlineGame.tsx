@@ -5,7 +5,7 @@
  */
 import { useState } from "react";
 import { useNetworkGame } from "../game/useNetworkGame";
-import { gameApi } from "../game/supabaseClient";
+import { activeBackend } from "../game/backend";
 import { elog } from "../game/debug";
 import type { OnlineSession } from "../game/onlineSession";
 import Lobby from "./Lobby";
@@ -27,7 +27,7 @@ export default function OnlineGame({
     setStarting(true);
     setStartError(null);
     try {
-      await gameApi?.start(session.gameId, session.seatToken);
+      await activeBackend?.api.start(session.gameId, session.seatToken);
       game.refresh(); // transition to the board without waiting for the ping
     } catch (e) {
       elog("net", "start failed", e);

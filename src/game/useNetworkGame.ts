@@ -5,7 +5,7 @@
  * local AI, deal animation, or pass-the-device cover here.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { supabase } from "./supabaseClient";
+import { activeBackend } from "./backend";
 import { NetworkTransport, type NetworkSnapshot } from "./networkTransport";
 import { elog } from "./debug";
 import type { GameAction } from "./actions";
@@ -68,13 +68,13 @@ export function useNetworkGame(
   }, []);
 
   useEffect(() => {
-    if (!supabase) {
+    if (!activeBackend) {
       setError("Multiplayer isn't configured for this site.");
       return;
     }
     setError(null);
     setConnected(true);
-    const t = new NetworkTransport(supabase, gameId, seatToken);
+    const t = new NetworkTransport(activeBackend, gameId, seatToken);
     ref.current = t;
     const unsub = t.subscribe(setSnap);
     const unsubStatus = t.onStatus(setConnected);

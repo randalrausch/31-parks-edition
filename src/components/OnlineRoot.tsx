@@ -7,7 +7,8 @@
  * session to localStorage so a reload drops you straight back into your seat.
  */
 import { useEffect, useState } from "react";
-import { gameApi, type CreateConfig } from "../game/supabaseClient";
+import type { CreateConfig } from "../game/supabaseClient";
+import { activeBackend } from "../game/backend";
 import { elog } from "../game/debug";
 import {
   type OnlineSession,
@@ -37,9 +38,9 @@ export default function OnlineRoot({
 
   // Create-intent: make the room on mount.
   useEffect(() => {
-    if (intent.type !== "create" || !gameApi) return;
+    if (intent.type !== "create" || !activeBackend) return;
     let cancelled = false;
-    gameApi
+    activeBackend.api
       .create(intent.config)
       .then((r) => {
         if (cancelled) return;

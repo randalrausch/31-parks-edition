@@ -3,7 +3,7 @@
  */
 import { useState } from "react";
 import Modal from "./Modal";
-import { gameApi } from "../game/supabaseClient";
+import { activeBackend } from "../game/backend";
 import { elog } from "../game/debug";
 import type { OnlineSession } from "../game/onlineSession";
 import "./JoinModal.css";
@@ -23,7 +23,7 @@ export default function JoinModal({
   const [error, setError] = useState<string | null>(null);
 
   const join = async () => {
-    if (!gameApi || busy) return;
+    if (!activeBackend || busy) return;
     const c = code.trim().toUpperCase();
     if (c.length < 4) {
       setError("Enter the room code.");
@@ -32,7 +32,7 @@ export default function JoinModal({
     setBusy(true);
     setError(null);
     try {
-      const r = await gameApi.join(c, name.trim() || "Player");
+      const r = await activeBackend.api.join(c, name.trim() || "Player");
       onJoined({
         gameId: r.gameId,
         seatToken: r.seatToken,

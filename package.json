@@ -4,6 +4,16 @@
   "version": "0.1.0",
   "type": "module",
   "description": "31: National Parks Edition — a vintage WPA-inspired card game prototype.",
+  "author": "Randy Rausch",
+  "license": "MIT",
+  "homepage": "https://github.com/randalrausch/31-parks-edition",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/randalrausch/31-parks-edition.git"
+  },
+  "bugs": {
+    "url": "https://github.com/randalrausch/31-parks-edition/issues"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
