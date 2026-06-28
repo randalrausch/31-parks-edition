@@ -101,6 +101,71 @@ automatic.
 - **Any static server / S3 / nginx:** upload `dist/` and configure a fallback to
   `/index.html` for unmatched paths.
 
+## Deploy commands (any machine)
+
+The repo ships portable npm scripts so you never need a special tool or this
+project's CI to deploy. They read configuration from the environment (and your
+local `supabase link` / `netlify link` state) — no IDs are hardcoded.
+
+| Command | What it does |
+|---------|--------------|
+| `npm run db:push` | Apply pending DB migrations to the linked Supabase project |
+| `npm run deploy:edge` | Re-bundle the engine and deploy the `game` Edge Function |
+| `npm run deploy:backend` | `db:push` then `deploy:edge` (the whole backend) |
+| `npm run deploy:web` | Build the site and upload the prebuilt `dist/` to Netlify |
+| `npm run deploy` | Backend **then** frontend — a full release, in the safe order |
+
+`deploy:web` and the Supabase commands shell out to `netlify-cli` / `supabase`
+via `npx`, so contributors who only run the game locally don't pay for those
+CLIs. To target a specific Netlify site without an interactive `netlify link`,
+set `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` in your environment.
+
+## Automated deploys (GitHub Actions)
+
+`.github/workflows/ci.yml` is a single CI/CD pipeline:
+
+- **Every push and PR:** type-check, tests, the edge-bundle sync check, and a
+  production build (the quality gate).
+- **Push to `main` only:** it then deploys — **backend first** (only when
+  `supabase/**` changed), then the frontend, then a smoke check.
+
+Two deliberate free-tier choices live in that workflow:
+
+- **The site is built in Actions and the prebuilt `dist/` is uploaded to
+  Netlify**, so Netlify spends **zero** of its 300 free build-minutes/month.
+  GitHub Actions minutes are free for public repos.
+- **The Supabase backend deploys only when `supabase/**` changed**, so a CSS
+  tweak doesn't redeploy the Edge Function or touch the database.
+
+### Deploy your own (one-time setup)
+
+1. Fork/clone the repo and create your own free **Supabase** project
+   (see [SUPABASE.md](SUPABASE.md)) and **Netlify** site.
+2. In your GitHub repo, add these under
+   **Settings → Secrets and variables → Actions → Secrets**:
+
+   | Secret | Where to get it |
+   |--------|-----------------|
+   | `NETLIFY_AUTH_TOKEN` | Netlify → User settings → Applications → **New access token** |
+   | `NETLIFY_SITE_ID` | Netlify → Site configuration → **Site ID** (API ID) |
+   | `SUPABASE_ACCESS_TOKEN` | Supabase → Account → **Access Tokens** |
+   | `SUPABASE_PROJECT_REF` | The `<ref>` in `https://<ref>.supabase.co` |
+   | `SUPABASE_DB_PASSWORD` | The database password you set when creating the project |
+   | `VITE_SUPABASE_URL` | `https://<ref>.supabase.co` (baked into the web build) |
+   | `VITE_SUPABASE_KEY` | Supabase → Project Settings → API → **publishable/anon** key |
+
+   Optionally add a **Variable** (not a secret) `SITE_URL` =
+   `https://your-site.netlify.app` to enable the post-deploy smoke check.
+
+3. Push to `main`. CI builds and deploys; subsequent pushes auto-deploy.
+
+> **Supabase free-tier caveat:** a free project is **paused after 7 days of
+> inactivity**. If your online demo stops working, un-pause it from the Supabase
+> dashboard (or upgrade). Solo and pass-and-play never depend on Supabase.
+
+> **Never put the `service_role` key in GitHub secrets used by the web build or
+> in any `VITE_` variable** — only the publishable/anon key is client-safe.
+
 ## PWA / install
 
 The build includes a web manifest, icons, and a service worker, so the deployed
@@ -114,7 +179,8 @@ The web app and the Supabase backend deploy independently. If you change shared
 game logic, redeploy the Edge Function too:
 
 ```bash
-npm run build:edge && supabase functions deploy game
+npm run deploy:edge      # re-bundles the engine + deploys the game function
 ```
 
-See [SUPABASE.md](SUPABASE.md).
+If automated deploys are set up (above), pushing a change under `supabase/**` to
+`main` does this for you. See [SUPABASE.md](SUPABASE.md).

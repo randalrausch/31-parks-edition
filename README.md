@@ -89,6 +89,14 @@ cross-device games.
 | `npm run test:watch` | Watch-mode tests |
 | `npm run typecheck` | Type-check only |
 | `npm run build:edge` | Re-bundle the shared engine for the Supabase Edge Function |
+| `npm run deploy:backend` | Push DB migrations + deploy the `game` Edge Function |
+| `npm run deploy:web` | Build and upload `dist/` to Netlify |
+| `npm run deploy` | Full release: backend then frontend (the safe order) |
+
+Pushing to `main` deploys automatically via GitHub Actions (build in CI, upload
+the prebuilt site so Netlify uses no build minutes; backend only when
+`supabase/**` changed). Setup and the "deploy your own" guide are in
+[docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Project structure
 

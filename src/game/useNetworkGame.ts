@@ -14,6 +14,8 @@ export interface NetworkGameApi {
   snap: NetworkSnapshot | null;
   /** Set if the game couldn't be loaded (e.g. a stale/expired session). */
   error: string | null;
+  /** False while we've lost the connection and are trying to resync. */
+  connected: boolean;
   /** A transient, dismissible message when a move couldn't be sent. */
   actionError: string | null;
   /** Clear the transient action error (e.g. when the user dismisses it). */
@@ -51,6 +53,7 @@ export function useNetworkGame(
   const [snap, setSnap] = useState<NetworkSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [connected, setConnected] = useState(true);
   const ref = useRef<NetworkTransport | null>(null);
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -70,16 +73,23 @@ export function useNetworkGame(
       return;
     }
     setError(null);
+    setConnected(true);
     const t = new NetworkTransport(supabase, gameId, seatToken);
     ref.current = t;
     const unsub = t.subscribe(setSnap);
+    const unsubStatus = t.onStatus(setConnected);
     // The initial connect fetch can reject (game gone / network) — surface it.
     t.connect().catch((e) => {
       elog("net", "connect failed", e);
       setError((e as Error)?.message || "Couldn't connect to the game.");
     });
+    // Resync immediately when the browser regains connectivity.
+    const onOnline = () => void t.refresh().catch(() => {});
+    window.addEventListener("online", onOnline);
     return () => {
+      window.removeEventListener("online", onOnline);
       unsub();
+      unsubStatus();
       t.destroy();
       ref.current = null;
       if (errorTimer.current) clearTimeout(errorTimer.current);
@@ -103,5 +113,14 @@ export function useNetworkGame(
     void ref.current?.refresh().catch((e) => elog("net", "refresh failed", e));
   }, []);
 
-  return { snap, error, actionError, clearActionError, act, nextDeal, refresh };
+  return {
+    snap,
+    error,
+    connected,
+    actionError,
+    clearActionError,
+    act,
+    nextDeal,
+    refresh,
+  };
 }

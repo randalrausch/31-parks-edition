@@ -31,6 +31,8 @@ export class NetworkTransport {
   private channel: RealtimeChannel | null = null;
   private snap: NetworkSnapshot | null = null;
   private listeners = new Set<(s: NetworkSnapshot) => void>();
+  private statusListeners = new Set<(live: boolean) => void>();
+  private linkLive = true;
   private lastVersion = -1;
   private fetching = false;
   private refetchQueued = false;
@@ -69,6 +71,19 @@ export class NetworkTransport {
     if (this.snap) for (const l of this.listeners) l(this.snap);
   }
 
+  /** Subscribe to link health (true = synced, false = trying to reconnect). */
+  onStatus(listener: (live: boolean) => void): () => void {
+    this.statusListeners.add(listener);
+    listener(this.linkLive); // prime with the current value
+    return () => this.statusListeners.delete(listener);
+  }
+  private setLink(live: boolean) {
+    if (this.linkLive === live) return;
+    this.linkLive = live;
+    dlog("net", `link ${live ? "live" : "lost"}`);
+    for (const l of this.statusListeners) l(live);
+  }
+
   /**
    * Fetch the latest redacted snapshot. Concurrent calls are coalesced, but a
    * refresh requested while one is in flight schedules exactly one more after it
@@ -91,8 +106,10 @@ export class NetworkTransport {
         this.emit();
         if (changed) dlog("net", `snapshot v${snap.version}`, snap.state.phase);
       }
+      this.setLink(true); // a successful fetch means we're synced
     } catch (e) {
       dlog("net", "refresh failed", (e as Error).message);
+      this.setLink(false); // couldn't reach the server — show "reconnecting"
       throw e;
     } finally {
       this.fetching = false;
@@ -120,7 +137,20 @@ export class NetworkTransport {
         },
         () => void this.refresh(),
       )
-      .subscribe();
+      .subscribe((status) => {
+        // Realtime connection health feeds the "reconnecting" indicator; the
+        // poll below keeps state fresh regardless of Realtime.
+        if (status === "SUBSCRIBED") {
+          this.setLink(true);
+          void this.refresh(); // catch up on anything missed while reconnecting
+        } else if (
+          status === "CHANNEL_ERROR" ||
+          status === "TIMED_OUT" ||
+          status === "CLOSED"
+        ) {
+          this.setLink(false);
+        }
+      });
     // Safety-net poll in case a Realtime event is dropped.
     this.pollTimer = setInterval(
       () => void this.refresh(),
@@ -156,6 +186,7 @@ export class NetworkTransport {
     if (this.channel) this.client.removeChannel(this.channel);
     this.channel = null;
     this.listeners.clear();
+    this.statusListeners.clear();
     this.snap = null;
   }
 }

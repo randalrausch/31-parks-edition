@@ -229,6 +229,13 @@ export default function OnlineGameBoard({
         </div>
       </div>
 
+      {!game.connected && (
+        <div className="board__reconnect" role="status">
+          <span className="board__reconnect-dot" aria-hidden="true" />
+          Reconnecting…
+        </div>
+      )}
+
       {game.actionError && (
         <div className="board__toast" role="alert">
           <span>{game.actionError}</span>

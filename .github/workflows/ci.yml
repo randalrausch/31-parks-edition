@@ -1,28 +1,115 @@
-name: CI
+name: CI/CD
+
+# Tests run on every push and PR. Deploys run only on push to main.
+#
+# The site is built HERE (in Actions, which is free for public repos) and the
+# prebuilt dist/ is uploaded to Netlify — so Netlify spends ZERO of its 300
+# free build-minutes/month. The Supabase backend deploys only when supabase/**
+# actually changed, and always BEFORE the frontend so the live UI never calls a
+# function or schema that isn't live yet.
+#
+# Required GitHub repo Secrets (Settings → Secrets and variables → Actions) for
+# deploys to work — see docs/DEPLOY.md:
+#   NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID
+#   SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_REF, SUPABASE_DB_PASSWORD
+#   VITE_SUPABASE_URL, VITE_SUPABASE_KEY   (baked into the web build)
+# Optional repo Variable: SITE_URL (e.g. https://your-site.netlify.app) enables
+# the post-deploy smoke check.
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+# Don't cancel an in-flight deploy; let it finish before the next one starts.
+concurrency:
+  group: cicd-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
-  build-and-test:
+  ci-cd:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Did the backend (supabase/**) change?
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            backend:
+              - 'supabase/**'
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+
       - run: npm ci
+
+      # ---- Quality gate (runs for every push and PR) ----
       - name: Type-check
         run: npm run typecheck
+
       - name: Unit + fuzz tests
         run: npm test
-      - name: Production build
-        run: npm run build
+
       - name: Edge bundle is in sync with the engine source
         run: |
           npm run build:edge
           git diff --exit-code supabase/functions/_shared/engine.mjs \
             || (echo "::error::supabase/functions/_shared/engine.mjs is stale. Run 'npm run build:edge' and commit the result." && exit 1)
+
+      - name: Production build
+        run: npm run build
+        env:
+          # Baked into the bundle at build time. Absent on fork PRs → online
+          # buttons hide and solo/pass-and-play still work.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_KEY }}
+
+      # ---- Deploy (only on push to main) ----
+      # Backend first, and only when supabase/** changed.
+      - name: Install Supabase CLI
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.changes.outputs.backend == 'true' }}
+        uses: supabase/setup-cli@v2
+        with:
+          version: latest
+
+      - name: Deploy Supabase backend (migrations + game function)
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.changes.outputs.backend == 'true' }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          supabase link --project-ref "$SUPABASE_PROJECT_REF"
+          supabase db push
+          supabase functions deploy game
+
+      - name: Deploy site to Netlify (prebuilt — no Netlify build minutes)
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: npx --yes netlify-cli deploy --prod --dir=dist --message "CI deploy ${{ github.sha }}"
+
+      # ---- Verify the live site serves exactly what we built ----
+      - name: Smoke check (live bundle matches build)
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.SITE_URL != '' }}
+        run: |
+          BUILT=$(grep -o 'assets/index-[^"]*\.js' dist/index.html | head -1)
+          for i in 1 2 3 4 5; do
+            LIVE=$(curl -s "${{ vars.SITE_URL }}/?cb=$i" -H 'Cache-Control: no-cache' | grep -o 'assets/index-[^"]*\.js' | head -1)
+            [ "$BUILT" = "$LIVE" ] && break
+            sleep 5
+          done
+          echo "built: $BUILT"
+          echo "live : $LIVE"
+          if [ "$BUILT" != "$LIVE" ]; then
+            echo "::warning::Live bundle ($LIVE) does not match build ($BUILT) — likely CDN propagation lag; re-check in a minute."
+          fi

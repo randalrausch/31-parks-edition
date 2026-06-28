@@ -709,3 +709,42 @@
     animation: none;
   }
 }
+
+/* ── Reconnecting indicator (online) ── */
+.board__reconnect {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(40, 28, 8, 0.95);
+  border: 1px solid var(--gold, #d6a84f);
+  border-radius: 999px;
+  color: var(--cream, #f4e3b2);
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.68rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+.board__reconnect-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ember, #c9571c);
+  animation: reconnect-pulse 1s ease-in-out infinite;
+}
+@keyframes reconnect-pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .board__reconnect-dot {
+    animation: none;
+  }
+}
