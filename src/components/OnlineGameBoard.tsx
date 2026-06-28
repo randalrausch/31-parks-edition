@@ -90,9 +90,18 @@ export default function OnlineGameBoard({
   }
 
   const me = viewer >= 0 ? s.players[viewer] : null;
-  const opponents = s.players
-    .map((p, i) => ({ p, i }))
-    .filter((x) => x.i !== viewer && isAlive(x.p));
+  // Order opponents clockwise from THIS player's seat: turn order is ascending
+  // seat index (wrapping), so the player who acts next (to your left) shows
+  // first and the player just before you shows last — the same table everyone
+  // shares, rotated to each viewer's perspective.
+  const seatCount = s.players.length;
+  const start = viewer >= 0 ? viewer : 0;
+  const opponents: { p: (typeof s.players)[number]; i: number }[] = [];
+  for (let k = 1; k <= seatCount; k++) {
+    const i = (start + k) % seatCount;
+    if (i === viewer) continue; // skip yourself
+    if (isAlive(s.players[i])) opponents.push({ p: s.players[i], i });
+  }
   const aliveCount = s.players.filter(isAlive).length;
   const current = s.players[s.cur];
   // While opponents are being replayed, lock controls and show the stepped
