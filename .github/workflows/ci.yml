@@ -81,6 +81,12 @@ jobs:
           npm run api:test
           npm run api:build
 
+      # Real-browser E2E against the build just produced (solo-only — no secrets).
+      - name: Install Chrome for E2E
+        run: npx playwright install --with-deps chrome
+      - name: E2E tests (Playwright)
+        run: npx playwright test
+
       # ---- Deploy (only on push to main) ----
       # Backend first, and only when supabase/** changed.
       - name: Install Supabase CLI
