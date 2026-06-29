@@ -34,17 +34,17 @@ jobs:
   ci-cd:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Did the backend (supabase/**) change?
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         id: changes
         with:
           filters: |
             backend:
               - 'supabase/**'
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
           cache: npm
@@ -71,6 +71,15 @@ jobs:
           # buttons hide and solo/pass-and-play still work.
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_KEY }}
+
+      # Azure Functions backend (api/) — type-checked, unit-tested, and bundled on
+      # every push/PR. Table Storage integration tests self-skip without Azurite.
+      - name: API quality gate
+        run: |
+          npm run api:install
+          npm run api:typecheck
+          npm run api:test
+          npm run api:build
 
       # Real-browser E2E against the build just produced (solo-only — no secrets).
       - name: Install Chrome for E2E

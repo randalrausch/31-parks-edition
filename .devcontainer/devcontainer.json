@@ -1,0 +1,21 @@
+{
+  "name": "31 National Parks Edition",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:20",
+  "features": {
+    "ghcr.io/devcontainers/features/azure-cli:1": {},
+    "ghcr.io/azure/azure-dev/azd:0": {}
+  },
+  "postCreateCommand": "npm ci && npm run api:install && npm i -g azure-functions-core-tools@4 @azure/static-web-apps-cli",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-azurefunctions",
+        "ms-azuretools.vscode-bicep"
+      ]
+    }
+  },
+  "forwardPorts": [5173, 7071, 4280, 10002],
+  "remoteUser": "node"
+}

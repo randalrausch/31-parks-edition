@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": { "value": "${AZURE_ENV_NAME}" },
+    "location": { "value": "${AZURE_LOCATION}" },
+    "resourceGroupName": { "value": "${AZURE_RESOURCE_GROUP}" },
+
+    "customDomain": { "value": "" },
+    "budgetAlertEmail": { "value": "" },
+    "monthlyBudgetAmount": { "value": 10 },
+    "maxFunctionInstances": { "value": 5 },
+    "logAnalyticsDailyQuotaGb": { "value": 1 },
+    "maxGamesPerDay": { "value": 500 },
+    "maxGamesPerIpPerHour": { "value": 20 }
+  }
+}

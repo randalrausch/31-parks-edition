@@ -1,0 +1,68 @@
+name: Deploy (Azure)
+
+# OPTIONAL Azure deploy — additive to the Netlify/Supabase pipeline in ci.yml,
+# which is unchanged. This workflow no-ops unless you opt in by setting the repo
+# Variable DEPLOY_AZURE = "true" (Settings → Secrets and variables → Actions →
+# Variables). See docs/AZURE.md for the full setup.
+#
+# Required when enabled:
+#   Variables: DEPLOY_AZURE=true, VITE_API_BASE (your Function App URL + /api),
+#              AZURE_FUNCTIONAPP_NAME
+#   Secrets:   AZURE_STATIC_WEB_APPS_API_TOKEN, AZURE_FUNCTIONAPP_PUBLISH_PROFILE
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: azure-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ vars.DEPLOY_AZURE == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+
+      # ---- Quality gate (web + api) ----
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run api:install
+      - run: npm run api:typecheck
+      - run: npm run api:test
+      - run: npm run api:build
+
+      # ---- Build the SPA pointed at the Azure Function ----
+      - name: Build web (VITE_API_BASE -> Azure Functions)
+        run: npm run build
+        env:
+          VITE_API_BASE: ${{ vars.VITE_API_BASE }}
+
+      # ---- Deploy backend first (so the live UI never calls a missing API) ----
+      - name: Deploy Function App
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
+          package: api
+          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+
+      # ---- Deploy the prebuilt static site to Static Web Apps ----
+      - name: Deploy Static Web App
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: dist
+          api_location: ""
+          output_location: ""
+          skip_app_build: true
