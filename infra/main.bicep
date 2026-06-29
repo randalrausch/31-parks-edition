@@ -1,23 +1,55 @@
 // Subscription-scoped entry point for `azd up`. Creates the resource group and
-// deploys the 31: National Parks Edition Azure backend into it: a standalone
-// Azure Functions app (Consumption) reached cross-origin from a Static Web App,
-// backed by Table Storage via managed identity, with Application Insights.
+// deploys the 31: National Parks Edition Azure backend into it.
+//
+// CONFIG: edit infra/main.parameters.json to set the resource group name, custom
+// domain, monthly budget, and the cost/abuse caps. The subscription + location +
+// environment name come from azd (see docs/AZURE.md → Configuration).
 targetScope = 'subscription'
 
 @minLength(1)
 @maxLength(64)
-@description('Environment name (azd) — used to name the resource group + derive a unique token.')
+@description('Environment name (azd) — used to derive a unique resource token.')
 param environmentName string
 
 @minLength(1)
 @description('Primary location for all resources (e.g. centralus).')
 param location string
 
+@description('Resource group name. Empty = rg-<environmentName>.')
+param resourceGroupName string = ''
+
+@description('Optional custom subdomain for the site (e.g. play.example.com). A DNS CNAME to the Static Web App default hostname must exist BEFORE this validates. Empty = none.')
+param customDomain string = ''
+
+@description('Monthly cost budget in your billing currency. 0 disables the budget.')
+@minValue(0)
+param monthlyBudgetAmount int = 10
+
+@description('Email for budget alerts. Required (non-empty) for the budget to be created.')
+param budgetAlertEmail string = ''
+
+@description('Max concurrent Function instances — caps peak burn rate under load.')
+@minValue(1)
+@maxValue(200)
+param maxFunctionInstances int = 5
+
+@description('Daily Log Analytics ingestion cap (GB) — caps telemetry cost. -1 = unlimited.')
+param logAnalyticsDailyQuotaGb int = 1
+
+@description('Hard ceiling on games created per day (global abuse/cost guard).')
+@minValue(1)
+param maxGamesPerDay int = 500
+
+@description('Max games a single IP may create per hour.')
+@minValue(1)
+param maxGamesPerIpPerHour int = 20
+
+var rgName = empty(resourceGroupName) ? 'rg-${environmentName}' : resourceGroupName
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 var tags = { 'azd-env-name': environmentName }
 
 resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
-  name: 'rg-${environmentName}'
+  name: rgName
   location: location
   tags: tags
 }
@@ -29,10 +61,16 @@ module resources 'resources.bicep' = {
     location: location
     resourceToken: resourceToken
     tags: tags
+    customDomain: customDomain
+    monthlyBudgetAmount: monthlyBudgetAmount
+    budgetAlertEmail: budgetAlertEmail
+    maxFunctionInstances: maxFunctionInstances
+    logAnalyticsDailyQuotaGb: logAnalyticsDailyQuotaGb
+    maxGamesPerDay: maxGamesPerDay
+    maxGamesPerIpPerHour: maxGamesPerIpPerHour
   }
 }
 
-// Surfaced as azd env vars + used to wire the web build's VITE_API_BASE.
 output AZURE_LOCATION string = location
 output RESOURCE_GROUP string = rg.name
 output API_BASE_URL string = resources.outputs.apiBaseUrl

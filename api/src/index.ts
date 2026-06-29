@@ -17,12 +17,13 @@ import {
 import { makeTableStore } from "./game/tableStore.js";
 import { makeRouter } from "./router.js";
 import { sweep } from "./game/cleanup.js";
+import { makeTableRateLimiter } from "./game/rateLimit.js";
 import { initTelemetry } from "./telemetry.js";
 
 initTelemetry();
 
 const store = makeTableStore();
-const route = makeRouter(store);
+const route = makeRouter(store, { rateLimiter: makeTableRateLimiter() });
 
 const clientIp = (req: HttpRequest): string =>
   req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";

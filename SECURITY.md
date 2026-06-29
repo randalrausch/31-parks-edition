@@ -22,9 +22,14 @@ threats we design against, and how:
 - **Guessing game codes.** Join codes are 5 chars from a 32-symbol alphabet
   (no I/O/0/1) drawn from a CSPRNG (~33.5M combinations). Combined with the
   create-rate cap and the 14-day game TTL, the window for brute force is small.
-- **Floods / abuse.** Anonymous endpoints are rate-limited (a per-instance limiter
-  caps requests and tightens on `create`). Abandoned games expire after 14 days
-  and are reaped, bounding storage growth.
+- **Floods / abuse / cost-runaway.** Anonymous endpoints are defended in layers so
+  no attack, bug, or spike can drive up a cloud bill: a cheap per-instance limiter,
+  plus **durable Table-Storage-backed caps shared across all instances** — a
+  per-IP/hour cap and a **global games-per-day ceiling** (both configurable). On
+  Azure the **Function scale-out is capped** (`maxFunctionInstances`) so it can't
+  fan out to hundreds of instances, telemetry ingestion has a **daily cap**, and a
+  **monthly Budget alert** is available. Abandoned games expire after 14 days and
+  are reaped, bounding storage growth. See `docs/AZURE.md → Cost protection`.
 - **Backend data access.** On Azure, game data in Table Storage is reached via the
   Function App's **managed identity** (no data connection string). On Supabase,
   the secret table is service-role only (RLS denies anon access). The browser only

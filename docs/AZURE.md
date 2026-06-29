@@ -51,6 +51,51 @@ SPA pointed at your new Function URL. When it finishes it prints the site URL.
 
 Tear it all down with **`azd down`**.
 
+## Configuration
+
+There are two places to configure a deployment:
+
+**1. azd environment** (subscription, region, resource group, env name). azd stores
+these in `.azure/<env-name>/.env` (gitignored). Set them before/with `azd up`:
+
+```bash
+azd env new prod                              # creates the env
+azd env set AZURE_SUBSCRIPTION_ID <sub-guid>  # which subscription to bill/deploy to
+azd env set AZURE_LOCATION centralus          # region
+azd env set AZURE_RESOURCE_GROUP rg-31-parks  # custom RG name (optional; default rg-<env>)
+azd up
+```
+
+`azd up` also prompts for subscription + region interactively the first time, so
+these are optional overrides.
+
+**2. `infra/main.parameters.json`** — the human-editable knobs for the deployment.
+Edit the values and re-run `azd up` (or `azd provision`):
+
+| Parameter | Default | What it does |
+|-----------|---------|--------------|
+| `customDomain` | `""` | A subdomain to bind (e.g. `play.example.com`). See "Custom domain" below. |
+| `budgetAlertEmail` | `""` | Email for budget alerts. **The budget is only created if this is set.** |
+| `monthlyBudgetAmount` | `10` | Monthly budget in your billing currency. `0` disables it. |
+| `maxFunctionInstances` | `5` | Hard cap on Function scale-out (bounds peak cost). |
+| `logAnalyticsDailyQuotaGb` | `1` | Daily telemetry ingestion cap in GB (`-1` = unlimited). |
+| `maxGamesPerDay` | `500` | Global hard ceiling on games created per day. |
+| `maxGamesPerIpPerHour` | `20` | Per-IP create cap per hour. |
+
+`environmentName`, `location`, and `resourceGroupName` are filled from the azd
+environment above — leave those as-is.
+
+### Custom domain
+
+Static Web Apps issues free TLS for custom domains, but DNS must point at it first:
+
+1. Deploy once (`azd up`) and note the SWA default hostname (`azd env get-values`).
+2. At your DNS provider add a **CNAME** from your subdomain (e.g. `play`) to that
+   hostname.
+3. Set `customDomain` in `main.parameters.json` to the full subdomain and re-run
+   `azd provision`. (Apex/root domains use a TXT record — easiest via the Portal:
+   SWA → Custom domains → Add.)
+
 ## Run it locally (online, against the emulator)
 
 1. Create `api/local.settings.json` (gitignored):
@@ -98,12 +143,31 @@ Enable it under **Settings → Secrets and variables → Actions**:
 On push to `main` it builds web + api, deploys the Function App first, then the
 prebuilt static site.
 
-## Cost & free-tier reality
+## Cost protection (so an attack or bug can't run up a bill)
 
-At family scale this is effectively **$0**: Static Web Apps Free, Functions
-Consumption (1M free executions/month), Table Storage (pennies). The only thing
-that can surprise you is a runaway — so **set an Azure Budget alert**
-(Cost Management → Budgets) after `azd up`.
+At family scale this is effectively **$0**: Static Web Apps Free (no overage
+billing — it just caps), Functions Consumption (1M free executions/month), Table
+Storage (pennies). But a public, anonymous endpoint needs guards so abuse, a bug,
+or a traffic spike can't drive cost. Several layers, all configurable in
+`infra/main.parameters.json`:
+
+| Layer | Control | Bounds |
+|-------|---------|--------|
+| **Scale-out cap** | `maxFunctionInstances` (default 5) | Even under a flood the Function can't fan out to hundreds of instances — caps the *rate* of spend. |
+| **Global daily ceiling** | `maxGamesPerDay` (default 500) | A hard cap on total games created/day, enforced by a durable Table-Storage counter shared across instances. No distributed spam can exceed it. |
+| **Per-IP cap** | `maxGamesPerIpPerHour` (default 20) | Stops a single source flooding `create`. |
+| **Per-instance limiter** | built-in | Cheap first line (no storage round-trip) on every request. |
+| **Telemetry cap** | `logAnalyticsDailyQuotaGb` (default 1) | App Insights/Log Analytics ingestion can't run up cost. |
+| **Storage growth** | 14-day game TTL + daily reaper | Abandoned games are deleted; storage stays bounded. |
+| **Budget alert** | `monthlyBudgetAmount` + `budgetAlertEmail` | Emails you at 80% actual / 100% forecast of your monthly cap. |
+
+> **About the budget:** Azure budgets are an **alarm**, not a hard stop — Azure has
+> no true "switch off spending" toggle. The *enforcement* comes from the caps above
+> (they bound how much work the system will ever do); the budget gives you early
+> warning with plenty of headroom to react. To set it, put your email in
+> `budgetAlertEmail` and an amount in `monthlyBudgetAmount`, then `azd provision`.
+> For a true kill-switch, attach an Action Group → Automation runbook that stops
+> the Function App at 100% (advanced; see Azure Cost Management docs).
 
 After a long idle period the **first request cold-starts in a few seconds and
 auto-resumes** — there is no paused state to wake by hand. That is the whole

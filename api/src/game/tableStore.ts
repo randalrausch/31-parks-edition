@@ -36,7 +36,7 @@ function connString(): string | undefined {
     : undefined;
 }
 
-function tableClient(table: string): TableClient {
+export function tableClient(table: string): TableClient {
   const conn = connString();
   if (conn) {
     return TableClient.fromConnectionString(conn, table, {

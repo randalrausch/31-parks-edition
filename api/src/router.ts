@@ -13,6 +13,7 @@ import {
   type OpResult,
 } from "./game/handlers.js";
 import type { GameStore } from "./game/store.js";
+import type { RateLimiter } from "./game/rateLimit.js";
 
 export interface RawRequest {
   method: string;
@@ -35,9 +36,10 @@ const OPS: Record<string, (s: GameStore, body: any) => Promise<OpResult>> = {
 
 export function makeRouter(
   store: GameStore,
-  opts: { allowedOrigin?: string } = {},
+  opts: { allowedOrigin?: string; rateLimiter?: RateLimiter } = {},
 ) {
   const origin = opts.allowedOrigin ?? process.env.ALLOWED_ORIGIN ?? "*";
+  const rateLimiter = opts.rateLimiter;
   const cors = (): Record<string, string> => ({
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -82,11 +84,23 @@ export function makeRouter(
     const op = String(body?.op ?? "");
     if (op === "version") return reply(200, handleVersion().body);
 
-    if (op === "create" && limited(`create:${req.ip}`, 15, 600_000))
-      return reply(429, {
-        error:
-          "You're creating games too quickly — try again in a few minutes.",
-      });
+    if (op === "create") {
+      // Cheap per-instance first line, then the durable shared caps (per-IP/hour
+      // + global/day) that actually bound cost across all Function instances.
+      if (limited(`create:${req.ip}`, 15, 600_000))
+        return reply(429, {
+          error:
+            "You're creating games too quickly — try again in a few minutes.",
+        });
+      if (
+        rateLimiter &&
+        !(await rateLimiter.allowCreate(req.ip, new Date().toISOString()))
+      )
+        return reply(429, {
+          error:
+            "Too many games are being created right now — please try again later.",
+        });
+    }
 
     const fn = OPS[op];
     if (!fn) return reply(400, { error: "Unsupported request." });

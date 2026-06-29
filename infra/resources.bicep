@@ -1,15 +1,26 @@
 // All resources for the Azure backend, deployed into the resource group.
 //
-// Security posture: GAME DATA in Table Storage is accessed by the Function App's
+// Security: GAME DATA in Table Storage is accessed by the Function App's
 // system-assigned managed identity (Storage Table Data Contributor) — NO secret.
-// The Functions runtime store (AzureWebJobsStorage / content share) uses a
-// connection string, which is standard for the Consumption plan and holds no game
-// data. CORS is locked to the Static Web App origin.
+// The Functions runtime store uses a connection string (standard for Consumption;
+// holds no game data). CORS is locked to the Static Web App origin.
+//
+// Cost guards: a max scale-out cap, a Log Analytics daily ingestion cap, durable
+// rate-limit ceilings (passed to the app), and an optional monthly Budget alert.
 param location string
 param resourceToken string
 param tags object
+param customDomain string
+param monthlyBudgetAmount int
+param budgetAlertEmail string
+param maxFunctionInstances int
+param logAnalyticsDailyQuotaGb int
+param maxGamesPerDay int
+param maxGamesPerIpPerHour int
 
-// Storage Table Data Contributor (built-in role).
+@description('First of the current month — required start for the monthly budget.')
+param budgetStartDate string = utcNow('yyyy-MM-01')
+
 var tableDataContributorRoleId = '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
 
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
@@ -32,6 +43,10 @@ resource logs 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   properties: {
     sku: { name: 'PerGB2018' }
     retentionInDays: 30
+    // Cap telemetry ingestion so a flood can't run up Log Analytics cost.
+    workspaceCapping: {
+      dailyQuotaGb: logAnalyticsDailyQuotaGb
+    }
   }
 }
 
@@ -46,8 +61,6 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
-// Static Web App (Free) — hosts the static SPA. Declared first so the Function
-// App can lock CORS to its origin.
 resource swa 'Microsoft.Web/staticSites@2023-12-01' = {
   name: 'swa-${resourceToken}'
   location: location
@@ -61,10 +74,19 @@ resource swa 'Microsoft.Web/staticSites@2023-12-01' = {
   }
 }
 
+// Optional custom domain (subdomain via CNAME delegation). The DNS CNAME to the
+// SWA default hostname must already exist or provisioning will wait/fail.
+resource swaCustomDomain 'Microsoft.Web/staticSites/customDomains@2023-12-01' = if (!empty(customDomain)) {
+  parent: swa
+  name: customDomain
+  properties: {
+    validationMethod: 'cname-delegation'
+  }
+}
+
 var swaOrigin = 'https://${swa.properties.defaultHostname}'
 var storageConn = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};AccountKey=${storage.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
 
-// Consumption plan (Linux).
 resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: 'plan-${resourceToken}'
   location: location
@@ -89,6 +111,8 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
       linuxFxVersion: 'Node|20'
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
+      // Cap peak concurrency so a flood can't fan out to hundreds of instances.
+      functionAppScaleLimit: maxFunctionInstances
       cors: {
         allowedOrigins: [ swaOrigin ]
       }
@@ -100,16 +124,16 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING', value: storageConn }
         { name: 'WEBSITE_CONTENTSHARE', value: 'func-${resourceToken}' }
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
-        // Game data: managed identity, no secret.
         { name: 'STORAGE_ACCOUNT', value: storage.name }
-        // App-level CORS guard (defense in depth alongside platform CORS above).
         { name: 'ALLOWED_ORIGIN', value: swaOrigin }
+        // Durable abuse/cost caps (enforced by the app's rate limiter).
+        { name: 'MAX_GAMES_PER_DAY', value: string(maxGamesPerDay) }
+        { name: 'MAX_GAMES_PER_IP_PER_HOUR', value: string(maxGamesPerIpPerHour) }
       ]
     }
   }
 }
 
-// Let the Function App's identity read/write Tables — no connection string for game data.
 resource tableRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(storage.id, functionApp.id, tableDataContributorRoleId)
   scope: storage
@@ -117,6 +141,35 @@ resource tableRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     principalId: functionApp.identity.principalId
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', tableDataContributorRoleId)
     principalType: 'ServicePrincipal'
+  }
+}
+
+// Monthly cost budget with alerts (created only when an amount + email are set).
+resource budget 'Microsoft.Consumption/budgets@2023-11-01' = if (monthlyBudgetAmount > 0 && !empty(budgetAlertEmail)) {
+  name: 'budget-${resourceToken}'
+  properties: {
+    category: 'Cost'
+    amount: monthlyBudgetAmount
+    timeGrain: 'Monthly'
+    timePeriod: {
+      startDate: budgetStartDate
+    }
+    notifications: {
+      actual_80: {
+        enabled: true
+        operator: 'GreaterThanOrEqualTo'
+        threshold: 80
+        thresholdType: 'Actual'
+        contactEmails: [ budgetAlertEmail ]
+      }
+      forecast_100: {
+        enabled: true
+        operator: 'GreaterThanOrEqualTo'
+        threshold: 100
+        thresholdType: 'Forecasted'
+        contactEmails: [ budgetAlertEmail ]
+      }
+    }
   }
 }
 
