@@ -28,7 +28,7 @@ const TARGET_VOLUME = 0.4;
 
 export function useAmbientAudio(themeId: string, enabled: boolean) {
   const elRef = useRef<HTMLAudioElement | null>(null);
-  const fadeRef = useRef<ReturnType<typeof setInterval>>();
+  const fadeRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   useEffect(() => {
     const url = audioFor(themeId);

@@ -48,7 +48,7 @@ function HeroLayer({
 export default function HeroBackground({ themeId }: { themeId: string }) {
   const [cur, setCur] = useState(themeId);
   const [prev, setPrev] = useState<string | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (themeId === cur) return;
