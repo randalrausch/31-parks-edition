@@ -1,12 +1,14 @@
 name: CI/CD
 
-# Tests run on every push and PR. Deploys run only on push to main.
+# Tests run on every push and PR. Deploys run on push to main, or on a manual
+# "Run workflow" (workflow_dispatch) against main — handy to redeploy the
+# current main without a new commit (e.g. after adding deploy secrets).
 #
 # The site is built HERE (in Actions, which is free for public repos) and the
 # prebuilt dist/ is uploaded to Netlify — so Netlify spends ZERO of its 300
-# free build-minutes/month. The Supabase backend deploys only when supabase/**
-# actually changed, and always BEFORE the frontend so the live UI never calls a
-# function or schema that isn't live yet.
+# free build-minutes/month. The Supabase backend deploys when supabase/**
+# actually changed (or always, on a manual dispatch), and always BEFORE the
+# frontend so the live UI never calls a function or schema that isn't live yet.
 #
 # Required GitHub repo Secrets (Settings → Secrets and variables → Actions) for
 # deploys to work — see docs/DEPLOY.md:
@@ -92,15 +94,17 @@ jobs:
         run: npx playwright test
 
       # ---- Deploy (only on push to main) ----
-      # Backend first, and only when supabase/** changed.
+      # Backend first, and only when supabase/** changed — but a manual
+      # "Run workflow" (workflow_dispatch) forces a backend deploy regardless,
+      # so the function can be redeployed without a fake supabase/** commit.
       - name: Install Supabase CLI
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.changes.outputs.backend == 'true' }}
+        if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && steps.changes.outputs.backend == 'true')) }}
         uses: supabase/setup-cli@v2
         with:
           version: latest
 
       - name: Deploy Supabase backend (migrations + game function)
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.changes.outputs.backend == 'true' }}
+        if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && steps.changes.outputs.backend == 'true')) }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -111,7 +115,7 @@ jobs:
           supabase functions deploy game
 
       - name: Deploy site to Netlify (prebuilt — no Netlify build minutes)
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
@@ -119,7 +123,7 @@ jobs:
 
       # ---- Verify the live site serves exactly what we built ----
       - name: Smoke check (live bundle matches build)
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.SITE_URL != '' }}
+        if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.SITE_URL != '' }}
         run: |
           BUILT=$(grep -o 'assets/index-[^"]*\.js' dist/index.html | head -1)
           for i in 1 2 3 4 5; do
