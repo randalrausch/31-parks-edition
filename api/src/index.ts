@@ -36,6 +36,7 @@ app.http("game", {
     const res = await route({
       method: req.method,
       ip: clientIp(req),
+      origin: req.headers.get("origin") ?? undefined,
       readJson: () => req.json(),
     });
     return { status: res.status, headers: res.headers, jsonBody: res.body };
