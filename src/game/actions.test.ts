@@ -100,9 +100,17 @@ describe("turn actions", () => {
   });
 
   it("discard returns to a 3-card hand and passes the turn", () => {
-    const s = applyAction(createGameState(aiPlayers(2), DEFAULT_OPTIONS), {
+    // A natural (dealt) 31 resolves the deal instantly (phase → dealEnd), so
+    // there'd be no draw/discard to make — re-deal until we get a normal
+    // in-play hand. Rare (~0.2%), so this almost always runs once.
+    let s = applyAction(createGameState(aiPlayers(2), DEFAULT_OPTIONS), {
       type: "deal",
     });
+    while (s.phase !== "drawing") {
+      s = applyAction(createGameState(aiPlayers(2), DEFAULT_OPTIONS), {
+        type: "deal",
+      });
+    }
     const cur = s.cur;
     const drew = applyAction(s, { type: "drawDeck" });
     // Pin the hand to known low cards so the post-discard 3-card hand can never
