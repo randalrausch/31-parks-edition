@@ -15,7 +15,7 @@ param environmentName string
 @description('Primary location for all resources (e.g. centralus).')
 param location string
 
-@description('Resource group name. Empty = rg-<environmentName>.')
+@description('Resource group name. Empty = rg-31-parks-edition-<environmentName>.')
 param resourceGroupName string = ''
 
 @description('Optional custom subdomain for the site (e.g. play.example.com). A DNS CNAME to the Static Web App default hostname must exist BEFORE this validates. Empty = none.')
@@ -44,9 +44,18 @@ param maxGamesPerDay int = 500
 @minValue(1)
 param maxGamesPerIpPerHour int = 20
 
-var rgName = empty(resourceGroupName) ? 'rg-${environmentName}' : resourceGroupName
+var rgName = empty(resourceGroupName) ? 'rg-31-parks-edition-${environmentName}' : resourceGroupName
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
-var tags = { 'azd-env-name': environmentName }
+// Applied to the resource group and every resource (resources.bicep threads
+// `tags` through), so the whole stack is identifiable in the portal. The
+// `azd-env-name` tag is required by azd — don't remove it.
+var tags = {
+  'azd-env-name': environmentName
+  project: '31-parks-edition'
+  app: '31: National Parks Edition'
+  'managed-by': 'azd'
+  repo: 'https://github.com/randalrausch/31-parks-edition'
+}
 
 resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: rgName
