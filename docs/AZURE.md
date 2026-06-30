@@ -151,19 +151,25 @@ incremental deploys won't disturb a Portal-added domain).
    | Type | Name | Content / Target | Proxy / notes |
    |------|------|------------------|---------------|
    | **TXT** | *(exactly what Azure shows — for an apex it's `@`)* | *(the code Azure shows)* | ownership validation |
-   | **CNAME** | `@` (root) | `<swa-host>.azurestaticapps.net` | routing — **must be DNS-only, not proxied** |
+   | **CNAME** | `@` (root) | `<swa-host>.azurestaticapps.net` | routing — **DNS-only recommended** (see note) |
 
 3. Back in Azure, click **Validate / Add**. Azure verifies the TXT, then issues
    the TLS cert (a few minutes). `https://play31.fun` then serves directly.
 
-> **Cloudflare specifics.** Cloudflare automatically **flattens** a root (`@`)
-> CNAME into A records — exactly what an apex needs, so the table above works
-> as-is. Keep the CNAME on **“DNS only” (grey cloud), not “Proxied” (orange)**:
-> grey cloud means Cloudflare only answers DNS while **Azure serves the site and
-> terminates TLS**, so nothing extra sits in front of your domain. Orange cloud
-> would put Cloudflare's CDN/TLS in front (double-CDN, and you'd then have to
-> manage Cloudflare's SSL/TLS mode). Because it's DNS-only, Cloudflare's SSL/TLS
-> settings don't apply here at all. (TXT records are always DNS-only.)
+> **What gives you the bare apex URL:** adding **`play31.fun`** (not
+> `www.play31.fun` or any prefix) in step 1 is the only thing that determines the
+> URL has no word in front. The Cloudflare proxy choice below does **not** change
+> the URL — `https://play31.fun` either way.
+>
+> **Cloudflare proxy (grey vs orange).** Cloudflare automatically **flattens** a
+> root (`@`) CNAME into A records — exactly what an apex needs, so the table works
+> as-is. For that CNAME, **“DNS only” (grey cloud) is recommended** — not to
+> change the URL, but for reliability: Azure issues and serves its own managed TLS
+> cert, and that auto-issuance often gets stuck while the record is **“Proxied”
+> (orange)** because Cloudflare intercepts Azure's validation. You *can* run it
+> proxied to put Cloudflare's CDN/DDoS in front — then set Cloudflare **SSL/TLS to
+> “Full”** and expect some cert-issuance fiddling. If unsure, use grey cloud.
+> (TXT records are always DNS-only.)
 
 ## Run it locally (online, against the emulator)
 
