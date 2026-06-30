@@ -22,6 +22,11 @@ The SPA calls the Function cross-origin at `${VITE_API_BASE}/game`. Game state
 rows (public + secret) share one partition and commit atomically (ETag batch).
 Abandoned games are reaped by a daily timer (14-day expiry).
 
+The resource group (`rg-31-parks-edition-<env>` by default) and every resource
+are tagged so the stack is easy to spot and filter in the portal:
+`project=31-parks-edition`, `app=31: National Parks Edition`, `managed-by=azd`,
+`repo=<github url>`, plus azd's own `azd-env-name`.
+
 ## Prerequisites
 
 - **Node 20+**
@@ -86,7 +91,7 @@ the real values never touch a tracked file:
 |----------|--------------|
 | `AZURE_SUBSCRIPTION_ID` | Which subscription to bill/deploy to (or pick at the `azd up` prompt). |
 | `AZURE_LOCATION` | Region, e.g. `centralus`. |
-| `AZURE_RESOURCE_GROUP` | Custom resource-group name (optional; default `rg-<env>`). |
+| `AZURE_RESOURCE_GROUP` | Custom resource-group name (optional; default `rg-31-parks-edition-<env>`). |
 | `BUDGET_ALERT_EMAIL` | Email for budget alerts. **The budget is only created if this is set.** |
 | `CUSTOM_DOMAIN` | A subdomain to bind (e.g. `play.example.com`). See "Custom domain" below. |
 
