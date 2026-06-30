@@ -41,6 +41,25 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
   const { theme } = useTheme();
   const [helpOpen, setHelpOpen] = useState(false);
   const [parksOpen, setParksOpen] = useState(false);
+  // Whether the live action feed is shown on the table. Defaults to on, and
+  // the choice is remembered across turns and games.
+  const [logOpen, setLogOpen] = useState(() => {
+    try {
+      return localStorage.getItem("parks31.log") !== "0";
+    } catch {
+      return true;
+    }
+  });
+  const toggleLog = () =>
+    setLogOpen((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem("parks31.log", next ? "1" : "0");
+      } catch {
+        /* storage unavailable — keep the in-memory choice */
+      }
+      return next;
+    });
   const s = game.state;
   if (!s) return null;
 
@@ -70,13 +89,33 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
         <ParkScene theme={theme} className="board__scene" />
         <div className="board__vignette" />
 
-        {/* Live public-action feed (what everyone at the table can see) */}
-        {s.log.length > 0 && (
-          <div className="board__log">
-            <span className="board__log-title">At the Table</span>
-            <LogFeed entries={s.log} limit={5} newestFirst />
-          </div>
-        )}
+        {/* Live public-action feed (what everyone at the table can see).
+            Optional — players can hide it; the choice is remembered. */}
+        {s.log.length > 0 &&
+          (logOpen ? (
+            <div className="board__log">
+              <div className="board__log-head">
+                <span className="board__log-title">At the Table</span>
+                <button
+                  type="button"
+                  className="board__log-toggle"
+                  onClick={toggleLog}
+                  aria-label="Hide the action log"
+                >
+                  Hide
+                </button>
+              </div>
+              <LogFeed entries={s.log} limit={5} newestFirst />
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="board__log-show"
+              onClick={toggleLog}
+            >
+              Show log
+            </button>
+          ))}
 
         <BoardBadge />
         <BoardWordmark />

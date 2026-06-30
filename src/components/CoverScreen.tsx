@@ -20,6 +20,10 @@ export default function CoverScreen({
   onReady: () => void;
 }) {
   const Art = AVATAR_ART[avatarKey] ?? MountainAvatar;
+  // Only the most recent lap of the table — the actions taken since this player
+  // last looked — newest card on top so it reads at a glance.
+  const lastRound = log.reduce((m, e) => Math.max(m, e.round), 0);
+  const recent = log.filter((e) => e.round === lastRound);
   return (
     <div className="cover">
       <div className="cover__inner">
@@ -31,11 +35,10 @@ export default function CoverScreen({
         <p className="cover__hint">Cards are hidden until you're ready.</p>
 
         <div className="cover__report">
-          <span className="cover__report-title">
-            At the table since the deal
-          </span>
+          <span className="cover__report-title">This round so far</span>
           <LogFeed
-            entries={log}
+            entries={recent}
+            newestFirst
             emptyText="The cards have just been dealt — you're up first."
           />
         </div>
