@@ -30,6 +30,7 @@ const ROUNDS_TOP = 206;
 const ROUNDS_H = 46;
 const H = 282;
 
+const Y_MIN = 10;
 const Y_MAX = 31;
 
 export default function ScoreChart({
@@ -48,14 +49,15 @@ export default function ScoreChart({
 
   const scoreBottom = SCORE_TOP + SCORE_H;
   const yScore = (v: number) =>
-    scoreBottom - (Math.min(v, Y_MAX) / Y_MAX) * SCORE_H;
+    scoreBottom -
+    ((Math.min(Math.max(v, Y_MIN), Y_MAX) - Y_MIN) / (Y_MAX - Y_MIN)) * SCORE_H;
 
   const roundsBottom = ROUNDS_TOP + ROUNDS_H;
   const roundsMax = Math.max(...history.map((h) => h.rounds), 1);
   const yRounds = (v: number) => roundsBottom - (v / roundsMax) * ROUNDS_H;
   const barW = Math.min(22, (innerW / history.length) * 0.55);
 
-  const scoreGrid = [0, 10, 20, 31];
+  const scoreGrid = [10, 17, 24, 31];
   const roundsGrid = Array.from(new Set([0, roundsMax]));
 
   return (
