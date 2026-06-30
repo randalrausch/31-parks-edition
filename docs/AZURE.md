@@ -93,7 +93,7 @@ the real values never touch a tracked file:
 | `AZURE_LOCATION` | Region, e.g. `centralus`. |
 | `AZURE_RESOURCE_GROUP` | Custom resource-group name (optional; default `rg-31-parks-edition-<env>`). |
 | `BUDGET_ALERT_EMAIL` | Email for budget alerts. **The budget is only created if this is set.** |
-| `CUSTOM_DOMAIN` | A **subdomain** to bind (e.g. `play.example.com`). Apex/root domains (e.g. `play31.fun`) are set up in the Portal instead — see "Custom domain" below. |
+| `CUSTOM_DOMAIN` | A **subdomain** to bind (e.g. `play.example.com`). Apex/root domains (e.g. `example.com`) are set up in the Portal instead — see "Custom domain" below. |
 
 ```bash
 azd env set BUDGET_ALERT_EMAIL you@example.com
@@ -118,7 +118,7 @@ above — leave those as-is.
 
 Static Web Apps issues a **free managed TLS certificate** once DNS points at it.
 The records differ for a **subdomain** (e.g. `play.example.com`) vs. an
-**apex/root** domain (e.g. `play31.fun`).
+**apex/root** domain (e.g. `example.com`).
 
 First, deploy once and grab your SWA default hostname — you'll point DNS at it:
 
@@ -136,7 +136,7 @@ azd env get-values | grep STATIC_WEB_APP_URL
    azd provision
    ```
 
-#### Apex / root domain (e.g. `play31.fun`) — do it in the Portal
+#### Apex / root domain (e.g. `example.com`) — do it in the Portal
 
 An apex can't be a plain CNAME, so it needs **two records** plus a TXT-token
 ownership handshake that Azure generates on the fly. Use the **Portal** and leave
@@ -144,7 +144,7 @@ ownership handshake that Azure generates on the fly. Use the **Portal** and leav
 incremental deploys won't disturb a Portal-added domain).
 
 1. **Azure Portal** → your Static Web App → **Custom domains** → **+ Add** →
-   **Custom domain on other DNS** → enter `play31.fun`. Azure shows a **TXT**
+   **Custom domain on other DNS** → enter `example.com`. Azure shows a **TXT**
    record (a name + a validation code). Leave the page open.
 2. **At your DNS provider** add **two** records:
 
@@ -154,12 +154,12 @@ incremental deploys won't disturb a Portal-added domain).
    | **CNAME** | `@` (root) | `<swa-host>.azurestaticapps.net` | routing — **DNS-only recommended** (see note) |
 
 3. Back in Azure, click **Validate / Add**. Azure verifies the TXT, then issues
-   the TLS cert (a few minutes). `https://play31.fun` then serves directly.
+   the TLS cert (a few minutes). `https://example.com` then serves directly.
 
-> **What gives you the bare apex URL:** adding **`play31.fun`** (not
-> `www.play31.fun` or any prefix) in step 1 is the only thing that determines the
+> **What gives you the bare apex URL:** adding **`example.com`** (not
+> `www.example.com` or any prefix) in step 1 is the only thing that determines the
 > URL has no word in front. The Cloudflare proxy choice below does **not** change
-> the URL — `https://play31.fun` either way.
+> the URL — `https://example.com` either way.
 >
 > **Cloudflare proxy (grey vs orange).** Cloudflare automatically **flattens** a
 > root (`@`) CNAME into A records — exactly what an apex needs, so the table works
