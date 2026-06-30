@@ -25,6 +25,11 @@ dist-ssr
 # TypeScript incremental build cache
 *.tsbuildinfo
 
+# Azure Developer CLI (azd) per-environment state — holds subscription ID,
+# region, and any `azd env set` values (budget email, custom domain, etc.).
+# Never commit this, especially on a public repo.
+.azure/
+
 # Local Azurite (Table Storage emulator) state
 .azurite/
 

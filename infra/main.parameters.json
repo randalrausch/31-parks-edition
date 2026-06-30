@@ -6,8 +6,8 @@
     "location": { "value": "${AZURE_LOCATION}" },
     "resourceGroupName": { "value": "${AZURE_RESOURCE_GROUP}" },
 
-    "customDomain": { "value": "" },
-    "budgetAlertEmail": { "value": "" },
+    "customDomain": { "value": "${CUSTOM_DOMAIN}" },
+    "budgetAlertEmail": { "value": "${BUDGET_ALERT_EMAIL}" },
     "monthlyBudgetAmount": { "value": 10 },
     "maxFunctionInstances": { "value": 5 },
     "logAnalyticsDailyQuotaGb": { "value": 1 },
