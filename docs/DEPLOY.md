@@ -129,6 +129,11 @@ backend instead, see [AZURE.md](AZURE.md).
 - **Push to `main` only:** it then deploys — **backend first** (only when
   `supabase/**` changed), then the frontend, then a smoke check.
 
+> **Deploying to Azure instead of Netlify/Supabase?** Set the repo Variable
+> `DEPLOY_AZURE=true`. That activates `.github/workflows/azure.yml` and disables
+> the Netlify/Supabase deploy steps here in one move (the tests still run). See
+> [AZURE.md](AZURE.md) for the full Azure setup.
+
 Two deliberate free-tier choices live in that workflow:
 
 - **The site is built in Actions and the prebuilt `dist/` is uploaded to

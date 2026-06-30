@@ -196,8 +196,8 @@ within the poll interval.
 
 ## Automated deploys (GitHub Actions)
 
-`.github/workflows/azure.yml` is **opt-in and additive** — it does nothing unless
-you enable it, so it never interferes with the Netlify/Supabase pipeline.
+`.github/workflows/azure.yml` is **opt-in** — it does nothing unless you enable
+it with the `DEPLOY_AZURE` Variable below.
 
 Enable it under **Settings → Secrets and variables → Actions**:
 
@@ -211,6 +211,14 @@ Enable it under **Settings → Secrets and variables → Actions**:
 
 On push to `main` it builds web + api, deploys the Function App first, then the
 prebuilt static site.
+
+> **`DEPLOY_AZURE=true` is a single switch.** Setting it both *activates* this
+> Azure workflow and *disables* the Netlify + Supabase deploy steps in
+> `ci.yml`, so the two pipelines never both ship the frontend. The `ci.yml`
+> tests/quality gate keep running on every push and PR regardless. To switch
+> back, set `DEPLOY_AZURE` to `false` (or delete the Variable). The Netlify and
+> Supabase **secrets** can be left in place — they're simply unused while Azure
+> is active.
 
 ## Cost protection (so an attack or bug can't run up a bill)
 
