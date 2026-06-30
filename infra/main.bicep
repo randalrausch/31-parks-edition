@@ -21,6 +21,9 @@ param resourceGroupName string = ''
 @description('Optional custom subdomain for the site (e.g. play.example.com). A DNS CNAME to the Static Web App default hostname must exist BEFORE this validates. Empty = none.')
 param customDomain string = ''
 
+@description('Extra CORS origins (comma-separated) the API should accept, e.g. an apex domain bound via the Portal. The SWA default host and any customDomain are always included.')
+param extraAllowedOrigins string = ''
+
 @description('Monthly cost budget in your billing currency. 0 disables the budget.')
 @minValue(0)
 param monthlyBudgetAmount int = 10
@@ -71,6 +74,7 @@ module resources 'resources.bicep' = {
     resourceToken: resourceToken
     tags: tags
     customDomain: customDomain
+    extraAllowedOrigins: extraAllowedOrigins
     monthlyBudgetAmount: monthlyBudgetAmount
     budgetAlertEmail: budgetAlertEmail
     maxFunctionInstances: maxFunctionInstances

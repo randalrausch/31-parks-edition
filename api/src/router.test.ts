@@ -33,6 +33,30 @@ describe("router", () => {
     expect((res.body as { provider: string }).provider).toBe("Azure");
   });
 
+  it("reflects the request origin when ALLOWED_ORIGIN lists several", async () => {
+    const route = makeRouter(makeMemoryStore(), {
+      allowedOrigin: "https://a.app, https://b.app",
+    });
+    const opt = (origin?: string): RawRequest => ({
+      method: "OPTIONS",
+      ip: "1.1.1.1",
+      origin,
+      readJson: async () => ({}),
+    });
+    // an allowed origin is echoed back verbatim
+    expect(
+      (await route(opt("https://b.app"))).headers[
+        "Access-Control-Allow-Origin"
+      ],
+    ).toBe("https://b.app");
+    // an origin not in the list falls back to the first (effectively denied)
+    expect(
+      (await route(opt("https://evil.app"))).headers[
+        "Access-Control-Allow-Origin"
+      ],
+    ).toBe("https://a.app");
+  });
+
   it("rejects unknown ops with 400", async () => {
     const route = makeRouter(makeMemoryStore());
     expect((await route(post({ op: "nope" }))).status).toBe(400);

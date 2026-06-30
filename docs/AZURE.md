@@ -94,6 +94,7 @@ the real values never touch a tracked file:
 | `AZURE_RESOURCE_GROUP` | Custom resource-group name (optional; default `rg-31-parks-edition-<env>`). |
 | `BUDGET_ALERT_EMAIL` | Email for budget alerts. **The budget is only created if this is set.** |
 | `CUSTOM_DOMAIN` | A **subdomain** to bind (e.g. `play.example.com`). Apex/root domains (e.g. `example.com`) are set up in the Portal instead — see "Custom domain" below. |
+| `ALLOWED_ORIGINS` | Extra CORS origins the API accepts (comma-separated), e.g. an apex domain bound via the Portal. The SWA default host and any `CUSTOM_DOMAIN` are included automatically. |
 
 ```bash
 azd env set BUDGET_ALERT_EMAIL you@example.com
@@ -155,6 +156,17 @@ incremental deploys won't disturb a Portal-added domain).
 
 3. Back in Azure, click **Validate / Add**. Azure verifies the TXT, then issues
    the TLS cert (a few minutes). `https://example.com` then serves directly.
+4. **Allow the new origin in the API (CORS).** The Function only accepts requests
+   from origins it's told about, so a Portal-bound apex must be added explicitly,
+   then re-provisioned:
+   ```bash
+   azd env set ALLOWED_ORIGINS https://example.com
+   azd provision
+   ```
+   Skip this and the site loads but online play fails with **"backend
+   Unreachable" / "Couldn't reach the game server"** — a CORS rejection. (A
+   *subdomain* bound via `CUSTOM_DOMAIN` is added to CORS automatically; only
+   Portal-managed apex domains need this.)
 
 > **What gives you the bare apex URL:** adding **`example.com`** (not
 > `www.example.com` or any prefix) in step 1 is the only thing that determines the

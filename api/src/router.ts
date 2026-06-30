@@ -18,6 +18,7 @@ import type { RateLimiter } from "./game/rateLimit.js";
 export interface RawRequest {
   method: string;
   ip: string;
+  origin?: string;
   readJson: () => Promise<unknown>;
 }
 export interface RawResponse {
@@ -38,19 +39,28 @@ export function makeRouter(
   store: GameStore,
   opts: { allowedOrigin?: string; rateLimiter?: RateLimiter } = {},
 ) {
-  const origin = opts.allowedOrigin ?? process.env.ALLOWED_ORIGIN ?? "*";
+  // ALLOWED_ORIGIN may be a comma-separated list (e.g. the Static Web App default
+  // host plus a custom domain). A single Access-Control-Allow-Origin can name
+  // only one origin, so reflect the request's Origin when it's in the list;
+  // "Vary: Origin" keeps that cacheable. "*" short-circuits to allow all, and an
+  // unlisted origin falls back to the first entry (effectively denied).
+  const allowed = (opts.allowedOrigin ?? process.env.ALLOWED_ORIGIN ?? "*")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+  const pickOrigin = (reqOrigin?: string): string =>
+    allowed.includes("*")
+      ? "*"
+      : reqOrigin && allowed.includes(reqOrigin)
+        ? reqOrigin
+        : (allowed[0] ?? "*");
   const rateLimiter = opts.rateLimiter;
-  const cors = (): Record<string, string> => ({
-    "Access-Control-Allow-Origin": origin,
+  const cors = (reqOrigin?: string): Record<string, string> => ({
+    "Access-Control-Allow-Origin": pickOrigin(reqOrigin),
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "content-type",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
-  });
-  const reply = (status: number, body: unknown): RawResponse => ({
-    status,
-    headers: { ...cors(), "Content-Type": "application/json" },
-    body,
   });
 
   const hits = new Map<string, { n: number; reset: number }>();
@@ -68,7 +78,13 @@ export function makeRouter(
   };
 
   return async function route(req: RawRequest): Promise<RawResponse> {
-    if (req.method === "OPTIONS") return { status: 204, headers: cors() };
+    const corsHeaders = cors(req.origin);
+    const reply = (status: number, body: unknown): RawResponse => ({
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      body,
+    });
+    if (req.method === "OPTIONS") return { status: 204, headers: corsHeaders };
     if (req.method !== "POST") return reply(405, { error: "POST only." });
 
     if (limited(req.ip, 90, 60_000))

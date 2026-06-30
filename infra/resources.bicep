@@ -11,6 +11,8 @@ param location string
 param resourceToken string
 param tags object
 param customDomain string
+@description('Extra CORS origins (comma-separated) the API should accept, e.g. an apex domain bound via the Portal. The SWA default host and any customDomain are always included.')
+param extraAllowedOrigins string = ''
 param monthlyBudgetAmount int
 param budgetAlertEmail string
 param maxFunctionInstances int
@@ -85,6 +87,15 @@ resource swaCustomDomain 'Microsoft.Web/staticSites/customDomains@2023-12-01' = 
 }
 
 var swaOrigin = 'https://${swa.properties.defaultHostname}'
+// Origins the API accepts (CORS): the SWA default host, a bound customDomain,
+// and any extra origins (e.g. an apex domain added via the Portal, which isn't
+// a Bicep-managed customDomain). union() dedupes.
+var allowedOrigins = union(
+  [ swaOrigin ],
+  empty(customDomain) ? [] : [ 'https://${customDomain}' ],
+  empty(extraAllowedOrigins) ? [] : split(extraAllowedOrigins, ',')
+)
+var allowedOriginsCsv = join(allowedOrigins, ',')
 var storageConn = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};AccountKey=${storage.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
 
 resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
@@ -114,7 +125,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
       // Cap peak concurrency so a flood can't fan out to hundreds of instances.
       functionAppScaleLimit: maxFunctionInstances
       cors: {
-        allowedOrigins: [ swaOrigin ]
+        allowedOrigins: allowedOrigins
       }
       appSettings: [
         { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
@@ -125,7 +136,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'WEBSITE_CONTENTSHARE', value: 'func-${resourceToken}' }
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
         { name: 'STORAGE_ACCOUNT', value: storage.name }
-        { name: 'ALLOWED_ORIGIN', value: swaOrigin }
+        { name: 'ALLOWED_ORIGIN', value: allowedOriginsCsv }
         // Durable abuse/cost caps (enforced by the app's rate limiter).
         { name: 'MAX_GAMES_PER_DAY', value: string(maxGamesPerDay) }
         { name: 'MAX_GAMES_PER_IP_PER_HOUR', value: string(maxGamesPerIpPerHour) }
