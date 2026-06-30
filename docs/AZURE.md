@@ -205,15 +205,26 @@ within the poll interval.
 `.github/workflows/azure.yml` is **opt-in** — it does nothing unless you enable
 it with the `DEPLOY_AZURE` Variable below.
 
-Enable it under **Settings → Secrets and variables → Actions**:
+**The easy way — after `azd up`, run:**
 
-| Kind | Name | Where to get it |
-|------|------|-----------------|
-| Variable | `DEPLOY_AZURE` | set to `true` |
-| Variable | `VITE_API_BASE` | `https://<your-func>.azurewebsites.net/api` (from `azd` output) |
-| Variable | `AZURE_FUNCTIONAPP_NAME` | the Function App name (`azd env get-values`) |
-| Secret | `AZURE_STATIC_WEB_APPS_API_TOKEN` | SWA → **Manage deployment token** |
-| Secret | `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` | Function App → **Get publish profile** |
+```bash
+./scripts/setup-azure-ci.sh
+```
+
+It reads the azd outputs, fetches the two deploy credentials via `az`, and sets
+all five GitHub items (with the right names) using the `gh` CLI. Requires `az`
+logged in and `gh` authenticated. Idempotent.
+
+**Or set them by hand** under **Settings → Secrets and variables → Actions**.
+The trick is that the azd output names don't all match the GitHub names:
+
+| Kind | GitHub name | Value / source (`azd env get-values`) |
+|------|-------------|----------------------------------------|
+| Variable | `DEPLOY_AZURE` | type `true` |
+| Variable | `VITE_API_BASE` | azd output **`VITE_API_BASE`** (copy verbatim; it's `https://<func-app>.azurewebsites.net/api`) |
+| Variable | `AZURE_FUNCTIONAPP_NAME` | azd output **`FUNCTION_APP_NAME`** ⚠️ (name differs) |
+| Secret | `AZURE_STATIC_WEB_APPS_API_TOKEN` | `az staticwebapp secrets list --name <STATIC_WEB_APP_NAME> --query properties.apiKey -o tsv` (or Portal → SWA → **Manage deployment token**) |
+| Secret | `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` | `az functionapp deployment list-publishing-profiles --name <FUNCTION_APP_NAME> -g <RESOURCE_GROUP> --xml` (or Portal → Function App → **Get publish profile**) |
 
 On push to `main` it builds web + api, deploys the Function App first, then the
 prebuilt static site.
