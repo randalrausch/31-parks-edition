@@ -93,7 +93,7 @@ the real values never touch a tracked file:
 | `AZURE_LOCATION` | Region, e.g. `centralus`. |
 | `AZURE_RESOURCE_GROUP` | Custom resource-group name (optional; default `rg-31-parks-edition-<env>`). |
 | `BUDGET_ALERT_EMAIL` | Email for budget alerts. **The budget is only created if this is set.** |
-| `CUSTOM_DOMAIN` | A subdomain to bind (e.g. `play.example.com`). See "Custom domain" below. |
+| `CUSTOM_DOMAIN` | A **subdomain** to bind (e.g. `play.example.com`). Apex/root domains (e.g. `play31.fun`) are set up in the Portal instead — see "Custom domain" below. |
 
 ```bash
 azd env set BUDGET_ALERT_EMAIL you@example.com
@@ -116,18 +116,54 @@ above — leave those as-is.
 
 ### Custom domain
 
-Static Web Apps issues free TLS for custom domains, but DNS must point at it first:
+Static Web Apps issues a **free managed TLS certificate** once DNS points at it.
+The records differ for a **subdomain** (e.g. `play.example.com`) vs. an
+**apex/root** domain (e.g. `play31.fun`).
 
-1. Deploy once (`azd up`) and note the SWA default hostname (`azd env get-values`).
-2. At your DNS provider add a **CNAME** from your subdomain (e.g. `play`) to that
-   hostname.
-3. Bind it and re-provision:
+First, deploy once and grab your SWA default hostname — you'll point DNS at it:
+
+```bash
+azd env get-values | grep STATIC_WEB_APP_URL
+# e.g. https://nice-river-0abc.azurestaticapps.net → use the HOST part only
+```
+
+#### Subdomain — one CNAME, managed by azd
+
+1. At your DNS provider add a **CNAME**: `play` → `<swa-host>.azurestaticapps.net`.
+2. Bind it and re-provision:
    ```bash
    azd env set CUSTOM_DOMAIN play.example.com
    azd provision
    ```
-   (Apex/root domains use a TXT record — easiest via the Portal:
-   SWA → Custom domains → Add.)
+
+#### Apex / root domain (e.g. `play31.fun`) — do it in the Portal
+
+An apex can't be a plain CNAME, so it needs **two records** plus a TXT-token
+ownership handshake that Azure generates on the fly. Use the **Portal** and leave
+`CUSTOM_DOMAIN` **empty** (the param is CNAME-delegation, subdomain-only; azd's
+incremental deploys won't disturb a Portal-added domain).
+
+1. **Azure Portal** → your Static Web App → **Custom domains** → **+ Add** →
+   **Custom domain on other DNS** → enter `play31.fun`. Azure shows a **TXT**
+   record (a name + a validation code). Leave the page open.
+2. **At your DNS provider** add **two** records:
+
+   | Type | Name | Content / Target | Proxy / notes |
+   |------|------|------------------|---------------|
+   | **TXT** | *(exactly what Azure shows — for an apex it's `@`)* | *(the code Azure shows)* | ownership validation |
+   | **CNAME** | `@` (root) | `<swa-host>.azurestaticapps.net` | routing — **must be DNS-only, not proxied** |
+
+3. Back in Azure, click **Validate / Add**. Azure verifies the TXT, then issues
+   the TLS cert (a few minutes). `https://play31.fun` then serves directly.
+
+> **Cloudflare specifics.** Cloudflare automatically **flattens** a root (`@`)
+> CNAME into A records — exactly what an apex needs, so the table above works
+> as-is. Keep the CNAME on **“DNS only” (grey cloud), not “Proxied” (orange)**:
+> grey cloud means Cloudflare only answers DNS while **Azure serves the site and
+> terminates TLS**, so nothing extra sits in front of your domain. Orange cloud
+> would put Cloudflare's CDN/TLS in front (double-CDN, and you'd then have to
+> manage Cloudflare's SSL/TLS mode). Because it's DNS-only, Cloudflare's SSL/TLS
+> settings don't apply here at all. (TXT records are always DNS-only.)
 
 ## Run it locally (online, against the emulator)
 
