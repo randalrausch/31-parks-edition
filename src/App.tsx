@@ -46,6 +46,7 @@ function Shell() {
           grace: true,
           knockPenalty: false,
           sound: false,
+          showLog: true,
         },
       });
       return;

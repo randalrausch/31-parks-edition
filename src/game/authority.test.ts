@@ -140,6 +140,30 @@ describe("applyPlayerAction (authority)", () => {
     } as unknown as GameAction);
     expect(JSON.stringify(after)).toBe(before);
   });
+
+  it("lets only the host (seat 0) toggle the shared log setting", () => {
+    const s = applyAction(
+      createGameState(mixed(["h0", "h1"], 0), DEFAULT_OPTIONS),
+      { type: "deal" },
+    );
+    expect(s.options.showLog).toBe(true);
+    // A non-host attempt is a no-op (same reference, setting unchanged).
+    const byOther = applyPlayerAction(s, "h1", {
+      type: "setShowLog",
+      value: false,
+    });
+    expect(byOther).toBe(s);
+    // The host can hide it for the whole table, in any phase…
+    const hidden = applyPlayerAction(s, "h0", {
+      type: "setShowLog",
+      value: false,
+    });
+    expect(hidden.options.showLog).toBe(false);
+    // …and a redundant set collapses back to a no-op (nothing to broadcast).
+    expect(
+      applyPlayerAction(hidden, "h0", { type: "setShowLog", value: false }),
+    ).toBe(hidden);
+  });
 });
 
 describe("advanceAuthority", () => {
@@ -193,6 +217,7 @@ describe("full async games (only human actions submitted)", () => {
         grace: Math.random() < 0.5,
         knockPenalty: Math.random() < 0.5,
         sound: false,
+        showLog: true,
       };
       let s = advanceAuthority(
         applyAction(createGameState(players, options), { type: "deal" }),

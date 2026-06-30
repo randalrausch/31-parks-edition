@@ -147,16 +147,43 @@ export default function OnlineGameBoard({
         <ParkScene theme={theme} className="board__scene" />
         <div className="board__vignette" />
 
-        {s.log.length > 0 && (
-          <div className="board__log">
-            <span className="board__log-title">At the Table</span>
-            <LogFeed
-              entries={s.log.filter((e) => e.id <= replay.logThrough)}
-              limit={5}
-              newestFirst
-            />
-          </div>
-        )}
+        {/* The action feed is a shared, host-controlled setting — seeing it is
+            an advantage, so when the host (seat 0) hides it nobody sees it.
+            Only the host gets the toggle; everyone else just follows it. */}
+        {s.options.showLog !== false
+          ? s.log.length > 0 && (
+              <div className="board__log">
+                <div className="board__log-head">
+                  <span className="board__log-title">At the Table</span>
+                  {viewer === 0 && (
+                    <button
+                      type="button"
+                      className="board__log-toggle"
+                      onClick={() =>
+                        game.act({ type: "setShowLog", value: false })
+                      }
+                      aria-label="Hide the action log for everyone"
+                    >
+                      Hide
+                    </button>
+                  )}
+                </div>
+                <LogFeed
+                  entries={s.log.filter((e) => e.id <= replay.logThrough)}
+                  limit={5}
+                  newestFirst
+                />
+              </div>
+            )
+          : viewer === 0 && (
+              <button
+                type="button"
+                className="board__log-show"
+                onClick={() => game.act({ type: "setShowLog", value: true })}
+              >
+                Show log
+              </button>
+            )}
 
         <BoardBadge />
         <BoardWordmark />

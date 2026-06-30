@@ -105,6 +105,7 @@ describe("redactState never leaks (fuzz)", () => {
         grace: rand() < 0.5,
         knockPenalty: rand() < 0.5,
         sound: false,
+        showLog: true,
       };
       let state = advanceAuthority(
         applyAction(createGameState(seats(rand), opts), { type: "deal" }),

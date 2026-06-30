@@ -95,11 +95,14 @@ const sanitizeOptions = (o: unknown) => {
   const src = (o && typeof o === "object" ? o : {}) as Record<string, unknown>;
   const out: Record<string, boolean> = {};
   for (const k of BOOL_OPTS) out[k] = src[k] === true;
+  // The action feed shows by default; only an explicit `false` hides it.
+  out.showLog = src.showLog !== false;
   return out as {
     threeOfAKind: boolean;
     grace: boolean;
     knockPenalty: boolean;
     sound: boolean;
+    showLog: boolean;
   };
 };
 

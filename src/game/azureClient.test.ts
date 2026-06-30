@@ -44,6 +44,7 @@ describe("azureClient makeGameApi", () => {
         grace: true,
         knockPenalty: true,
         sound: false,
+        showLog: true,
       },
     });
     expect(r.code).toBe("ABCDE");
