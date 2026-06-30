@@ -218,6 +218,7 @@ describe("full async games (only human actions submitted)", () => {
         knockPenalty: Math.random() < 0.5,
         sound: false,
         showLog: true,
+        fullHistory: false,
       };
       let s = advanceAuthority(
         applyAction(createGameState(players, options), { type: "deal" }),

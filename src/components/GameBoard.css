@@ -573,6 +573,24 @@
   color: var(--cream);
   border-color: var(--gold);
 }
+/* Expand the feed from the recent few to the whole deal (host house rule). */
+.board__log-more {
+  display: block;
+  margin-top: 6px;
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: var(--font-label);
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  color: var(--cream-dim);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.board__log-more:hover {
+  color: var(--cream);
+}
 /* Collapsed state: a small pill where the feed sat, to bring it back. */
 .board__log-show {
   position: absolute;

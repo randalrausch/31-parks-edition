@@ -259,6 +259,7 @@ Deno.serve(async (req: Request) => {
         "grace",
         "knockPenalty",
         "sound",
+        "fullHistory",
       ] as const;
       const sanitizeOptions = (o: unknown) => {
         const src = (o && typeof o === "object" ? o : {}) as Record<

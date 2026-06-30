@@ -43,6 +43,7 @@ export default function OnlineGameBoard({
   const [helpOpen, setHelpOpen] = useState(false);
   const [parksOpen, setParksOpen] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
+  const [showAllLog, setShowAllLog] = useState(false);
 
   const snap = game.snap;
   const s = snap?.state ?? null;
@@ -124,6 +125,14 @@ export default function OnlineGameBoard({
       ? Math.max(1, Math.ceil(s.turnInDeal / s.dealPlayers))
       : 1;
 
+  // The feed normally shows the last few moves; when the host's "Full Action
+  // History" house rule is on, players may expand it to the whole deal. We still
+  // gate by the paced-replay cursor so unrevealed moves stay hidden.
+  const RECENT_LOG = 5;
+  const visibleLog = s.log.filter((e) => e.id <= replay.logThrough);
+  const logExpandable = s.options.fullHistory && visibleLog.length > RECENT_LOG;
+  const logShowingAll = logExpandable && showAllLog;
+
   const turnLabel = busy
     ? (replay.note ?? "Playing…")
     : myTurn
@@ -169,10 +178,22 @@ export default function OnlineGameBoard({
                   )}
                 </div>
                 <LogFeed
-                  entries={s.log.filter((e) => e.id <= replay.logThrough)}
-                  limit={5}
+                  entries={visibleLog}
+                  limit={logShowingAll ? undefined : RECENT_LOG}
                   newestFirst
                 />
+                {logExpandable && (
+                  <button
+                    type="button"
+                    className="board__log-more"
+                    onClick={() => setShowAllLog((v) => !v)}
+                    aria-expanded={logShowingAll}
+                  >
+                    {logShowingAll
+                      ? "Show recent only"
+                      : `Show full deal history (${visibleLog.length})`}
+                  </button>
+                )}
               </div>
             )
           : viewer === 0 && (

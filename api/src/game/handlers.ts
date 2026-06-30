@@ -73,7 +73,13 @@ const TRAIT_KEYS = [
   "aggression",
   "risk",
 ] as const;
-const BOOL_OPTS = ["threeOfAKind", "grace", "knockPenalty", "sound"] as const;
+const BOOL_OPTS = [
+  "threeOfAKind",
+  "grace",
+  "knockPenalty",
+  "sound",
+  "fullHistory",
+] as const;
 
 const clampName = (s: unknown, fallback: string) =>
   (typeof s === "string" ? s.trim().slice(0, 40) : "") || fallback;
@@ -103,6 +109,7 @@ const sanitizeOptions = (o: unknown) => {
     knockPenalty: boolean;
     sound: boolean;
     showLog: boolean;
+    fullHistory: boolean;
   };
 };
 

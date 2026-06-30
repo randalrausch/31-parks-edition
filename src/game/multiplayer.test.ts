@@ -190,6 +190,7 @@ describe("online multiplayer integration", () => {
         knockPenalty: Math.random() < 0.5,
         sound: false,
         showLog: true,
+        fullHistory: false,
       };
       const server = new Server(seats(humans, ai), options);
       let steps = 0;

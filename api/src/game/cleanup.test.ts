@@ -10,7 +10,7 @@ function game(
 ): { rec: GameRecord; secret: SecretRecord } {
   const state = createGameState(
     [{ id: "p0", name: "H", isAI: false, avatarKey: "ranger" }],
-    { threeOfAKind: false, grace: true, knockPenalty: true, sound: false, showLog: true },
+    { threeOfAKind: false, grace: true, knockPenalty: true, sound: false, showLog: true, fullHistory: false },
   );
   return {
     rec: {

@@ -500,6 +500,12 @@ export default function SetupScreen({
               onToggle={() => toggle("knockPenalty")}
             />
             <Toggle
+              label="Full Action History"
+              hint="Let everyone review the whole deal's moves, not just since their last turn."
+              on={options.fullHistory}
+              onToggle={() => toggle("fullHistory")}
+            />
+            <Toggle
               label="Sound"
               hint="Card, knock, and coin effects."
               on={options.sound}

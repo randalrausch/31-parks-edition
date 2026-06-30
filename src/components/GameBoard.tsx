@@ -206,6 +206,7 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
           name={cur.name}
           avatarKey={cur.avatarKey}
           log={s.log}
+          allowFullHistory={s.options.fullHistory}
           onReady={game.coverReady}
         />
       )}

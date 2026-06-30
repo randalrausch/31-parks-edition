@@ -73,6 +73,23 @@
   color: var(--gold);
   margin-bottom: 8px;
 }
+.cover__report-more {
+  display: block;
+  margin-top: 10px;
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: var(--font-label);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--cream-dim);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.cover__report-more:hover {
+  color: var(--cream);
+}
 
 .cover__btn {
   margin-top: 18px;
