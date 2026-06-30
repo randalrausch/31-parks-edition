@@ -73,7 +73,13 @@ const TRAIT_KEYS = [
   "aggression",
   "risk",
 ] as const;
-const BOOL_OPTS = ["threeOfAKind", "grace", "knockPenalty", "sound"] as const;
+const BOOL_OPTS = [
+  "threeOfAKind",
+  "grace",
+  "knockPenalty",
+  "sound",
+  "fullHistory",
+] as const;
 
 const clampName = (s: unknown, fallback: string) =>
   (typeof s === "string" ? s.trim().slice(0, 40) : "") || fallback;
@@ -95,11 +101,15 @@ const sanitizeOptions = (o: unknown) => {
   const src = (o && typeof o === "object" ? o : {}) as Record<string, unknown>;
   const out: Record<string, boolean> = {};
   for (const k of BOOL_OPTS) out[k] = src[k] === true;
+  // The action feed shows by default; only an explicit `false` hides it.
+  out.showLog = src.showLog !== false;
   return out as {
     threeOfAKind: boolean;
     grace: boolean;
     knockPenalty: boolean;
     sound: boolean;
+    showLog: boolean;
+    fullHistory: boolean;
   };
 };
 

@@ -33,7 +33,8 @@ export type GameAction =
   | { type: "takeDiscard" } // current player takes the face-up discard
   | { type: "discard"; cardId: string } // current player discards a card by id
   | { type: "knock" } // current player knocks
-  | { type: "nextDeal" }; // advance from dealEnd → next deal or game over
+  | { type: "nextDeal" } // advance from dealEnd → next deal or game over
+  | { type: "setShowLog"; value: boolean }; // table setting: show/hide the action feed
 
 /** Apply an action to a state, returning a new state. Pure (clones input). */
 export function applyAction(state: GameState, action: GameAction): GameState {
@@ -92,6 +93,11 @@ export function applyAction(state: GameState, action: GameAction): GameState {
       }
       return s;
     }
+    case "setShowLog":
+      // A table-wide display setting, independent of turn/phase. Authority
+      // restricts who may submit it (host only); the reducer just records it.
+      s.options.showLog = action.value === true;
+      return s;
     case "nextDeal": {
       if (s.phase !== "dealEnd") return s;
       const alive = s.players.filter(isAlive);

@@ -3,6 +3,7 @@
  * see the previous player's hand. Only appears when more than one human is in
  * the game.
  */
+import { useState } from "react";
 import { AVATAR_ART, MountainAvatar } from "../art/Avatars";
 import LogFeed from "./LogFeed";
 import type { LogEntry } from "../game/engine";
@@ -12,14 +13,28 @@ export default function CoverScreen({
   name,
   avatarKey,
   log,
+  allowFullHistory = false,
   onReady,
 }: {
   name: string;
   avatarKey: string;
   log: LogEntry[];
+  /** House rule: when on, offer to expand from "since your last turn" to the
+   * whole deal's actions (the host grants this to the whole table). */
+  allowFullHistory?: boolean;
   onReady: () => void;
 }) {
   const Art = AVATAR_ART[avatarKey] ?? MountainAvatar;
+  const [showAll, setShowAll] = useState(false);
+  // Everything that's happened since this player's own last turn — newest card
+  // on top so it reads at a glance. If they haven't acted yet this deal, that's
+  // the whole log so far.
+  const lastOwn = log.map((e) => e.actor).lastIndexOf(name);
+  const recent = log.slice(lastOwn + 1);
+  // The expander only earns its place when full history is allowed AND there's
+  // actually more to reveal than the since-your-turn slice already shows.
+  const hasMore = allowFullHistory && recent.length < log.length;
+  const showingAll = hasMore && showAll;
   return (
     <div className="cover">
       <div className="cover__inner">
@@ -32,12 +47,23 @@ export default function CoverScreen({
 
         <div className="cover__report">
           <span className="cover__report-title">
-            At the table since the deal
+            {showingAll ? "This whole deal" : "Since your last turn"}
           </span>
           <LogFeed
-            entries={log}
+            entries={showingAll ? log : recent}
+            newestFirst
             emptyText="The cards have just been dealt — you're up first."
           />
+          {hasMore && (
+            <button
+              type="button"
+              className="cover__report-more"
+              onClick={() => setShowAll((v) => !v)}
+              aria-expanded={showingAll}
+            >
+              {showingAll ? "Show only since my turn" : "Show full deal history"}
+            </button>
+          )}
         </div>
 
         <button

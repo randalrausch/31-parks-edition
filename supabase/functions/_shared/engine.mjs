@@ -216,6 +216,9 @@ function applyAction(state, action) {
       }
       return s;
     }
+    case "setShowLog":
+      s.options.showLog = action.value === true;
+      return s;
     case "nextDeal": {
       if (s.phase !== "dealEnd") return s;
       const alive = s.players.filter(isAlive);
@@ -415,6 +418,10 @@ var PLAYER_TURN_ACTIONS = /* @__PURE__ */ new Set([
   "knock"
 ]);
 function applyPlayerAction(state, seatId, action) {
+  if (action.type === "setShowLog") {
+    if (state.players[0]?.id !== seatId) return state;
+    return settledOrSame(state, applyAction(state, action));
+  }
   if (action.type === "nextDeal") {
     if (state.phase !== "dealEnd") return state;
     return settledOrSame(state, advanceAuthority(applyAction(state, action)));

@@ -48,6 +48,14 @@ export interface GameOptions {
   /** A knocker who ends up lowest loses two tokens instead of one. */
   knockPenalty: boolean;
   sound: boolean;
+  /** Show the public "At the Table" action feed. Online this is a shared,
+   * host-controlled setting (seeing it is an advantage, so it's all-or-nothing
+   * for the table); solo play toggles it locally per device. */
+  showLog: boolean;
+  /** Let the whole table review the ENTIRE deal's actions, not just the moves
+   * since each player's last turn. Not having to remember is an advantage, so
+   * it's a host-set house rule granted to everyone or no one. */
+  fullHistory: boolean;
 }
 
 export const DEFAULT_OPTIONS: GameOptions = {
@@ -55,6 +63,8 @@ export const DEFAULT_OPTIONS: GameOptions = {
   grace: true,
   knockPenalty: false,
   sound: true,
+  showLog: true,
+  fullHistory: false,
 };
 
 export interface GamePlayer {

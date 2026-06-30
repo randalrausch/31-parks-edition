@@ -143,6 +143,8 @@ describe("invariants over many random full games", () => {
         grace: Math.random() < 0.5,
         knockPenalty: Math.random() < 0.5,
         sound: false,
+        showLog: true,
+        fullHistory: false,
       };
       let s = applyAction(createGameState(aiPlayers(n), options), {
         type: "deal",

@@ -41,6 +41,8 @@ function describeAction(a: GameAction): string {
       return "knock";
     case "nextDeal":
       return "continue to the next deal";
+    case "setShowLog":
+      return a.value ? "show the action log" : "hide the action log";
     default:
       return "do that";
   }

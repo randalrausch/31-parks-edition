@@ -9,7 +9,7 @@ function fixtures(overrides: Partial<GameRecord> = {}) {
       { id: "p0", name: "Host", isAI: false, avatarKey: "ranger" },
       { id: "p1", name: "Bot", isAI: true, avatarKey: "ranger" },
     ],
-    { threeOfAKind: false, grace: true, knockPenalty: true, sound: false },
+    { threeOfAKind: false, grace: true, knockPenalty: true, sound: false, showLog: true, fullHistory: false },
   );
   const rec: GameRecord = {
     gameId: "g1",

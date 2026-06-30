@@ -92,6 +92,13 @@ export function applyPlayerAction(
   seatId: string,
   action: GameAction,
 ): GameState {
+  if (action.type === "setShowLog") {
+    // A shared table display setting, controlled by the host (seat 0) only, so
+    // one player can't reveal/hide the action feed for everyone else. Applies in
+    // any phase and never touches turn flow, so it skips AI settling.
+    if (state.players[0]?.id !== seatId) return state;
+    return settledOrSame(state, applyAction(state, action));
+  }
   if (action.type === "nextDeal") {
     if (state.phase !== "dealEnd") return state;
     // Intentionally not seat-restricted: from the deal-end reveal ANY seated
