@@ -267,9 +267,7 @@ function log(
   card: CardModel | null,
 ): void {
   const id = s.log.length === 0 ? 0 : s.log[s.log.length - 1].id + 1;
-  const round =
-    s.dealPlayers > 0 ? Math.ceil(s.turnInDeal / s.dealPlayers) : 1;
-  s.log.push({ id, actor: s.players[s.cur].name, kind, card, round });
+  s.log.push({ id, actor: s.players[s.cur].name, kind, card });
   if (s.log.length > 30) s.log.shift();
 }
 

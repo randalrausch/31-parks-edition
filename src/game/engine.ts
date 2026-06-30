@@ -120,9 +120,6 @@ export interface LogEntry {
   /** deck = drew a hidden card; takeDiscard / discard reveal the card. */
   kind: "deck" | "takeDiscard" | "discard" | "knock";
   card: CardModel | null;
-  /** Lap of the table (1-based) this action belongs to, so the pass-the-device
-   * cover can show just the most recent round. */
-  round: number;
 }
 
 export interface DealScores {
