@@ -52,3 +52,6 @@ supabase/.branches/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Superpowers-generated planning docs (kept local, not tracked)
+/docs/superpowers/plans/
