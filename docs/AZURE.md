@@ -33,17 +33,39 @@ Abandoned games are reaped by a daily timer (14-day expiry).
 - For local development also: **Azure Functions Core Tools** (`func`) and the
   **Static Web Apps CLI** (`swa`). `npm i -g azure-functions-core-tools@4 @azure/static-web-apps-cli`
 
-## Deploy your own (one command)
+## Deploy from scratch
 
-```bash
-az login
-azd auth login
-azd up      # prompts for an environment name + region (e.g. centralus)
-```
+You need an Azure subscription and the tools from **Prerequisites** above.
+Everything that identifies you — subscription ID, region, budget email, custom
+domain — is stored in the **gitignored** `.azure/<env>/.env`, never in a tracked
+file, so this is safe to run on a public clone.
 
-`azd up` provisions everything in `infra/`, deploys the Function App and the
-Static Web App, and — because `main.bicep` outputs `VITE_API_BASE` — rebuilds the
-SPA pointed at your new Function URL. When it finishes it prints the site URL.
+1. **Log in** (both open a browser):
+   ```bash
+   az login
+   azd auth login
+   ```
+
+2. **Create an environment and set your config.** These values land in
+   `.azure/<env>/.env` (gitignored):
+   ```bash
+   azd env new prod
+   azd env set AZURE_LOCATION centralus            # region
+   azd env set BUDGET_ALERT_EMAIL you@example.com  # optional: enables a budget alert
+   # The subscription is chosen interactively on the first `azd up`. To pin it:
+   # azd env set AZURE_SUBSCRIPTION_ID <sub-guid>
+   ```
+   Leave `CUSTOM_DOMAIN` unset for now — bind a domain *after* the first deploy
+   (see [Custom domain](#custom-domain)).
+
+3. **Provision + deploy — one command:**
+   ```bash
+   azd up
+   ```
+   `azd up` provisions everything in `infra/`, deploys the Function App and the
+   Static Web App, and — because `main.bicep` outputs `VITE_API_BASE` — rebuilds
+   the SPA pointed at your new Function URL. When it finishes it prints the site
+   URL.
 
 > If the site loads but online play is disabled, the web build didn't pick up the
 > API URL. Run `azd deploy web` once more (the output is set by then), or
@@ -53,37 +75,39 @@ Tear it all down with **`azd down`**.
 
 ## Configuration
 
-There are two places to configure a deployment:
+Two places, split by sensitivity.
 
-**1. azd environment** (subscription, region, resource group, env name). azd stores
-these in `.azure/<env-name>/.env` (gitignored). Set them before/with `azd up`:
+**1. azd environment — anything identifying (gitignored).** Stored in
+`.azure/<env>/.env`; set with `azd env set`, then re-run `azd up` / `azd provision`
+to apply. `infra/main.parameters.json` reads these via `${VAR}` substitution, so
+the real values never touch a tracked file:
+
+| Variable | What it does |
+|----------|--------------|
+| `AZURE_SUBSCRIPTION_ID` | Which subscription to bill/deploy to (or pick at the `azd up` prompt). |
+| `AZURE_LOCATION` | Region, e.g. `centralus`. |
+| `AZURE_RESOURCE_GROUP` | Custom resource-group name (optional; default `rg-<env>`). |
+| `BUDGET_ALERT_EMAIL` | Email for budget alerts. **The budget is only created if this is set.** |
+| `CUSTOM_DOMAIN` | A subdomain to bind (e.g. `play.example.com`). See "Custom domain" below. |
 
 ```bash
-azd env new prod                              # creates the env
-azd env set AZURE_SUBSCRIPTION_ID <sub-guid>  # which subscription to bill/deploy to
-azd env set AZURE_LOCATION centralus          # region
-azd env set AZURE_RESOURCE_GROUP rg-31-parks  # custom RG name (optional; default rg-<env>)
-azd up
+azd env set BUDGET_ALERT_EMAIL you@example.com
 ```
 
-`azd up` also prompts for subscription + region interactively the first time, so
-these are optional overrides.
-
-**2. `infra/main.parameters.json`** — the human-editable knobs for the deployment.
-Edit the values and re-run `azd up` (or `azd provision`):
+**2. `infra/main.parameters.json` — non-sensitive policy knobs (checked in).**
+Edit the literals and re-run `azd provision`:
 
 | Parameter | Default | What it does |
 |-----------|---------|--------------|
-| `customDomain` | `""` | A subdomain to bind (e.g. `play.example.com`). See "Custom domain" below. |
-| `budgetAlertEmail` | `""` | Email for budget alerts. **The budget is only created if this is set.** |
 | `monthlyBudgetAmount` | `10` | Monthly budget in your billing currency. `0` disables it. |
 | `maxFunctionInstances` | `5` | Hard cap on Function scale-out (bounds peak cost). |
 | `logAnalyticsDailyQuotaGb` | `1` | Daily telemetry ingestion cap in GB (`-1` = unlimited). |
 | `maxGamesPerDay` | `500` | Global hard ceiling on games created per day. |
 | `maxGamesPerIpPerHour` | `20` | Per-IP create cap per hour. |
 
-`environmentName`, `location`, and `resourceGroupName` are filled from the azd
-environment above — leave those as-is.
+`environmentName`, `location`, `resourceGroupName`, `customDomain`, and
+`budgetAlertEmail` are all `${...}` references filled from the azd environment
+above — leave those as-is.
 
 ### Custom domain
 
@@ -92,8 +116,12 @@ Static Web Apps issues free TLS for custom domains, but DNS must point at it fir
 1. Deploy once (`azd up`) and note the SWA default hostname (`azd env get-values`).
 2. At your DNS provider add a **CNAME** from your subdomain (e.g. `play`) to that
    hostname.
-3. Set `customDomain` in `main.parameters.json` to the full subdomain and re-run
-   `azd provision`. (Apex/root domains use a TXT record — easiest via the Portal:
+3. Bind it and re-provision:
+   ```bash
+   azd env set CUSTOM_DOMAIN play.example.com
+   azd provision
+   ```
+   (Apex/root domains use a TXT record — easiest via the Portal:
    SWA → Custom domains → Add.)
 
 ## Run it locally (online, against the emulator)
@@ -164,8 +192,9 @@ or a traffic spike can't drive cost. Several layers, all configurable in
 > **About the budget:** Azure budgets are an **alarm**, not a hard stop — Azure has
 > no true "switch off spending" toggle. The *enforcement* comes from the caps above
 > (they bound how much work the system will ever do); the budget gives you early
-> warning with plenty of headroom to react. To set it, put your email in
-> `budgetAlertEmail` and an amount in `monthlyBudgetAmount`, then `azd provision`.
+> warning with plenty of headroom to react. To set it, run
+> `azd env set BUDGET_ALERT_EMAIL you@example.com` and set `monthlyBudgetAmount`
+> in `infra/main.parameters.json`, then `azd provision`.
 > For a true kill-switch, attach an Action Group → Automation runbook that stops
 > the Function App at 100% (advanced; see Azure Cost Management docs).
 
