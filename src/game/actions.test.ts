@@ -105,6 +105,16 @@ describe("turn actions", () => {
     });
     const cur = s.cur;
     const drew = applyAction(s, { type: "drawDeck" });
+    // Pin the hand to known low cards so the post-discard 3-card hand can never
+    // be a natural 31 — a random 31 resolves the deal instead of passing the
+    // turn (actions.ts: discard → resolveDeal vs endTurn), which made this test
+    // flake on unlucky shuffles.
+    drew.players[cur].hand = [
+      { id: "2-clubs", rank: "2", suit: "clubs" },
+      { id: "3-clubs", rank: "3", suit: "clubs" },
+      { id: "4-diamonds", rank: "4", suit: "diamonds" },
+      { id: "5-spades", rank: "5", suit: "spades" },
+    ];
     const discarded = applyAction(drew, {
       type: "discard",
       cardId: drew.players[cur].hand[0].id,
