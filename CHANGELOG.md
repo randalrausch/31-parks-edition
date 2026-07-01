@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.2.2 — 2026-07-01
+
+### Fixes
+
+- P0 security & reliability hardening (#34)
+
 ## v0.2.1 — 2026-07-01
 
 ### Fixes
