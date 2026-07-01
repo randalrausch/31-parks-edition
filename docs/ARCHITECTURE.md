@@ -2,8 +2,17 @@
 
 The guiding idea: **the rules are pure, serializable TypeScript** with no
 framework, DOM, timing, sound, or network. The same logic runs in the browser
-for solo play and on the server (a Supabase Edge Function) for multiplayer.
-Everything else is a thin layer around that core.
+for solo play and on the server for multiplayer. Everything else is a thin layer
+around that core.
+
+The server is pluggable: online play runs on **either** a Supabase Edge Function
+(`supabase/functions/game`) **or** an Azure Functions app (`api/`) — the client
+auto-selects one from environment variables. Both are thin adapters over the
+*same* shared authority (`src/game/authority.ts`); Supabase bundles it into
+`supabase/functions/_shared/engine.mjs` via `npm run build:edge`, while Azure
+imports the source directly. Neither backend forks the rules. This doc says
+"the Edge Function" for brevity, but every authority statement applies equally to
+the Azure path.
 
 ## Terminology
 
@@ -100,5 +109,7 @@ The web client and the backend deploy independently.
 AI, plus fuzz tests that play hundreds of random games asserting invariants
 (52‑card conservation, clean elimination, monotonic tokens, termination, exactly
 one winner — or a draw on simultaneous final elimination) and redaction
-correctness. UI/integration is verified manually and in two browsers for
-multiplayer.
+correctness. The Azure backend's op layer has HTTP-level handler tests
+(`api/src/game/handlers.test.ts`). A real-browser Playwright suite
+(`e2e/game.spec.ts`) runs the solo path in CI on every push; the online
+multiplayer path across two devices is still verified manually.

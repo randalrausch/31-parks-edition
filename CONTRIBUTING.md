@@ -19,9 +19,11 @@ Multiplayer is optional; set it up only if you're working on online features
 Run the same checks CI runs:
 
 ```bash
-npm run typecheck   # tsc, no errors
-npm test            # unit + fuzz suite, all green
-npm run build       # production build succeeds
+npm run format:check # Prettier formatting (run `npm run format` to fix)
+npm run typecheck    # tsc, no errors
+npm run lint         # ESLint, no errors
+npm test             # unit + fuzz suite, all green
+npm run build        # production build succeeds
 ```
 
 If you changed shared game logic in `src/game/` and use the Supabase backend,
@@ -41,7 +43,8 @@ supabase functions deploy game
 - **Add tests for logic changes.** Anything in the pure core should have or
   extend a `*.test.ts`. Fuzz/invariant tests are encouraged for rules changes.
 - **Match the surrounding style.** TypeScript strict mode; comments explain
-  *why*, not *what*. Prettier is used for formatting.
+  *why*, not *what*. Formatting is handled by Prettier (`npm run format`) and
+  checked in CI (`npm run format:check`).
 - **Hidden information is sacred.** Never send a player another player's cards.
   The server `redactState` enforces this; keep it that way.
 

@@ -1,0 +1,10 @@
+# Generated / vendored — never hand-format these.
+dist
+supabase/functions/_shared/engine.mjs
+package-lock.json
+api/package-lock.json
+
+# Prose and assets are hand-wrapped / binary — leave them alone.
+*.md
+src/assets
+public/icons
