@@ -11,6 +11,11 @@ import { BackendError, type GameApi } from "./gameApi";
 import type { GameBackend } from "./backend";
 import { azureApiBase, azureEnabled } from "./multiplayerConfig";
 
+// Abort a request that never settles (e.g. a half-open connection on a mobile
+// network handoff). Without this, one stuck fetch would leave NetworkTransport's
+// `fetching` guard set forever, silently killing its safety-net poll.
+const REQUEST_TIMEOUT_MS = 10_000;
+
 export function makeGameApi(base: string): GameApi {
   async function call<T>(body: Record<string, unknown>): Promise<T> {
     let res: Response;
@@ -19,6 +24,7 @@ export function makeGameApi(base: string): GameApi {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
     } catch {
       throw new Error("Couldn't reach the game server. Check your connection.");
