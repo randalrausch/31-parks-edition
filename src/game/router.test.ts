@@ -127,4 +127,18 @@ describe("router", () => {
     }
     expect(last).toBe(429); // create cap is 15 / 10 min per IP
   });
+
+  it("caps act writes per seat token, independent of IP", async () => {
+    const route = makeRouter(makeMemoryStore());
+    const act = (token: string) =>
+      route(
+        post({ op: "act", gameId: "g", seatToken: token, action: { type: "drawDeck" } }, "7.7.7.7"),
+      );
+    let status = 0;
+    // First 30 reach the handler (404, no such game); the 31st trips the cap.
+    for (let i = 0; i < 31; i++) status = (await act("tok-A")).status;
+    expect(status).toBe(429);
+    // A different seat token has its own budget — not collateral-damaged.
+    expect((await act("tok-B")).status).not.toBe(429);
+  });
 });

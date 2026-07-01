@@ -23,10 +23,13 @@ threats we design against, and how:
   (no I/O/0/1) drawn from a CSPRNG (~33.5M combinations). Combined with the
   create-rate cap and the 14-day game TTL, the window for brute force is small.
 - **Floods / abuse / cost-runaway.** Anonymous endpoints are defended in layers so
-  no attack, bug, or spike can drive up a cloud bill: a cheap per-instance limiter,
-  plus **durable Table-Storage-backed caps shared across all instances** — a
-  per-IP/hour cap and a **global games-per-day ceiling** (both configurable). On
-  Azure the **Function scale-out is capped** (`maxFunctionInstances`) so it can't
+  no attack, bug, or spike can drive up a cloud bill: a cheap per-instance limiter
+  (a per-IP request rate, plus a **per-seat cap on `act`** so a single seat token —
+  which, unlike an IP, can't be rotated — can't hammer the one op that writes state
+  and broadcasts), plus **durable Table-Storage-backed caps shared across all
+  instances** — a per-IP/hour create cap and a **global games-per-day ceiling**
+  (both configurable). On Azure the **Function scale-out is capped**
+  (`maxFunctionInstances`) so it can't
   fan out to hundreds of instances, telemetry ingestion has a **daily cap**, and a
   **monthly Budget alert** is available. Abandoned games expire after 14 days and
   are reaped, bounding storage growth. See `docs/AZURE.md → Cost protection`.

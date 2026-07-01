@@ -755,6 +755,11 @@ function makeRouter(store, opts = {}) {
           error: "Too many games are being created right now \u2014 please try again later."
         });
     }
+    if (op === "act") {
+      const seatToken = typeof body.seatToken === "string" ? body.seatToken : "";
+      if (seatToken && limited(`act:${seatToken}`, 30, 1e4))
+        return reply(429, { error: "You're acting too quickly \u2014 please slow down." });
+    }
     const fn = OPS[op];
     if (!fn) return reply(400, { error: "Unsupported request." });
     try {
