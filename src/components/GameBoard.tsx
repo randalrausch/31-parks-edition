@@ -18,13 +18,13 @@ import ParkPicker from "./ParkPicker";
 import CoverScreen from "./CoverScreen";
 import DealEndOverlay from "./DealEndOverlay";
 import GameOverOverlay from "./GameOverOverlay";
-import LogFeed from "./LogFeed";
 import Avatar from "./Avatar";
 import {
   Opponent,
   BoardBadge,
   BoardWordmark,
   BoardToolbar,
+  BoardLog,
   ToolButton,
   NewGameIcon,
   Piles,
@@ -33,7 +33,13 @@ import {
   HandHud,
   ActionBar,
 } from "./BoardParts";
-import { bestSuit, scoreHand, isAlive, type GameState } from "../game/engine";
+import {
+  bestSuit,
+  scoreHand,
+  isAlive,
+  roundNo,
+  type GameState,
+} from "../game/engine";
 import type { SoloGameApi } from "../game/useGame";
 import "./GameBoard.css";
 
@@ -77,11 +83,6 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
   const discarding = s.phase === "discarding";
   const counting = bestSuit(cur.hand);
   const handScore = scoreHand(cur.hand, s.options);
-  // Round (lap of the table) within the current deal.
-  const roundNo =
-    s.dealPlayers > 0
-      ? Math.max(1, Math.ceil(s.turnInDeal / s.dealPlayers))
-      : 1;
 
   return (
     <section className="board-fold">
@@ -91,38 +92,21 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
 
         {/* Live public-action feed (what everyone at the table can see).
             Optional — players can hide it; the choice is remembered. */}
-        {s.log.length > 0 &&
-          (logOpen ? (
-            <div className="board__log">
-              <div className="board__log-head">
-                <span className="board__log-title">At the Table</span>
-                <button
-                  type="button"
-                  className="board__log-toggle"
-                  onClick={toggleLog}
-                  aria-label="Hide the action log"
-                >
-                  Hide
-                </button>
-              </div>
-              <LogFeed entries={s.log} limit={5} newestFirst />
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="board__log-show"
-              onClick={toggleLog}
-            >
-              Show log
-            </button>
-          ))}
+        <BoardLog
+          entries={s.log}
+          recentLimit={5}
+          visible={logOpen}
+          canToggle
+          onToggle={toggleLog}
+          hideWhenEmpty
+        />
 
         <BoardBadge />
         <BoardWordmark />
 
         <BoardToolbar
           dealNum={s.dealNum}
-          roundNo={roundNo}
+          roundNo={roundNo(s)}
           aliveCount={aliveCount}
           onSwitchPark={() => setParksOpen(true)}
           onHelp={() => setHelpOpen(true)}
@@ -146,7 +130,11 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
           onDrawDeck={game.drawDeck}
           onTakeDiscard={game.drawDiscard}
           status={
-            s.status ? <div className="board__status">{s.status}</div> : null
+            s.status ? (
+              <div className="board__status" role="status" aria-live="polite">
+                {s.status}
+              </div>
+            ) : null
           }
         />
 

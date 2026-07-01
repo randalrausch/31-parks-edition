@@ -17,12 +17,13 @@ import {
   applyPlayerAction,
   advanceAuthority,
   redactState,
+  buildCreateSetup,
   type GameState,
   type GameAction,
-  type NewGamePlayer,
+  type CreateConfigInput,
 } from "./engine.js";
 import { makeCode, newToken } from "./ids.js";
-import type { GameRecord, GameStore, SeatInfo, SecretRecord } from "./store.js";
+import type { GameRecord, GameStore, SecretRecord } from "./store.js";
 
 /** Bump with releases; surfaced by the in-app About dialog via the `version` op. */
 export const FN_VERSION = "0.2.0";
@@ -53,111 +54,15 @@ function bumped(rec: GameRecord, patch: Partial<GameRecord>): GameRecord {
 
 /* ─────────────────────────── create ─────────────────────────── */
 
-interface CreateConfig {
-  creatorName?: unknown;
-  humans?: unknown;
-  ai?: {
-    name?: unknown;
-    avatarKey?: unknown;
-    traits?: unknown;
-    emoji?: unknown;
-    image?: unknown;
-  }[];
-  options?: unknown;
-}
-
-const TRAIT_KEYS = [
-  "bluff",
-  "memory",
-  "patience",
-  "aggression",
-  "risk",
-] as const;
-const BOOL_OPTS = [
-  "threeOfAKind",
-  "grace",
-  "knockPenalty",
-  "sound",
-  "fullHistory",
-] as const;
-
-const clampName = (s: unknown, fallback: string) =>
-  (typeof s === "string" ? s.trim().slice(0, 40) : "") || fallback;
-const clampKey = (s: unknown, fallback: string) =>
-  typeof s === "string" && /^[a-z0-9-]{1,32}$/.test(s) ? s : fallback;
-const clampImage = (s: unknown) =>
-  typeof s === "string" && s.length <= 512 ? s : undefined;
-const clampTraits = (t: unknown) => {
-  if (!t || typeof t !== "object") return undefined;
-  const src = t as Record<string, unknown>;
-  const out: Record<string, number> = {};
-  for (const k of TRAIT_KEYS) {
-    const v = Number(src[k]);
-    out[k] = Number.isFinite(v) ? Math.max(1, Math.min(5, Math.round(v))) : 3;
-  }
-  return out;
-};
-const sanitizeOptions = (o: unknown) => {
-  const src = (o && typeof o === "object" ? o : {}) as Record<string, unknown>;
-  const out: Record<string, boolean> = {};
-  for (const k of BOOL_OPTS) out[k] = src[k] === true;
-  // The action feed shows by default; only an explicit `false` hides it.
-  out.showLog = src.showLog !== false;
-  return out as {
-    threeOfAKind: boolean;
-    grace: boolean;
-    knockPenalty: boolean;
-    sound: boolean;
-    showLog: boolean;
-    fullHistory: boolean;
-  };
-};
-
 export async function handleCreate(
   store: GameStore,
-  body: { config?: CreateConfig },
+  body: { config?: CreateConfigInput },
 ): Promise<OpResult> {
-  const config = body.config ?? {};
-  const humans = Math.max(1, Math.min(8, Number(config.humans) | 0));
-  const ai = (Array.isArray(config.ai) ? config.ai : []).slice(
-    0,
-    Math.max(0, 8 - humans),
-  );
+  // Shared, pure sanitization — the SAME builder the Supabase Edge Function
+  // uses, so seat/option handling can never drift between the two authorities.
+  const { players, seats, options } = buildCreateSetup(body.config ?? {});
 
-  const players: NewGamePlayer[] = [];
-  const seats: SeatInfo[] = [];
-  for (let i = 0; i < humans; i++) {
-    const isCreator = i === 0;
-    const name = isCreator
-      ? clampName(config.creatorName, "Player 1")
-      : `Player ${i + 1}`;
-    players.push({ id: `p${i}`, name, isAI: false, avatarKey: "ranger" });
-    seats.push({
-      idx: i,
-      name: isCreator ? name : null,
-      avatar: "ranger",
-      isAI: false,
-      filled: isCreator,
-    });
-  }
-  ai.forEach((c, j) => {
-    const idx = humans + j;
-    const aiName = clampName(c.name, `Bot ${j + 1}`);
-    const avatar = clampKey(c.avatarKey, "ranger");
-    const emoji = typeof c.emoji === "string" ? c.emoji.slice(0, 8) : undefined;
-    players.push({
-      id: `p${idx}`,
-      name: aiName,
-      isAI: true,
-      avatarKey: avatar,
-      traits: clampTraits(c.traits),
-      emoji,
-      image: clampImage(c.image),
-    } as NewGamePlayer);
-    seats.push({ idx, name: aiName, avatar, emoji, isAI: true, filled: true });
-  });
-
-  const state = createGameState(players, sanitizeOptions(config.options));
+  const state = createGameState(players, options);
   const code = makeCode();
   const creatorToken = newToken();
   const gameId = crypto.randomUUID();
@@ -193,7 +98,7 @@ export async function handleJoin(
     return fail(409, "That game has already started.");
 
   const seats = game.rec.seats;
-  let seat =
+  const seat =
     seats.find((s) => !s.isAI && !s.filled) ?? seats.find((s) => s.isAI);
   if (!seat) return fail(409, "That game is full.");
 

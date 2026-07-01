@@ -20,6 +20,7 @@
     "postbuild": "node scripts/patch-swa-csp.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b",
+    "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "vite build && playwright test",
@@ -44,13 +45,20 @@
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@eslint/js": "^9.20.0",
     "@playwright/test": "^1.61.1",
     "@types/node": "^26.0.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
-    "esbuild": "^0.28.1",
+    "esbuild": "0.28.1",
+    "eslint": "^9.20.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^15.15.0",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.24.0",
     "vite": "^8.1.0",
     "vitest": "^4.1.9"
   }

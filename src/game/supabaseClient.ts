@@ -5,7 +5,7 @@
  * in gameApi.ts; the env probe lives in multiplayerConfig.ts.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { GameApi } from "./gameApi";
+import { BackendError, type GameApi } from "./gameApi";
 import type { GameBackend } from "./backend";
 import { supabaseEnabled, supabaseKey, supabaseUrl } from "./multiplayerConfig";
 
@@ -24,8 +24,10 @@ export function makeGameApi(client: SupabaseClient): GameApi {
       // reason (e.g. "Game is full") is the JSON body on the Response in
       // `context` — surface that instead so users see something useful.
       let message = error.message;
+      let status: number | undefined;
       const ctx = (error as { context?: unknown }).context;
       if (ctx instanceof Response) {
+        status = ctx.status;
         try {
           const payload = await ctx.clone().json();
           if (payload?.error) message = payload.error as string;
@@ -33,7 +35,9 @@ export function makeGameApi(client: SupabaseClient): GameApi {
           /* body wasn't JSON — keep the generic message */
         }
       }
-      throw new Error(message);
+      // Carry the status so the transport can treat a 409 conflict as a
+      // recoverable resync rather than a user-facing error.
+      throw new BackendError(message, status, status === 409);
     }
     if (data?.error) throw new Error(data.error);
     return data as T;

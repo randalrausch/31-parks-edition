@@ -7,4 +7,15 @@
 export { createGameState, applyAction } from "./actions";
 export type { GameAction, NewGamePlayer } from "./actions";
 export { applyPlayerAction, advanceAuthority, redactState } from "./authority";
-export type { GameState } from "./engine";
+export type { GameState, GameOptions } from "./engine";
+export {
+  buildCreateSetup,
+  sanitizeOptions,
+  clampName,
+  clampKey,
+} from "./config";
+export type {
+  CreateConfigInput,
+  CreateSetup,
+  SeatSetup,
+} from "./config";

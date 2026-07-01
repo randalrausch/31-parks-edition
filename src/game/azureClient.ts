@@ -7,7 +7,7 @@
  * cheap to include. Selected by backend.ts when VITE_API_BASE is set.
  */
 import type { GameAction } from "./actions";
-import type { GameApi } from "./gameApi";
+import { BackendError, type GameApi } from "./gameApi";
 import type { GameBackend } from "./backend";
 import { azureApiBase, azureEnabled } from "./multiplayerConfig";
 
@@ -29,10 +29,14 @@ export function makeGameApi(base: string): GameApi {
     } catch {
       /* non-JSON body */
     }
-    // On a conflict the server's message contains "retry"; NetworkTransport.act
-    // matches that word and resyncs instead of surfacing an error.
+    // A non-2xx carries the HTTP status; NetworkTransport treats 409 (conflict)
+    // as recoverable and resyncs instead of surfacing an error.
     if (!res.ok)
-      throw new Error(data?.error || `Request failed (${res.status}).`);
+      throw new BackendError(
+        data?.error || `Request failed (${res.status}).`,
+        res.status,
+        res.status === 409,
+      );
     if (data?.error) throw new Error(data.error);
     return data as T;
   }

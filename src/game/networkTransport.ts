@@ -14,7 +14,7 @@
  */
 import type { GameAction } from "./actions";
 import type { GameState } from "./engine";
-import type { SeatInfo } from "./gameApi";
+import { BackendError, type SeatInfo } from "./gameApi";
 import type { GameBackend } from "./backend";
 import { dlog } from "./debug";
 
@@ -36,6 +36,8 @@ export class NetworkTransport {
   private fetching = false;
   private refetchQueued = false;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
+  /** Signatures of actions currently awaiting the server, to drop duplicates. */
+  private inFlight = new Set<string>();
 
   /**
    * Poll interval (ms) as a safety net under Realtime. Realtime delivery is
@@ -139,14 +141,36 @@ export class NetworkTransport {
   }
 
   async act(action: GameAction): Promise<void> {
+    // Idempotency guard: if the identical action is already awaiting the server
+    // (e.g. an impatient double-tap on "Draw"), drop the duplicate rather than
+    // submitting it twice. The authority's turn/phase checks catch most repeats
+    // as no-ops anyway, but this avoids the needless round-trip and any race.
+    const sig = JSON.stringify(action);
+    if (this.inFlight.has(sig)) {
+      dlog("net", `act ${action.type} deduped (already in flight)`);
+      return;
+    }
+    this.inFlight.add(sig);
     dlog("net", `act ${action.type}`);
+    try {
+      await this.actInner(action);
+    } finally {
+      this.inFlight.delete(sig);
+    }
+  }
+
+  private async actInner(action: GameAction): Promise<void> {
     try {
       await this.backend.api.act(this.gameId, this.seatToken, action);
     } catch (e) {
       const msg = (e as Error).message;
       // A version conflict (concurrent/duplicate submit) is recoverable: the
       // authority already moved, so resync to the truth instead of erroring.
-      if (/\bretry\b/i.test(msg)) {
+      // Detect it structurally (HTTP 409), with the legacy message match kept as
+      // a fallback for older backend builds.
+      const conflict =
+        (e instanceof BackendError && e.conflict) || /\bretry\b/i.test(msg);
+      if (conflict) {
         dlog("net", `act ${action.type} conflict — resyncing`);
         await this.refresh();
         return;

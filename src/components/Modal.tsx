@@ -76,7 +76,14 @@ export default function Modal({
   if (!open) return null;
 
   return (
+    // The backdrop click-to-close is a convenience only: the dialog is fully
+    // keyboard-operable via Escape (handled above), a focus trap, and the close
+    // button below, so the mouse-only backdrop handler needs no key listener.
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <div className="modal" onClick={onClose}>
+      {/* Stop backdrop clicks that land on the panel from closing the dialog;
+          the dialog itself is keyboard-operable (Escape + focus trap + button). */}
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events */}
       <div
         ref={panelRef}
         className={["modal__panel", variant].filter(Boolean).join(" ")}

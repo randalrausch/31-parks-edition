@@ -10,11 +10,90 @@ import type { ReactNode } from "react";
 import Card from "./Card";
 import CardBack from "./CardBack";
 import Avatar from "./Avatar";
+import LogFeed from "./LogFeed";
 import { TokenRow } from "./TokenRow";
 import { NpsArrowhead } from "../art/Glyphs";
 import { useTheme } from "./ParkThemeProvider";
-import { formatScore, type GamePlayer } from "../game/engine";
+import { formatScore, type GamePlayer, type LogEntry } from "../game/engine";
 import type { CardModel, Suit } from "../types";
+
+/**
+ * The "At the Table" action feed, shared by both boards so the panel shell can't
+ * drift between them. The boards differ only in how visibility is controlled
+ * (solo: a remembered local toggle; online: a host-gated, shared setting) and
+ * whether the whole-deal history can be expanded — all passed in as props.
+ */
+export function BoardLog({
+  entries,
+  recentLimit,
+  visible,
+  canToggle,
+  onToggle,
+  hideLabel = "Hide the action log",
+  expandable = false,
+  showingAll = false,
+  onToggleExpand,
+  hideWhenEmpty = false,
+}: {
+  entries: LogEntry[];
+  /** How many recent moves to show when not expanded. */
+  recentLimit: number;
+  /** Whether the feed is currently shown. */
+  visible: boolean;
+  /** Whether this viewer may show/hide the feed. */
+  canToggle: boolean;
+  onToggle: () => void;
+  hideLabel?: string;
+  /** Whether a "show full deal history" affordance is offered. */
+  expandable?: boolean;
+  showingAll?: boolean;
+  onToggleExpand?: () => void;
+  /** Solo: render nothing at all until there's something to show. */
+  hideWhenEmpty?: boolean;
+}) {
+  if (hideWhenEmpty && entries.length === 0) return null;
+  if (!visible)
+    return canToggle ? (
+      <button type="button" className="board__log-show" onClick={onToggle}>
+        Show log
+      </button>
+    ) : null;
+  if (entries.length === 0) return null;
+  return (
+    <div className="board__log">
+      <div className="board__log-head">
+        <span className="board__log-title">At the Table</span>
+        {canToggle && (
+          <button
+            type="button"
+            className="board__log-toggle"
+            onClick={onToggle}
+            aria-label={hideLabel}
+          >
+            Hide
+          </button>
+        )}
+      </div>
+      <LogFeed
+        entries={entries}
+        limit={showingAll ? undefined : recentLimit}
+        newestFirst
+      />
+      {expandable && (
+        <button
+          type="button"
+          className="board__log-more"
+          onClick={onToggleExpand}
+          aria-expanded={showingAll}
+        >
+          {showingAll
+            ? "Show recent only"
+            : `Show full deal history (${entries.length})`}
+        </button>
+      )}
+    </div>
+  );
+}
 
 /** A face-down opponent — name, tokens, fanned backs. Never a score. */
 export function Opponent({

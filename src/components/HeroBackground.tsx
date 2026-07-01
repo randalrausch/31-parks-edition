@@ -9,7 +9,7 @@
  *   occasional eagle, plus a per-park accent (light rays / steam / waving grass).
  *   Everything is tiny and slow; all of it stops under prefers-reduced-motion.
  */
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import type { ParkTheme } from "../types";
 import { THEMES_BY_ID } from "../themes";
 import "./HeroBackground.css";
@@ -40,7 +40,10 @@ function HeroLayer({
     />
   ) : Scene ? (
     <div className={className}>
-      <Scene className="hero__svg" />
+      {/* Scene may be code-split (React.lazy) — cover the rare fallback load. */}
+      <Suspense fallback={null}>
+        <Scene className="hero__svg" />
+      </Suspense>
     </div>
   ) : null;
 }

@@ -42,21 +42,21 @@ jobs:
   ci-cd:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           # Full history so the build's version number (git commit count) is
           # accurate; a shallow clone would always report 1.
           fetch-depth: 0
 
       - name: Did the backend (supabase/**) change?
-        uses: dorny/paths-filter@v4
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
         id: changes
         with:
           filters: |
             backend:
               - 'supabase/**'
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: 20
           cache: npm
@@ -66,6 +66,9 @@ jobs:
       # ---- Quality gate (runs for every push and PR) ----
       - name: Type-check
         run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
 
       - name: Unit + fuzz tests
         run: npm test
@@ -105,7 +108,7 @@ jobs:
       # so the function can be redeployed without a fake supabase/** commit.
       - name: Install Supabase CLI
         if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_AZURE != 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && steps.changes.outputs.backend == 'true')) }}
-        uses: supabase/setup-cli@v2
+        uses: supabase/setup-cli@df56b21da46c98abb12a9804e4fb1f657773e333 # v2
         with:
           version: latest
 

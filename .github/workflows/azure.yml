@@ -27,12 +27,12 @@ jobs:
     if: ${{ vars.DEPLOY_AZURE == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           # Full history so the build's version number (git commit count) is
           # accurate; a shallow clone would always report 1.
           fetch-depth: 0
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: 20
           cache: npm
@@ -40,6 +40,7 @@ jobs:
       # ---- Quality gate (web + api) ----
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run lint
       - run: npm test
       - run: npm run api:install
       - run: npm run api:typecheck
@@ -54,7 +55,7 @@ jobs:
 
       # ---- Deploy backend first (so the live UI never calls a missing API) ----
       - name: Deploy Function App
-        uses: Azure/functions-action@v1
+        uses: Azure/functions-action@bc63708cc6539760eea18d8a7de4ce8ef5fdf593 # v1
         with:
           app-name: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
           package: api
@@ -62,7 +63,7 @@ jobs:
 
       # ---- Deploy the prebuilt static site to Static Web Apps ----
       - name: Deploy Static Web App
-        uses: Azure/static-web-apps-deploy@v1
+        uses: Azure/static-web-apps-deploy@1a947af9992250f3bc2e68ad0754c0b0c11566c9 # v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           action: upload

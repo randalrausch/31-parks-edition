@@ -13,9 +13,14 @@
  * raster `sceneImage`). Yosemite, Zion, Grand Canyon, and Acadia are
  * coming-soon placeholders that demonstrate the extension path.
  */
+import { lazy } from "react";
 import type { ParkTheme } from "./types";
-import GlacierScene from "./art/GlacierScene";
-import YellowstoneScene from "./art/YellowstoneScene";
+// The full-bleed vector scenes are large and only render as a FALLBACK when a
+// park's raster `sceneImage` is absent or fails to load (see ParkScene /
+// HeroBackground). Code-split them so the initial bundle doesn't carry every
+// park's vector art up front; the consumers render them inside <Suspense>.
+const GlacierScene = lazy(() => import("./art/GlacierScene"));
+const YellowstoneScene = lazy(() => import("./art/YellowstoneScene"));
 import {
   GlacierEmblem,
   YellowstoneEmblem,
