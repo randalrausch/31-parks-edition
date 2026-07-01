@@ -8,8 +8,6 @@
 
     "customDomain": { "value": "${CUSTOM_DOMAIN}" },
     "extraAllowedOrigins": { "value": "${ALLOWED_ORIGINS}" },
-    "budgetAlertEmail": { "value": "${BUDGET_ALERT_EMAIL}" },
-    "monthlyBudgetAmount": { "value": 10 },
     "maxFunctionInstances": { "value": 5 },
     "logAnalyticsDailyQuotaGb": { "value": 1 },
     "maxGamesPerDay": { "value": 500 },

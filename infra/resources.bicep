@@ -5,23 +5,19 @@
 // The Functions runtime store uses a connection string (standard for Consumption;
 // holds no game data). CORS is locked to the Static Web App origin.
 //
-// Cost guards: a max scale-out cap, a Log Analytics daily ingestion cap, durable
-// rate-limit ceilings (passed to the app), and an optional monthly Budget alert.
+// Cost guards: a max scale-out cap, a Log Analytics daily ingestion cap, and
+// durable rate-limit ceilings (passed to the app). A monthly Budget alert is
+// managed in the Portal, not here — see the note near the outputs.
 param location string
 param resourceToken string
 param tags object
 param customDomain string
 @description('Extra CORS origins (comma-separated) the API should accept, e.g. an apex domain bound via the Portal. The SWA default host and any customDomain are always included.')
 param extraAllowedOrigins string = ''
-param monthlyBudgetAmount int
-param budgetAlertEmail string
 param maxFunctionInstances int
 param logAnalyticsDailyQuotaGb int
 param maxGamesPerDay int
 param maxGamesPerIpPerHour int
-
-@description('First of the current month — required start for the monthly budget.')
-param budgetStartDate string = utcNow('yyyy-MM-01')
 
 var tableDataContributorRoleId = '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
 
@@ -155,34 +151,12 @@ resource tableRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
-// Monthly cost budget with alerts (created only when an amount + email are set).
-resource budget 'Microsoft.Consumption/budgets@2023-11-01' = if (monthlyBudgetAmount > 0 && !empty(budgetAlertEmail)) {
-  name: 'budget-${resourceToken}'
-  properties: {
-    category: 'Cost'
-    amount: monthlyBudgetAmount
-    timeGrain: 'Monthly'
-    timePeriod: {
-      startDate: budgetStartDate
-    }
-    notifications: {
-      actual_80: {
-        enabled: true
-        operator: 'GreaterThanOrEqualTo'
-        threshold: 80
-        thresholdType: 'Actual'
-        contactEmails: [ budgetAlertEmail ]
-      }
-      forecast_100: {
-        enabled: true
-        operator: 'GreaterThanOrEqualTo'
-        threshold: 100
-        thresholdType: 'Forecasted'
-        contactEmails: [ budgetAlertEmail ]
-      }
-    }
-  }
-}
+// NOTE: the monthly cost budget is intentionally NOT managed here. Azure locks a
+// budget's start date once its period is active, so any re-`azd provision` fails
+// with "Start date of budgets cannot be updated". The hard caps above
+// (maxFunctionInstances, the Log Analytics daily quota, and the per-IP/global
+// rate limits) are the real cost enforcement; a budget is only an email alarm.
+// Set one in the Portal (Cost Management → Budgets) — see docs/AZURE.md.
 
 output apiBaseUrl string = 'https://${functionApp.properties.defaultHostName}/api'
 output staticWebAppUrl string = swaOrigin

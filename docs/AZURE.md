@@ -41,9 +41,9 @@ are tagged so the stack is easy to spot and filter in the portal:
 ## Deploy from scratch
 
 You need an Azure subscription and the tools from **Prerequisites** above.
-Everything that identifies you — subscription ID, region, budget email, custom
-domain — is stored in the **gitignored** `.azure/<env>/.env`, never in a tracked
-file, so this is safe to run on a public clone.
+Everything that identifies you — subscription ID, region, custom domain — is
+stored in the **gitignored** `.azure/<env>/.env`, never in a tracked file, so
+this is safe to run on a public clone.
 
 1. **Log in** (both open a browser):
    ```bash
@@ -55,8 +55,7 @@ file, so this is safe to run on a public clone.
    `.azure/<env>/.env` (gitignored):
    ```bash
    azd env new prod
-   azd env set AZURE_LOCATION centralus            # region
-   azd env set BUDGET_ALERT_EMAIL you@example.com  # optional: enables a budget alert
+   azd env set AZURE_LOCATION centralus   # region
    # The subscription is chosen interactively on the first `azd up`. To pin it:
    # azd env set AZURE_SUBSCRIPTION_ID <sub-guid>
    ```
@@ -92,28 +91,21 @@ the real values never touch a tracked file:
 | `AZURE_SUBSCRIPTION_ID` | Which subscription to bill/deploy to (or pick at the `azd up` prompt). |
 | `AZURE_LOCATION` | Region, e.g. `centralus`. |
 | `AZURE_RESOURCE_GROUP` | Custom resource-group name (optional; default `rg-31-parks-edition-<env>`). |
-| `BUDGET_ALERT_EMAIL` | Email for budget alerts. **The budget is only created if this is set.** |
 | `CUSTOM_DOMAIN` | A **subdomain** to bind (e.g. `play.example.com`). Apex/root domains (e.g. `example.com`) are set up in the Portal instead — see "Custom domain" below. |
 | `ALLOWED_ORIGINS` | Extra CORS origins the API accepts (comma-separated), e.g. an apex domain bound via the Portal. The SWA default host and any `CUSTOM_DOMAIN` are included automatically. |
-
-```bash
-azd env set BUDGET_ALERT_EMAIL you@example.com
-```
 
 **2. `infra/main.parameters.json` — non-sensitive policy knobs (checked in).**
 Edit the literals and re-run `azd provision`:
 
 | Parameter | Default | What it does |
 |-----------|---------|--------------|
-| `monthlyBudgetAmount` | `10` | Monthly budget in your billing currency. `0` disables it. |
 | `maxFunctionInstances` | `5` | Hard cap on Function scale-out (bounds peak cost). |
 | `logAnalyticsDailyQuotaGb` | `1` | Daily telemetry ingestion cap in GB (`-1` = unlimited). |
 | `maxGamesPerDay` | `500` | Global hard ceiling on games created per day. |
 | `maxGamesPerIpPerHour` | `20` | Per-IP create cap per hour. |
 
-`environmentName`, `location`, `resourceGroupName`, `customDomain`, and
-`budgetAlertEmail` are all `${...}` references filled from the azd environment
-above — leave those as-is.
+`environmentName`, `location`, `resourceGroupName`, and `customDomain` are
+`${...}` references filled from the azd environment above — leave those as-is.
 
 ### Custom domain
 
@@ -265,14 +257,15 @@ or a traffic spike can't drive cost. Several layers, all configurable in
 | **Per-instance limiter** | built-in | Cheap first line (no storage round-trip) on every request. |
 | **Telemetry cap** | `logAnalyticsDailyQuotaGb` (default 1) | App Insights/Log Analytics ingestion can't run up cost. |
 | **Storage growth** | 14-day game TTL + daily reaper | Abandoned games are deleted; storage stays bounded. |
-| **Budget alert** | `monthlyBudgetAmount` + `budgetAlertEmail` | Emails you at 80% actual / 100% forecast of your monthly cap. |
+| **Budget alert** | Portal (Cost Management → Budgets) | Optional email alarm at, e.g., 80% actual / 100% forecast of a monthly cap. |
 
-> **About the budget:** Azure budgets are an **alarm**, not a hard stop — Azure has
-> no true "switch off spending" toggle. The *enforcement* comes from the caps above
-> (they bound how much work the system will ever do); the budget gives you early
-> warning with plenty of headroom to react. To set it, run
-> `azd env set BUDGET_ALERT_EMAIL you@example.com` and set `monthlyBudgetAmount`
-> in `infra/main.parameters.json`, then `azd provision`.
+> **About the budget:** it's an **alarm**, not a hard stop — Azure has no true
+> "switch off spending" toggle. The *enforcement* comes from the caps above (they
+> bound how much work the system will ever do); a budget just gives early warning.
+> It is **not** created by this template: Azure locks a budget's start date once
+> its period is active, which makes any re-`azd provision` fail. Set one yourself
+> in the **Portal → Cost Management → Budgets** (or once via CLI:
+> `az consumption budget create-with-rg --budget-name parks --resource-group <rg> --amount 10 --time-grain Monthly --category Cost`).
 > For a true kill-switch, attach an Action Group → Automation runbook that stops
 > the Function App at 100% (advanced; see Azure Cost Management docs).
 
