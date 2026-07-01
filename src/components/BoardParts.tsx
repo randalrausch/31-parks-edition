@@ -14,8 +14,44 @@ import LogFeed from "./LogFeed";
 import { TokenRow } from "./TokenRow";
 import { NpsArrowhead } from "../art/Glyphs";
 import { useTheme } from "./ParkThemeProvider";
+import ParkScene from "./ParkScene";
+import Modal from "./Modal";
+import ParkPicker from "./ParkPicker";
 import { formatScore, type GamePlayer, type LogEntry } from "../game/engine";
 import type { CardModel, Suit } from "../types";
+
+/**
+ * The board's immersive frame — the perspective-correct table surface, park
+ * scene, and vignette — shared by both boards (and the online "Connecting…"
+ * state) so the scaffolding can't drift. `children` are the table contents;
+ * `overlays` render as siblings of the table inside the fold (covers, deal-end /
+ * game-over overlays, toasts, modals).
+ */
+export function BoardFrame({ children, overlays }: { children: ReactNode; overlays?: ReactNode }) {
+  const { theme } = useTheme();
+  return (
+    <section className="board-fold">
+      <div className="board paper-grain">
+        <ParkScene theme={theme} className="board__scene" />
+        <div className="board__vignette" />
+        {children}
+      </div>
+      {overlays}
+    </section>
+  );
+}
+
+/** The "Switch Park" modal, identical on both boards. */
+export function SwitchParkModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Modal open={open} onClose={onClose} labelledBy="parks-title">
+      <h2 id="parks-title" className="board__modal-title">
+        Switch Park
+      </h2>
+      <ParkPicker heading={false} onPick={onClose} />
+    </Modal>
+  );
+}
 
 /**
  * The "At the Table" action feed, shared by both boards so the panel shell can't
