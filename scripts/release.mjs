@@ -32,21 +32,18 @@ function currentVersion() {
   return src.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1] ?? "0.0.0";
 }
 
-/** Commits since the last v* tag (or all of history if there are none). */
-function commitsSinceLastTag() {
-  let range = "HEAD";
+/** The most recent v* tag, or null if the repo has never been tagged. */
+function lastTag() {
   try {
-    const lastTag = git(
-      "describe",
-      "--tags",
-      "--match",
-      "v*",
-      "--abbrev=0",
-    );
-    range = `${lastTag}..HEAD`;
+    return git("describe", "--tags", "--match", "v*", "--abbrev=0");
   } catch {
-    /* no tags yet — consider all history */
+    return null;
   }
+}
+
+/** Commits since the given tag (exclusive). */
+function commitsSince(tag) {
+  const range = `${tag}..HEAD`;
   const RS = "\x1e";
   const US = "\x1f";
   const raw = git(
@@ -100,7 +97,27 @@ function prependChangelog(section) {
 
 // ── main ──────────────────────────────────────────────────────────────────────
 const current = currentVersion();
-const commits = commitsSinceLastTag();
+const notesFile = path(".release-notes.md");
+const tag = lastTag();
+
+// First run ever: seed the current version as the baseline tag WITHOUT bumping,
+// so numbering starts from the intended version (e.g. v0.2.0) instead of a bump
+// computed from the whole pre-automation history. Future runs bump from here.
+if (!tag) {
+  if (!DRY)
+    writeFileSync(
+      notesFile,
+      `Baseline release v${current}. Automated versioning starts here.\n`,
+    );
+  setOutput("status", "baseline");
+  setOutput("version", current);
+  setOutput("tag", `v${current}`);
+  setOutput("notes_file", notesFile);
+  console.log(`[release] no tags yet — seeding baseline v${current}`);
+  process.exit(0);
+}
+
+const commits = commitsSince(tag);
 const decision = decideRelease(commits, current);
 
 if (decision.ambiguous) {
@@ -130,7 +147,6 @@ const section = renderChangelog(version, dateIso, decision);
 bumpVersionFiles(version);
 prependChangelog(section);
 
-const notesFile = path(".release-notes.md");
 if (!DRY) writeFileSync(notesFile, section);
 
 setOutput("status", "released");

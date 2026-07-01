@@ -48,6 +48,17 @@ jobs:
         id: decide
         run: node scripts/release.mjs
 
+      - name: Seed the baseline tag (first run, no bump)
+        if: ${{ steps.decide.outputs.status == 'baseline' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git tag "${{ steps.decide.outputs.tag }}"
+          git push origin "${{ steps.decide.outputs.tag }}"
+          gh release create "${{ steps.decide.outputs.tag }}" \
+            --title "${{ steps.decide.outputs.tag }}" \
+            --notes-file .release-notes.md
+
       - name: Regenerate edge bundle for the new version
         if: ${{ steps.decide.outputs.status == 'released' }}
         run: npm run build:edge
