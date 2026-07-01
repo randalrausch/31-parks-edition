@@ -4,6 +4,7 @@ import { cardValue } from "../types";
 import {
   DEFAULT_OPTIONS,
   scoreHand,
+  bestHandScore,
   bestSuit,
   takeDamage,
   isAlive,
@@ -78,6 +79,34 @@ describe("scoreHand", () => {
   });
   it("scores an empty hand as 0", () => {
     expect(scoreHand([], opts())).toBe(0);
+  });
+});
+
+describe("bestHandScore", () => {
+  it("matches scoreHand for a legal (≤3-card) hand", () => {
+    const h = [c("A", "spades"), c("K", "spades"), c("2", "hearts")];
+    expect(bestHandScore(h, opts())).toBe(scoreHand(h, opts()));
+  });
+  it("scores the best legal 3-card hand while holding 4 (mid-draw)", () => {
+    // Four spades total 39, but no legal hand keeps four — the best 3-card hand
+    // drops the 8 and keeps A+K+10 = 31.
+    const four = [
+      c("A", "spades"),
+      c("K", "spades"),
+      c("10", "spades"),
+      c("8", "spades"),
+    ];
+    expect(scoreHand(four, opts())).toBe(39); // the illegal 4-card total
+    expect(bestHandScore(four, opts())).toBe(31);
+  });
+  it("finds three of a kind by dropping the odd card (rule on)", () => {
+    const four = [
+      c("7", "spades"),
+      c("7", "hearts"),
+      c("7", "clubs"),
+      c("K", "diamonds"),
+    ];
+    expect(bestHandScore(four, opts({ threeOfAKind: true }))).toBe(30.5);
   });
 });
 

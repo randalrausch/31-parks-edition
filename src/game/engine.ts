@@ -215,6 +215,27 @@ export function formatScore(s: number): string {
   return s === 30.5 ? "30½" : String(s);
 }
 
+/**
+ * Best score for a LEGAL 3-card hand given the cards held. A hand is only ever
+ * 3 cards at rest, but mid-turn — after drawing, before discarding — it holds 4,
+ * and `scoreHand` on 4 cards can total a suit that no legal hand could keep. This
+ * returns the best score over every choice of which card to discard, so the live
+ * HUD always reflects an achievable 3-card hand. With 3 or fewer cards it's just
+ * `scoreHand`.
+ */
+export function bestHandScore(hand: CardModel[], opts: GameOptions): number {
+  if (hand.length <= 3) return scoreHand(hand, opts);
+  let best = 0;
+  for (let i = 0; i < hand.length; i++) {
+    const s = scoreHand(
+      hand.filter((_, j) => j !== i),
+      opts,
+    );
+    if (s > best) best = s;
+  }
+  return best;
+}
+
 /** The suit currently contributing the player's score (for highlighting). */
 export function bestSuit(hand: CardModel[]): Suit | null {
   let best = 0;

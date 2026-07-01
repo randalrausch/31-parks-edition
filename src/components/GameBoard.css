@@ -21,7 +21,9 @@
     inset 0 0 60px rgba(0, 0, 0, 0.5),
     var(--shadow-panel);
   isolation: isolate;
-  --card-unit: clamp(54px, 7.6vmin, 104px);
+  /* Base card size for the table; the deck/discard piles scale up from this. */
+  --board-card-unit: clamp(54px, 7.6vmin, 104px);
+  --card-unit: var(--board-card-unit);
   display: grid;
   grid-template-rows: auto 1fr auto;
 }
@@ -282,7 +284,12 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  --card-w: var(--card-unit, 82px);
+  /* The deck + discard render a bit larger than the table's base card size.
+     Both the deck back and the discard card derive their width from --card-unit,
+     so scaling it here (and --card-w for the slot + stack shadows) grows the
+     whole cluster together and keeps the discard exactly the deck's size. */
+  --card-unit: calc(var(--board-card-unit) * 1.15);
+  --card-w: var(--card-unit);
 }
 .piles__stacks {
   display: flex;
@@ -636,7 +643,7 @@
 @media (max-width: 600px) {
   .board {
     border-width: 2px;
-    --card-unit: clamp(46px, 13.5vmin, 82px);
+    --board-card-unit: clamp(46px, 13.5vmin, 82px);
   }
   .board__opponents {
     padding-top: 48px;
