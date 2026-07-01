@@ -2,8 +2,8 @@
 // deploys the 31: National Parks Edition Azure backend into it.
 //
 // CONFIG: edit infra/main.parameters.json to set the resource group name, custom
-// domain, monthly budget, and the cost/abuse caps. The subscription + location +
-// environment name come from azd (see docs/AZURE.md → Configuration).
+// domain, and the cost/abuse caps. The subscription + location + environment
+// name come from azd (see docs/AZURE.md → Configuration).
 targetScope = 'subscription'
 
 @minLength(1)
@@ -23,13 +23,6 @@ param customDomain string = ''
 
 @description('Extra CORS origins (comma-separated) the API should accept, e.g. an apex domain bound via the Portal. The SWA default host and any customDomain are always included.')
 param extraAllowedOrigins string = ''
-
-@description('Monthly cost budget in your billing currency. 0 disables the budget.')
-@minValue(0)
-param monthlyBudgetAmount int = 10
-
-@description('Email for budget alerts. Required (non-empty) for the budget to be created.')
-param budgetAlertEmail string = ''
 
 @description('Max concurrent Function instances — caps peak burn rate under load.')
 @minValue(1)
@@ -75,8 +68,6 @@ module resources 'resources.bicep' = {
     tags: tags
     customDomain: customDomain
     extraAllowedOrigins: extraAllowedOrigins
-    monthlyBudgetAmount: monthlyBudgetAmount
-    budgetAlertEmail: budgetAlertEmail
     maxFunctionInstances: maxFunctionInstances
     logAnalyticsDailyQuotaGb: logAnalyticsDailyQuotaGb
     maxGamesPerDay: maxGamesPerDay
