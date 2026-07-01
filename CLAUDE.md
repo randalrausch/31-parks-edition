@@ -12,19 +12,27 @@ logic; change it once here.
 - Shared board pieces live in `src/components/BoardParts.tsx`. Put anything both
   boards render there rather than copying it.
 
-**Back ends (keep in feature parity):**
-- Supabase Edge Function — `supabase/functions/game/index.ts`
-- Azure Functions — `api/src/game/handlers.ts`
+**Back ends — both run the SAME shared op layer in `src/game/`:**
+the five ops (`handlers.ts`), the request router + CORS + per-instance rate limit
+(`router.ts`), the durable rate-limit bucketing (`rateLimit.ts`), the `GameStore`
+interface (`store.ts`), and ids (`ids.ts`) — on top of the rules engine. Each
+backend supplies only a `GameStore` + rate-limiter **adapter** and a request
+marshaling shim; the ops/router/redaction are shared, so they can't drift.
+- Supabase Edge Function — `supabase/functions/game/index.ts`: a thin Deno adapter
+  that builds a `SupabaseGameStore` (`src/game/supabaseStore.ts`) and calls
+  `makeRouter`. It imports the shared layer from the bundle: `src/game/edgeEntry.ts`
+  → `supabase/functions/_shared/engine.mjs` (rebuild with `npm run build:edge`
+  whenever any shared `src/game/` code changes, and commit the regenerated
+  `engine.mjs`).
+- Azure Functions — `api/src/index.ts`: imports the same `makeRouter` and shared
+  modules directly from `src/game/`, backed by `TableGameStore`
+  (`api/src/game/tableStore.ts`). Only Table Storage-specific code lives in `api/`.
 
-Both back ends run the SAME shared engine:
-- Supabase bundles it via `src/game/edgeEntry.ts` → `supabase/functions/_shared/engine.mjs`
-  (rebuild with `npm run build:edge` whenever shared engine/actions/authority
-  code changes, and commit the regenerated `engine.mjs`).
-- Azure imports the source directly (`api/src/game/engine.ts` re-exports `edgeEntry`).
-
-> **Parity rule:** any change to one back end almost always needs the matching
-> change in the other. The same is true for the two front-end boards. When you
-> touch one, check the sibling.
+> **Parity rule:** the op layer is now shared, so most backend changes land once
+> in `src/game/`. What still differs is each backend's **store/rate-limiter
+> adapter** (`supabaseStore.ts` vs `tableStore.ts` + `api/src/game/rateLimit.ts`)
+> and its entry shim — when you touch one adapter, check the sibling. The same
+> parity discipline applies to the two front-end boards.
 
 ## Adding or changing a game option
 

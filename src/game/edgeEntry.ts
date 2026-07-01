@@ -11,3 +11,9 @@ export { APP_VERSION, PROTOCOL_VERSION } from "./version";
 export type { GameState, GameOptions } from "./engine";
 export { buildCreateSetup, sanitizeOptions, clampName, clampKey } from "./config";
 export type { CreateConfigInput, CreateSetup, SeatSetup } from "./config";
+
+// Shared authority op layer (also imported directly by the Azure backend). The
+// Supabase Edge Function gets it from this bundle so both backends run one copy.
+export { makeRouter } from "./router";
+export type { RawRequest, RawResponse } from "./router";
+export { makeSupabaseStore, makeSupabaseRateLimiter } from "./supabaseStore";

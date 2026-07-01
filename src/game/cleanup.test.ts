@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { sweep } from "./cleanup.js";
-import { makeMemoryStore } from "./memoryStore.js";
-import { createGameState } from "./engine.js";
-import type { GameRecord, SecretRecord } from "./store.js";
+import { sweep } from "./cleanup";
+import { makeMemoryStore } from "./memoryStore";
+import { createGameState } from "./actions";
+import type { GameRecord, SecretRecord } from "./store";
 
 function game(id: string, expiresAt: string): { rec: GameRecord; secret: SecretRecord } {
   const state = createGameState([{ id: "p0", name: "H", isAI: false, avatarKey: "ranger" }], {

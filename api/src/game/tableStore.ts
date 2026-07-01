@@ -24,8 +24,8 @@ import {
   type GameStore,
   type SeatInfo,
   type SecretRecord,
-} from "./store.js";
-import type { GameState } from "./engine.js";
+} from "../../../src/game/store";
+import type { GameState } from "../../../src/game/engine";
 
 const MAX_STATE_BYTES = 60_000; // Table Storage string property cap is 64 KB.
 

@@ -15,8 +15,8 @@ import {
   type Timer,
 } from "@azure/functions";
 import { makeTableStore } from "./game/tableStore.js";
-import { makeRouter } from "./router.js";
-import { sweep } from "./game/cleanup.js";
+import { makeRouter } from "../../src/game/router";
+import { sweep } from "../../src/game/cleanup";
 import { makeTableRateLimiter } from "./game/rateLimit.js";
 import { initTelemetry } from "./telemetry.js";
 

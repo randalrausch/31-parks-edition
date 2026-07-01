@@ -496,6 +496,370 @@ function buildCreateSetup(config) {
     aiCount: ai.length
   };
 }
+
+// src/game/ids.ts
+var CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function makeCode() {
+  const bytes = new Uint8Array(5);
+  crypto.getRandomValues(bytes);
+  let c = "";
+  for (let i = 0; i < 5; i++) c += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
+  return c;
+}
+var newToken = () => crypto.randomUUID();
+
+// src/game/handlers.ts
+var TTL_MS = 14 * 24 * 60 * 60 * 1e3;
+var ok = (body) => ({ status: 200, body });
+var fail = (status, error) => ({
+  status,
+  body: { error }
+});
+var nowIso = () => (/* @__PURE__ */ new Date()).toISOString();
+var expiry = () => new Date(Date.now() + TTL_MS).toISOString();
+function bumped(rec, patch) {
+  const now = nowIso();
+  return {
+    ...rec,
+    ...patch,
+    version: rec.version + 1,
+    updatedAt: now,
+    expiresAt: expiry()
+  };
+}
+async function handleCreate(store, body) {
+  const { players, seats, options } = buildCreateSetup(body.config ?? {});
+  const state = createGameState(players, options);
+  const code = makeCode();
+  const creatorToken = newToken();
+  const gameId = crypto.randomUUID();
+  const now = nowIso();
+  const rec = {
+    gameId,
+    code,
+    status: "lobby",
+    version: 0,
+    seats,
+    createdAt: now,
+    updatedAt: now,
+    expiresAt: expiry()
+  };
+  const secret = { state, seatTokens: { [creatorToken]: 0 } };
+  await store.createGame(rec, secret);
+  return ok({ gameId, code, seatIndex: 0, seatToken: creatorToken });
+}
+async function handleJoin(store, body) {
+  const code = typeof body.code === "string" ? body.code : "";
+  const gameId = await store.getByCode(code);
+  if (!gameId) return fail(404, "No game with that code.");
+  const game = await store.getGame(gameId);
+  const secret = await store.getSecret(gameId);
+  if (!game || !secret) return fail(404, "No game with that code.");
+  if (game.rec.status !== "lobby") return fail(409, "That game has already started.");
+  const seats = game.rec.seats;
+  const seat = seats.find((s) => !s.isAI && !s.filled) ?? seats.find((s) => s.isAI);
+  if (!seat) return fail(409, "That game is full.");
+  const idx = seat.idx;
+  const name = (typeof body.name === "string" ? body.name.trim().slice(0, 40) : "") || `Player ${idx + 1}`;
+  const tookAI = seat.isAI === true;
+  seat.isAI = false;
+  seat.filled = true;
+  seat.name = name;
+  seat.avatar = "ranger";
+  seat.emoji = null;
+  const players = secret.state.players;
+  const player = players[idx];
+  player.isAI = false;
+  player.name = name;
+  player.avatarKey = "ranger";
+  if (tookAI) {
+    delete player.traits;
+    player.emoji = null;
+    player.image = null;
+  }
+  const t = newToken();
+  const seatTokens = { ...secret.seatTokens, [t]: idx };
+  const next = bumped(game.rec, { seats });
+  if (!await store.update(gameId, game.etag, next, {
+    state: secret.state,
+    seatTokens
+  }))
+    return fail(409, "The game just changed \u2014 please try again.");
+  return ok({ gameId, seatIndex: idx, seatToken: t });
+}
+async function handleStart(store, body) {
+  const gameId = String(body.gameId ?? "");
+  const game = await store.getGame(gameId);
+  const secret = await store.getSecret(gameId);
+  if (!game || !secret) return fail(404, "That game no longer exists.");
+  if (secret.seatTokens[String(body.seatToken)] !== 0)
+    return fail(403, "Only the host can start the game.");
+  if (game.rec.status !== "lobby") return fail(409, "The game has already started.");
+  const seats = game.rec.seats;
+  const state = secret.state;
+  for (const s of seats) {
+    if (!s.isAI && !s.filled) {
+      s.isAI = true;
+      s.filled = true;
+      state.players[s.idx].isAI = true;
+    }
+  }
+  const dealt = advanceAuthority(applyAction(secret.state, { type: "deal" }));
+  const next = bumped(game.rec, { seats, status: "playing" });
+  if (!await store.update(gameId, game.etag, next, {
+    state: dealt,
+    seatTokens: secret.seatTokens
+  }))
+    return fail(409, "The game just changed \u2014 please try again.");
+  return ok({ ok: true });
+}
+async function handleAct(store, body) {
+  const gameId = String(body.gameId ?? "");
+  const game = await store.getGame(gameId);
+  const secret = await store.getSecret(gameId);
+  if (!game || !secret) return fail(404, "That game no longer exists.");
+  const idx = secret.seatTokens[String(body.seatToken)];
+  if (idx === void 0) return fail(403, "Your seat is no longer valid for this game.");
+  if (typeof body.action !== "object" || body.action === null)
+    return fail(400, "That move wasn't understood.");
+  const seatId = secret.state.players[idx].id;
+  const next = applyPlayerAction(secret.state, seatId, body.action);
+  if (next === secret.state) return ok({ ok: false, reason: "not-applied" });
+  const status = next.phase === "gameOver" ? "over" : "playing";
+  const rec = bumped(game.rec, { status });
+  if (!await store.update(gameId, game.etag, rec, {
+    state: next,
+    seatTokens: secret.seatTokens
+  }))
+    return fail(409, "The game just changed \u2014 please retry.");
+  return ok({ ok: true });
+}
+async function handleState(store, body) {
+  const gameId = String(body.gameId ?? "");
+  const game = await store.getGame(gameId);
+  const secret = await store.getSecret(gameId);
+  if (!game || !secret) return fail(404, "That game no longer exists.");
+  const tok = body.seatToken;
+  const idx = typeof tok === "string" ? secret.seatTokens[tok] : void 0;
+  const seatId = idx !== void 0 ? secret.state.players[idx].id : null;
+  return ok({
+    status: game.rec.status,
+    version: game.rec.version,
+    seats: game.rec.seats,
+    seatIndex: idx ?? null,
+    state: redactState(secret.state, seatId)
+  });
+}
+function handleVersion(provider) {
+  return ok({
+    ok: true,
+    version: APP_VERSION,
+    provider,
+    protocol: PROTOCOL_VERSION
+  });
+}
+
+// src/game/store.ts
+var StateTooLargeError = class extends Error {
+  constructor(bytes) {
+    super(`Game state too large to persist: ${bytes} bytes`);
+    this.name = "StateTooLargeError";
+  }
+};
+
+// src/game/router.ts
+var OPS = {
+  create: handleCreate,
+  join: handleJoin,
+  start: handleStart,
+  act: handleAct,
+  state: handleState
+};
+function makeRouter(store, opts = {}) {
+  const allowed = (opts.allowedOrigin ?? "*").split(",").map((o) => o.trim()).filter(Boolean);
+  const pickOrigin = (reqOrigin) => allowed.includes("*") ? "*" : reqOrigin && allowed.includes(reqOrigin) ? reqOrigin : allowed[0] ?? "*";
+  const provider = opts.provider ?? "Azure";
+  const rateLimiter = opts.rateLimiter;
+  const cors = (reqOrigin) => ({
+    "Access-Control-Allow-Origin": pickOrigin(reqOrigin),
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": opts.allowedHeaders ?? "content-type",
+    "Access-Control-Max-Age": "86400",
+    Vary: "Origin"
+  });
+  const hits = /* @__PURE__ */ new Map();
+  const limited = (key, max, windowMs) => {
+    const now = Date.now();
+    const e = hits.get(key);
+    if (!e || now > e.reset) {
+      hits.set(key, { n: 1, reset: now + windowMs });
+      if (hits.size > 5e3) {
+        for (const [k, v] of hits) if (now > v.reset) hits.delete(k);
+      }
+      return false;
+    }
+    e.n += 1;
+    return e.n > max;
+  };
+  return async function route(req) {
+    const corsHeaders = cors(req.origin);
+    const reply = (status, body2) => ({
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      body: body2
+    });
+    if (req.method === "OPTIONS") return { status: 204, headers: corsHeaders };
+    if (req.method !== "POST") return reply(405, { error: "POST only." });
+    if (limited(req.ip, 90, 6e4))
+      return reply(429, { error: "Too many requests \u2014 please slow down." });
+    let body;
+    try {
+      body = await req.readJson();
+    } catch {
+      return reply(400, { error: "We couldn't read that request." });
+    }
+    const op = String(body?.op ?? "");
+    if (op === "version") return reply(200, handleVersion(provider).body);
+    if (op === "create") {
+      if (limited(`create:${req.ip}`, 15, 6e5))
+        return reply(429, {
+          error: "You're creating games too quickly \u2014 try again in a few minutes."
+        });
+      if (rateLimiter && !await rateLimiter.allowCreate(req.ip, (/* @__PURE__ */ new Date()).toISOString()))
+        return reply(429, {
+          error: "Too many games are being created right now \u2014 please try again later."
+        });
+    }
+    const fn = OPS[op];
+    if (!fn) return reply(400, { error: "Unsupported request." });
+    try {
+      const { status, body: out } = await fn(store, body);
+      return reply(status, out);
+    } catch (e) {
+      if (e instanceof StateTooLargeError) {
+        console.error(`game op=${op} state-too-large: ${e.message}`);
+        return reply(507, {
+          error: "This game has grown too large to continue. Please start a new one."
+        });
+      }
+      console.error(`game op=${op} failed:`, e?.stack ?? e);
+      return reply(500, {
+        error: "Something went wrong on our end. Please try again."
+      });
+    }
+  };
+}
+
+// src/game/rateLimit.ts
+var safe = (s) => s.replace(/[^A-Za-z0-9.:_-]/g, "_").slice(0, 200);
+function makeLimiter(counter, maxPerDay, maxPerIpHour) {
+  return {
+    async allowCreate(ip, nowIso2) {
+      const day = nowIso2.slice(0, 10);
+      const hour = nowIso2.slice(0, 13);
+      if (!await counter.incrIfBelow("global", `d:${day}`, maxPerDay)) return false;
+      return counter.incrIfBelow("ip", `${safe(ip)}:${hour}`, maxPerIpHour);
+    }
+  };
+}
+
+// src/game/supabaseStore.ts
+var MAX_STATE_BYTES = 6e4;
+var TTL_MS2 = 14 * 24 * 60 * 60 * 1e3;
+function guardSize(state) {
+  const size = JSON.stringify(state).length;
+  if (size > MAX_STATE_BYTES) throw new StateTooLargeError(size);
+}
+function toRecord(row) {
+  return {
+    gameId: row.id,
+    code: row.code,
+    status: row.status,
+    version: row.version,
+    seats: row.seats,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    // Supabase reaps by updated_at (see deleteExpired), so expiresAt is derived
+    // for interface parity and never used as the source of truth here.
+    expiresAt: new Date(new Date(row.updated_at).getTime() + TTL_MS2).toISOString()
+  };
+}
+function makeSupabaseStore(admin) {
+  return {
+    async createGame(rec, secret) {
+      guardSize(secret.state);
+      const { error: gErr } = await admin.from("games").insert({
+        id: rec.gameId,
+        code: rec.code,
+        status: rec.status,
+        version: 0,
+        seats: rec.seats
+      });
+      if (gErr) throw new Error(`createGame(games): ${gErr.message}`);
+      const { error: sErr } = await admin.from("game_secrets").insert({
+        game_id: rec.gameId,
+        state: secret.state,
+        seat_tokens: secret.seatTokens
+      });
+      if (sErr) throw new Error(`createGame(secret): ${sErr.message}`);
+    },
+    async getByCode(code) {
+      const { data } = await admin.from("games").select("id").eq("code", code.toUpperCase()).maybeSingle();
+      return data?.id ?? null;
+    },
+    async getGame(gameId) {
+      const { data } = await admin.from("games").select("*").eq("id", gameId).maybeSingle();
+      if (!data) return null;
+      const rec = toRecord(data);
+      return { rec, etag: String(rec.version) };
+    },
+    async getSecret(gameId) {
+      const { data } = await admin.from("game_secrets").select("*").eq("game_id", gameId).maybeSingle();
+      if (!data) return null;
+      return {
+        state: data.state,
+        seatTokens: data.seat_tokens
+      };
+    },
+    async update(gameId, etag, rec, secret) {
+      guardSize(secret.state);
+      const { data, error } = await admin.rpc("commit_game", {
+        p_id: gameId,
+        p_expected_version: Number(etag),
+        p_status: rec.status,
+        p_seats: rec.seats,
+        p_state: secret.state,
+        p_seat_tokens: secret.seatTokens
+      });
+      if (error) throw new Error(`update(commit_game): ${error.message}`);
+      return typeof data === "number" && data >= 0;
+    },
+    async deleteExpired(nowIso2) {
+      const cutoff = new Date(new Date(nowIso2).getTime() - TTL_MS2).toISOString();
+      const { data, error } = await admin.from("games").delete().lt("updated_at", cutoff).select("id");
+      if (error) throw new Error(`deleteExpired: ${error.message}`);
+      return data?.length ?? 0;
+    }
+  };
+}
+function makeSupabaseRateLimiter(admin, maxPerDay, maxPerIpHour) {
+  const counter = {
+    async incrIfBelow(pk, rk, limit) {
+      try {
+        const { data, error } = await admin.rpc("incr_if_below", {
+          p_bucket: pk,
+          p_window: rk,
+          p_limit: limit
+        });
+        if (error) return true;
+        return data === true;
+      } catch {
+        return true;
+      }
+    }
+  };
+  return makeLimiter(counter, maxPerDay, maxPerIpHour);
+}
 export {
   APP_VERSION,
   PROTOCOL_VERSION,
@@ -506,6 +870,9 @@ export {
   clampKey,
   clampName,
   createGameState,
+  makeRouter,
+  makeSupabaseRateLimiter,
+  makeSupabaseStore,
   redactState,
   sanitizeOptions
 };
