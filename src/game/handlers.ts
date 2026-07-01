@@ -11,25 +11,16 @@
  * Hidden info: `state` responses always run redactState(state, seatId) so the
  * wire never carries another seat's cards.
  */
-import {
-  createGameState,
-  applyAction,
-  applyPlayerAction,
-  advanceAuthority,
-  redactState,
-  buildCreateSetup,
-  APP_VERSION,
-  PROTOCOL_VERSION,
-  type GameState,
-  type GameAction,
-  type CreateConfigInput,
-} from "./engine.js";
-import { makeCode, newToken } from "./ids.js";
-import type { GameRecord, GameStore, SecretRecord } from "./store.js";
+import { createGameState, applyAction } from "./actions";
+import type { GameAction } from "./actions";
+import { applyPlayerAction, advanceAuthority, redactState } from "./authority";
+import { buildCreateSetup } from "./config";
+import type { CreateConfigInput } from "./config";
+import { APP_VERSION, PROTOCOL_VERSION } from "./version";
+import type { GameState } from "./engine";
+import { makeCode, newToken } from "./ids";
+import type { GameRecord, GameStore, SecretRecord } from "./store";
 
-// Version (shown in About via the `version` op) comes from the shared version
-// module, so both backends and the frontend always report the same release.
-const PROVIDER = "Azure";
 const TTL_MS = 14 * 24 * 60 * 60 * 1000; // games expire 14 days after last activity
 
 export type OpResult = { status: number; body: unknown };
@@ -231,11 +222,11 @@ export async function handleState(
 
 /* ─────────────────────────── version ────────────────────────── */
 
-export function handleVersion(): OpResult {
+export function handleVersion(provider: string): OpResult {
   return ok({
     ok: true,
     version: APP_VERSION,
-    provider: PROVIDER,
+    provider,
     protocol: PROTOCOL_VERSION,
   });
 }

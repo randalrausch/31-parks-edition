@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { makeMemoryStore } from "./memoryStore.js";
-import { createGameState } from "./engine.js";
-import type { GameRecord, SecretRecord } from "./store.js";
+import { makeMemoryStore } from "./memoryStore";
+import { createGameState } from "./actions";
+import type { GameRecord, SecretRecord } from "./store";
 
 function fixtures(overrides: Partial<GameRecord> = {}) {
   const state = createGameState(

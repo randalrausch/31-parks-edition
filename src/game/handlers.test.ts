@@ -4,7 +4,7 @@
  * (host-only start, no-op detection, hidden-info redaction).
  */
 import { describe, it, expect } from "vitest";
-import { makeMemoryStore } from "./memoryStore.js";
+import { makeMemoryStore } from "./memoryStore";
 import {
   handleCreate,
   handleJoin,
@@ -12,9 +12,9 @@ import {
   handleAct,
   handleState,
   handleVersion,
-} from "./handlers.js";
-import { HIDDEN_CARD } from "../../../src/game/authority";
-import type { GameStore } from "./store.js";
+} from "./handlers";
+import { HIDDEN_CARD } from "./authority";
+import type { GameStore } from "./store";
 
 const CONFIG = {
   config: {
@@ -172,8 +172,8 @@ describe("handlers", () => {
     expect(asGuest.state.players[1].hand.some((c) => c.id !== HIDDEN_CARD.id)).toBe(true);
   });
 
-  it("version reports the Azure provider", () => {
-    const b = handleVersion().body as {
+  it("version reports the given provider", () => {
+    const b = handleVersion("Azure").body as {
       ok: boolean;
       provider: string;
       version: string;

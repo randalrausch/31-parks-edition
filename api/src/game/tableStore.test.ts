@@ -7,8 +7,8 @@
  */
 import { describe, it, expect, beforeAll } from "vitest";
 import { TableServiceClient } from "@azure/data-tables";
-import { createGameState } from "./engine.js";
-import type { GameRecord, SecretRecord } from "./store.js";
+import { createGameState } from "../../../src/game/actions";
+import type { GameRecord, SecretRecord } from "../../../src/game/store";
 
 const CONN = process.env.TABLES_CONNECTION;
 

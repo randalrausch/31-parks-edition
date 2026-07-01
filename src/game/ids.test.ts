@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { makeCode, newToken } from "./ids.js";
+import { makeCode, newToken } from "./ids";
 
 describe("ids", () => {
   it("makeCode is 5 chars from the no-ambiguous alphabet", () => {

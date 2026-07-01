@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { makeRouter, type RawRequest } from "./router.js";
-import { makeMemoryStore } from "./game/memoryStore.js";
-import { makeMemoryRateLimiter } from "./game/rateLimit.js";
+import { makeRouter, type RawRequest } from "./router";
+import { makeMemoryStore } from "./memoryStore";
+import { makeMemoryRateLimiter } from "./rateLimit";
 
 const post = (body: unknown, ip = "1.2.3.4"): RawRequest => ({
   method: "POST",
@@ -83,10 +83,8 @@ describe("router", () => {
   });
 
   it("enforces the durable rate limiter on create (global/per-IP cap)", async () => {
-    process.env.MAX_GAMES_PER_DAY = "2";
-    process.env.MAX_GAMES_PER_IP_PER_HOUR = "100";
     const route = makeRouter(makeMemoryStore(), {
-      rateLimiter: makeMemoryRateLimiter(),
+      rateLimiter: makeMemoryRateLimiter(2, 100), // global 2/day, per-IP 100/hr
     });
     const mk = () =>
       route(
@@ -101,8 +99,6 @@ describe("router", () => {
     expect((await mk()).status).toBe(200);
     expect((await mk()).status).toBe(200);
     expect((await mk()).status).toBe(429); // global daily cap of 2 hit
-    delete process.env.MAX_GAMES_PER_DAY;
-    delete process.env.MAX_GAMES_PER_IP_PER_HOUR;
   });
 
   it("rate-limits excessive create from one IP", async () => {

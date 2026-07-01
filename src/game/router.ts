@@ -1,7 +1,10 @@
 /**
  * Framework-free request router: op dispatch, CORS, and a best-effort per-instance
- * rate limiter — independent of @azure/functions so it's unit-testable. index.ts
- * is a thin adapter from HttpRequest to this.
+ * rate limiter — independent of any host runtime so it's unit-testable and runs
+ * on BOTH backends. Each backend's entry adapter (Azure `api/src/index.ts`, the
+ * Supabase Edge Function) marshals its native request into a RawRequest and calls
+ * this. Env-derived config (origin, provider) is passed in via opts, never read
+ * here, so the same code runs unchanged in Node and Deno.
  */
 import {
   handleAct,
@@ -11,9 +14,9 @@ import {
   handleState,
   handleVersion,
   type OpResult,
-} from "./game/handlers.js";
-import { StateTooLargeError, type GameStore } from "./game/store.js";
-import type { RateLimiter } from "./game/rateLimit.js";
+} from "./handlers";
+import { StateTooLargeError, type GameStore } from "./store";
+import type { RateLimiter } from "./rateLimit";
 
 export interface RawRequest {
   method: string;
@@ -37,14 +40,22 @@ const OPS: Record<string, (s: GameStore, body: any) => Promise<OpResult>> = {
 
 export function makeRouter(
   store: GameStore,
-  opts: { allowedOrigin?: string; rateLimiter?: RateLimiter } = {},
+  opts: {
+    allowedOrigin?: string;
+    rateLimiter?: RateLimiter;
+    /** Reported by the `version` op (About dialog). "Azure" | "Supabase". */
+    provider?: string;
+    /** CORS Access-Control-Allow-Headers. supabase-js needs the fuller set. */
+    allowedHeaders?: string;
+  } = {},
 ) {
   // ALLOWED_ORIGIN may be a comma-separated list (e.g. the Static Web App default
   // host plus a custom domain). A single Access-Control-Allow-Origin can name
   // only one origin, so reflect the request's Origin when it's in the list;
   // "Vary: Origin" keeps that cacheable. "*" short-circuits to allow all, and an
-  // unlisted origin falls back to the first entry (effectively denied).
-  const allowed = (opts.allowedOrigin ?? process.env.ALLOWED_ORIGIN ?? "*")
+  // unlisted origin falls back to the first entry (effectively denied). The
+  // caller reads the env in its own runtime and passes it as allowedOrigin.
+  const allowed = (opts.allowedOrigin ?? "*")
     .split(",")
     .map((o) => o.trim())
     .filter(Boolean);
@@ -54,11 +65,12 @@ export function makeRouter(
       : reqOrigin && allowed.includes(reqOrigin)
         ? reqOrigin
         : (allowed[0] ?? "*");
+  const provider = opts.provider ?? "Azure";
   const rateLimiter = opts.rateLimiter;
   const cors = (reqOrigin?: string): Record<string, string> => ({
     "Access-Control-Allow-Origin": pickOrigin(reqOrigin),
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "content-type",
+    "Access-Control-Allow-Headers": opts.allowedHeaders ?? "content-type",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
   });
@@ -97,7 +109,7 @@ export function makeRouter(
     }
 
     const op = String(body?.op ?? "");
-    if (op === "version") return reply(200, handleVersion().body);
+    if (op === "version") return reply(200, handleVersion(provider).body);
 
     if (op === "create") {
       // Cheap per-instance first line, then the durable shared caps (per-IP/hour
@@ -119,7 +131,7 @@ export function makeRouter(
       const { status, body: out } = await fn(store, body);
       return reply(status, out);
     } catch (e) {
-      // A state that outgrew the Table Storage cap is a specific, actionable
+      // A state that outgrew the persistence size cap is a specific, actionable
       // failure — surface it clearly instead of a silent generic 500 so it
       // isn't invisible in logs and the client gets a meaningful message.
       if (e instanceof StateTooLargeError) {

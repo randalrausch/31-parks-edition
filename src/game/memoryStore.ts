@@ -4,7 +4,7 @@
  * a monotonic integer ETag per game; update() succeeds only if the caller's ETag
  * is current. Deep-clones on read/write so callers can't mutate stored state.
  */
-import type { GameRecord, GameStore, SecretRecord } from "./store.js";
+import type { GameRecord, GameStore, SecretRecord } from "./store";
 
 interface Entry {
   rec: GameRecord;
