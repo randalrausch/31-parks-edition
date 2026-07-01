@@ -108,7 +108,10 @@ describe("handlers", () => {
       state: { phase: string; players: { hand: unknown[] }[] };
     };
     expect(st.status).toBe("playing");
-    expect(["drawing", "discarding"]).toContain(st.state.phase);
+    // Normally an active turn (drawing/discarding); a dealt natural 31 resolves
+    // the deal instantly to 'dealEnd' — a rare but valid start outcome. Either
+    // way the game is playing and cards were dealt.
+    expect(["drawing", "discarding", "dealEnd"]).toContain(st.state.phase);
     expect(st.state.players[0].hand.length).toBeGreaterThan(0);
   });
 
