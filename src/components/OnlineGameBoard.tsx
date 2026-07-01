@@ -6,11 +6,7 @@
  * Shares the board's leaf components with the solo board via BoardParts.
  */
 import { useEffect, useRef, useState } from "react";
-import { useTheme } from "./ParkThemeProvider";
 import HelpPanel from "./HelpPanel";
-import Modal from "./Modal";
-import ParkScene from "./ParkScene";
-import ParkPicker from "./ParkPicker";
 import DealEndOverlay from "./DealEndOverlay";
 import GameOverOverlay from "./GameOverOverlay";
 import {
@@ -26,6 +22,8 @@ import {
   HandFan,
   HandHud,
   ActionBar,
+  BoardFrame,
+  SwitchParkModal,
 } from "./BoardParts";
 import { bestSuit, bestHandScore, isAlive, roundNo, type GameState } from "../game/engine";
 import type { NetworkGameApi } from "../game/useNetworkGame";
@@ -39,7 +37,6 @@ export default function OnlineGameBoard({
   game: NetworkGameApi;
   onLeave: () => void;
 }) {
-  const { theme } = useTheme();
   const [helpOpen, setHelpOpen] = useState(false);
   const [parksOpen, setParksOpen] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
@@ -74,13 +71,9 @@ export default function OnlineGameBoard({
 
   if (!s) {
     return (
-      <section className="board-fold">
-        <div className="board paper-grain">
-          <ParkScene theme={theme} className="board__scene" />
-          <div className="board__vignette" />
-          <div className="board__connecting">Connecting…</div>
-        </div>
-      </section>
+      <BoardFrame>
+        <div className="board__connecting">Connecting…</div>
+      </BoardFrame>
     );
   }
 
@@ -138,147 +131,141 @@ export default function OnlineGameBoard({
   };
 
   return (
-    <section className="board-fold">
-      <div className="board paper-grain">
-        <ParkScene theme={theme} className="board__scene" />
-        <div className="board__vignette" />
+    <BoardFrame
+      overlays={
+        <>
+          {!game.connected && (
+            <div className="board__reconnect" role="status">
+              <span className="board__reconnect-dot" aria-hidden="true" />
+              Reconnecting…
+            </div>
+          )}
 
-        {/* The action feed is a shared, host-controlled setting — seeing it is
+          {game.actionError && (
+            <div className="board__toast" role="alert">
+              <span>{game.actionError}</span>
+              <button
+                type="button"
+                className="board__toast-x"
+                onClick={game.clearActionError}
+                aria-label="Dismiss"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {revealDeal ? (
+            <DealEndOverlay state={revealDeal} onNext={dismissReveal} />
+          ) : (
+            s.phase === "gameOver" && (
+              <GameOverOverlay state={s} onNewGame={onLeave} ctaLabel="Back to Menu" />
+            )
+          )}
+          <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
+          <SwitchParkModal open={parksOpen} onClose={() => setParksOpen(false)} />
+        </>
+      }
+    >
+      {/* The action feed is a shared, host-controlled setting — seeing it is
             an advantage, so when the host (seat 0) hides it nobody sees it.
             Only the host gets the toggle; everyone else just follows it. */}
-        <BoardLog
-          entries={visibleLog}
-          recentLimit={RECENT_LOG}
-          visible={s.options.showLog !== false}
-          canToggle={viewer === 0}
-          onToggle={() =>
-            game.act({
-              type: "setShowLog",
-              value: s.options.showLog === false,
-            })
-          }
-          hideLabel="Hide the action log for everyone"
-          expandable={logExpandable}
-          showingAll={logShowingAll}
-          onToggleExpand={() => setShowAllLog((v) => !v)}
-        />
+      <BoardLog
+        entries={visibleLog}
+        recentLimit={RECENT_LOG}
+        visible={s.options.showLog !== false}
+        canToggle={viewer === 0}
+        onToggle={() =>
+          game.act({
+            type: "setShowLog",
+            value: s.options.showLog === false,
+          })
+        }
+        hideLabel="Hide the action log for everyone"
+        expandable={logExpandable}
+        showingAll={logShowingAll}
+        onToggleExpand={() => setShowAllLog((v) => !v)}
+      />
 
-        <BoardBadge />
-        <BoardWordmark />
+      <BoardBadge />
+      <BoardWordmark />
 
-        <BoardToolbar
-          dealNum={s.dealNum}
-          roundNo={roundNo(s)}
-          aliveCount={aliveCount}
-          onSwitchPark={() => setParksOpen(true)}
-          onHelp={() => setHelpOpen(true)}
-          trailing={
-            <ToolButton label="Leave game" onClick={onLeave}>
-              <LeaveIcon />
-            </ToolButton>
-          }
-        />
+      <BoardToolbar
+        dealNum={s.dealNum}
+        roundNo={roundNo(s)}
+        aliveCount={aliveCount}
+        onSwitchPark={() => setParksOpen(true)}
+        onHelp={() => setHelpOpen(true)}
+        trailing={
+          <ToolButton label="Leave game" onClick={onLeave}>
+            <LeaveIcon />
+          </ToolButton>
+        }
+      />
 
-        <div className="board__opponents">
-          {opponents.map(({ p, i }) => (
-            <Opponent
-              key={p.id}
-              player={p}
-              isKnocker={s.knocker === i}
-              isCurrent={activeSeat === i}
-            />
-          ))}
-        </div>
-
-        <Piles
-          deckCount={s.deck.length}
-          topDiscard={topDiscard}
-          canDraw={canDraw}
-          onDrawDeck={() => game.act({ type: "drawDeck" })}
-          onTakeDiscard={() => game.act({ type: "takeDiscard" })}
-          status={
-            <div className="board__status" role="status" aria-live="polite">
-              {turnLabel}
-            </div>
-          }
-        />
-
-        {/* You — always at the bottom */}
-        <div className="board__current">
-          {me &&
-            (isAlive(me) || s.phase === "gameOver" ? (
-              <>
-                <PlayerHead player={me} turnText=" (You)" />
-                <HandFan
-                  hand={me.hand}
-                  interactive={discarding}
-                  counting={counting}
-                  selected={selected}
-                  onSelect={(i) => discarding && setSelected(selected === i ? null : i)}
-                />
-                <HandHud score={handScore} />
-                <ActionBar
-                  discarding={discarding}
-                  canDraw={canDraw}
-                  hasDiscard={!!topDiscard}
-                  canKnock={canDraw && s.knocker === null}
-                  discardSelected={selected !== null}
-                  onDrawDeck={() => game.act({ type: "drawDeck" })}
-                  onTakeDiscard={() => game.act({ type: "takeDiscard" })}
-                  onKnock={() => game.act({ type: "knock" })}
-                  onConfirmDiscard={() => {
-                    if (selected === null) return;
-                    game.act({ type: "discard", cardId: me.hand[selected].id });
-                    setSelected(null);
-                  }}
-                />
-              </>
-            ) : (
-              // Eliminated but the game's still going — make "you're spectating"
-              // explicit instead of an empty hand + dead buttons.
-              <div className="board__spectating">
-                <PlayerHead player={me} turnText=" (You)" />
-                <p className="board__spectating-note">You're out — watching until the game ends.</p>
-              </div>
-            ))}
-        </div>
+      <div className="board__opponents">
+        {opponents.map(({ p, i }) => (
+          <Opponent
+            key={p.id}
+            player={p}
+            isKnocker={s.knocker === i}
+            isCurrent={activeSeat === i}
+          />
+        ))}
       </div>
 
-      {!game.connected && (
-        <div className="board__reconnect" role="status">
-          <span className="board__reconnect-dot" aria-hidden="true" />
-          Reconnecting…
-        </div>
-      )}
+      <Piles
+        deckCount={s.deck.length}
+        topDiscard={topDiscard}
+        canDraw={canDraw}
+        onDrawDeck={() => game.act({ type: "drawDeck" })}
+        onTakeDiscard={() => game.act({ type: "takeDiscard" })}
+        status={
+          <div className="board__status" role="status" aria-live="polite">
+            {turnLabel}
+          </div>
+        }
+      />
 
-      {game.actionError && (
-        <div className="board__toast" role="alert">
-          <span>{game.actionError}</span>
-          <button
-            type="button"
-            className="board__toast-x"
-            onClick={game.clearActionError}
-            aria-label="Dismiss"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
-      {revealDeal ? (
-        <DealEndOverlay state={revealDeal} onNext={dismissReveal} />
-      ) : (
-        s.phase === "gameOver" && (
-          <GameOverOverlay state={s} onNewGame={onLeave} ctaLabel="Back to Menu" />
-        )
-      )}
-      <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
-      <Modal open={parksOpen} onClose={() => setParksOpen(false)} labelledBy="parks-title">
-        <h2 id="parks-title" className="board__modal-title">
-          Switch Park
-        </h2>
-        <ParkPicker heading={false} onPick={() => setParksOpen(false)} />
-      </Modal>
-    </section>
+      {/* You — always at the bottom */}
+      <div className="board__current">
+        {me &&
+          (isAlive(me) || s.phase === "gameOver" ? (
+            <>
+              <PlayerHead player={me} turnText=" (You)" />
+              <HandFan
+                hand={me.hand}
+                interactive={discarding}
+                counting={counting}
+                selected={selected}
+                onSelect={(i) => discarding && setSelected(selected === i ? null : i)}
+              />
+              <HandHud score={handScore} />
+              <ActionBar
+                discarding={discarding}
+                canDraw={canDraw}
+                hasDiscard={!!topDiscard}
+                canKnock={canDraw && s.knocker === null}
+                discardSelected={selected !== null}
+                onDrawDeck={() => game.act({ type: "drawDeck" })}
+                onTakeDiscard={() => game.act({ type: "takeDiscard" })}
+                onKnock={() => game.act({ type: "knock" })}
+                onConfirmDiscard={() => {
+                  if (selected === null) return;
+                  game.act({ type: "discard", cardId: me.hand[selected].id });
+                  setSelected(null);
+                }}
+              />
+            </>
+          ) : (
+            // Eliminated but the game's still going — make "you're spectating"
+            // explicit instead of an empty hand + dead buttons.
+            <div className="board__spectating">
+              <PlayerHead player={me} turnText=" (You)" />
+              <p className="board__spectating-note">You're out — watching until the game ends.</p>
+            </div>
+          ))}
+      </div>
+    </BoardFrame>
   );
 }
