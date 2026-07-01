@@ -131,6 +131,19 @@ export function makeRouter(
         });
     }
 
+    if (op === "act") {
+      // Per-seat write cap. Each APPLIED act commits new state AND broadcasts a
+      // change ping, so `act` is the real amplification vector — a valid seat
+      // holder could otherwise hammer it, and from rotating IPs the per-IP cap
+      // above can't catch it. The seat token can't rotate, so cap on that. Human
+      // play is a couple of acts per turn, so this ceiling is generous headroom
+      // that only bites abuse. Per-instance + implicitly fail-open, matching the
+      // other lightweight limiters (rate limiting here is best-effort by design).
+      const seatToken = typeof body.seatToken === "string" ? body.seatToken : "";
+      if (seatToken && limited(`act:${seatToken}`, 30, 10_000))
+        return reply(429, { error: "You're acting too quickly — please slow down." });
+    }
+
     const fn = OPS[op];
     if (!fn) return reply(400, { error: "Unsupported request." });
 
