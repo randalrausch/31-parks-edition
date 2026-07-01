@@ -11,12 +11,7 @@
  * `applyAction` and broadcasts the resulting (redacted) state.
  */
 import { type GameState } from "./engine";
-import {
-  applyAction,
-  createGameState,
-  type GameAction,
-  type NewGamePlayer,
-} from "./actions";
+import { applyAction, createGameState, type GameAction, type NewGamePlayer } from "./actions";
 
 export interface Transport {
   getState(): GameState | null;

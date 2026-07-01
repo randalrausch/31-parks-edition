@@ -27,11 +27,7 @@ export interface GameBackend {
    * `onStatus` (optional) reports push-connection health for the reconnecting
    * indicator. A push-less provider can ignore both and rely on polling.
    */
-  subscribe(
-    gameId: string,
-    onChange: () => void,
-    onStatus?: (live: boolean) => void,
-  ): () => void;
+  subscribe(gameId: string, onChange: () => void, onStatus?: (live: boolean) => void): () => void;
 }
 
 /**
@@ -40,5 +36,4 @@ export interface GameBackend {
  * configured → the app runs solo / pass-and-play only. Adding a provider means
  * implementing GameBackend and slotting it into this preference chain.
  */
-export const activeBackend: GameBackend | null =
-  azureBackend ?? supabaseBackend ?? null;
+export const activeBackend: GameBackend | null = azureBackend ?? supabaseBackend ?? null;

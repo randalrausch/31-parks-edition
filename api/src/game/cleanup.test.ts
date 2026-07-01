@@ -4,23 +4,22 @@ import { makeMemoryStore } from "./memoryStore.js";
 import { createGameState } from "./engine.js";
 import type { GameRecord, SecretRecord } from "./store.js";
 
-function game(
-  id: string,
-  expiresAt: string,
-): { rec: GameRecord; secret: SecretRecord } {
-  const state = createGameState(
-    [{ id: "p0", name: "H", isAI: false, avatarKey: "ranger" }],
-    { threeOfAKind: false, grace: true, knockPenalty: true, sound: false, showLog: true, fullHistory: false },
-  );
+function game(id: string, expiresAt: string): { rec: GameRecord; secret: SecretRecord } {
+  const state = createGameState([{ id: "p0", name: "H", isAI: false, avatarKey: "ranger" }], {
+    threeOfAKind: false,
+    grace: true,
+    knockPenalty: true,
+    sound: false,
+    showLog: true,
+    fullHistory: false,
+  });
   return {
     rec: {
       gameId: id,
       code: id.toUpperCase().slice(0, 5).padEnd(5, "A"),
       status: "lobby",
       version: 0,
-      seats: [
-        { idx: 0, name: "H", avatar: "ranger", isAI: false, filled: true },
-      ],
+      seats: [{ idx: 0, name: "H", avatar: "ranger", isAI: false, filled: true }],
       createdAt: "2026-06-01T00:00:00.000Z",
       updatedAt: "2026-06-01T00:00:00.000Z",
       expiresAt,

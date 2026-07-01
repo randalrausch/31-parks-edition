@@ -67,47 +67,30 @@ const TRIVIA = [
   "Card historians group 31 with “draw-and-discard” games, the same family that later produced Gin Rummy — but 31 is older, faster, and more brutal.",
 ];
 
-export default function HistoryPanel({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+export default function HistoryPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      variant="modal--history"
-      labelledBy="hist-title"
-    >
+    <Modal open={open} onClose={onClose} variant="modal--history" labelledBy="hist-title">
       <div className="hist">
         <h2 className="hist__title" id="hist-title">
           History of 31
         </h2>
-        <p className="hist__sub">
-          Five centuries of the world's most portable card game
-        </p>
+        <p className="hist__sub">Five centuries of the world's most portable card game</p>
 
         <section className="hist__section">
           <h3 className="hist__h">Medieval Origins</h3>
           <p>
-            The first written trace of a game called <em>Trente-et-Un</em> —
-            French for “thirty-one” — appears in a <em>1440</em> sermon by Saint
-            Bernardino of Siena, who condemned it alongside dice and other
-            “games of fortune.” That a preacher bothered to name it tells you it
-            was already popular. Through the 1400s and 1500s it spread across
-            Italy (<em>Trentuno</em>), Spain (<em>Treinta y Una</em>), France,
-            Germany, and England, making it one of the oldest card games still
-            played essentially unchanged today.
+            The first written trace of a game called <em>Trente-et-Un</em> — French for “thirty-one”
+            — appears in a <em>1440</em> sermon by Saint Bernardino of Siena, who condemned it
+            alongside dice and other “games of fortune.” That a preacher bothered to name it tells
+            you it was already popular. Through the 1400s and 1500s it spread across Italy (
+            <em>Trentuno</em>), Spain (<em>Treinta y Una</em>), France, Germany, and England, making
+            it one of the oldest card games still played essentially unchanged today.
           </p>
         </section>
 
         <section className="hist__section">
           <h3 className="hist__h">A Game of Many Names</h3>
-          <p>
-            Five hundred years of travel left 31 with a small army of aliases:
-          </p>
+          <p>Five hundred years of travel left 31 with a small army of aliases:</p>
           <div className="hist__tags">
             {NAMES.map((n) => (
               <span className="hist__tag" key={n}>
@@ -120,36 +103,32 @@ export default function HistoryPanel({
         <section className="hist__section">
           <h3 className="hist__h">Swimming, Drowning &amp; Grace</h3>
           <p>
-            In Germany and Austria the game is <em>Schwimmen</em> — “swimming.”
-            Lose your last chip and you don't leave the table; you're left{" "}
-            <em>swimming</em>, kept afloat for one final hand. Survive and you
-            play on; fail and you <em>drown</em>. That centuries-old idea is
-            exactly the <strong>Grace</strong> rule in this edition — we simply
-            traded the rising water for a candle burning down to its last light.
+            In Germany and Austria the game is <em>Schwimmen</em> — “swimming.” Lose your last chip
+            and you don't leave the table; you're left <em>swimming</em>, kept afloat for one final
+            hand. Survive and you play on; fail and you <em>drown</em>. That centuries-old idea is
+            exactly the <strong>Grace</strong> rule in this edition — we simply traded the rising
+            water for a candle burning down to its last light.
           </p>
         </section>
 
         <section className="hist__section">
           <h3 className="hist__h">Scat &amp; the American Frontier</h3>
           <p>
-            Carried across the Atlantic by settlers, 31 became <em>Scat</em> — a
-            saloon and riverboat staple where the “chips” might be coins,
-            matchsticks, or the next round of drinks. Fast to deal and merciless
-            to the unlucky, it was the kind of game you could finish three times
-            while the stew was still cooking.
+            Carried across the Atlantic by settlers, 31 became <em>Scat</em> — a saloon and
+            riverboat staple where the “chips” might be coins, matchsticks, or the next round of
+            drinks. Fast to deal and merciless to the unlucky, it was the kind of game you could
+            finish three times while the stew was still cooking.
           </p>
         </section>
 
         <section className="hist__section">
           <h3 className="hist__h">How You Win</h3>
           <p>
-            Build the highest total you can in a <em>single suit</em>. Aces are
-            11, face cards are 10, everything else is its pip value. Mixed suits
-            don't add together — a hand of
-            <em> A♠ K♠ 8♠</em> scores 29, while <em>A♠ K♥ 8♦</em> scores only
-            11. Reach a perfect <strong>31</strong> and you can reveal it on the
-            spot. Each deal, the lowest hand loses a token; the last player
-            holding a token wins the game.
+            Build the highest total you can in a <em>single suit</em>. Aces are 11, face cards are
+            10, everything else is its pip value. Mixed suits don't add together — a hand of
+            <em> A♠ K♠ 8♠</em> scores 29, while <em>A♠ K♥ 8♦</em> scores only 11. Reach a perfect{" "}
+            <strong>31</strong> and you can reveal it on the spot. Each deal, the lowest hand loses
+            a token; the last player holding a token wins the game.
           </p>
         </section>
 
@@ -176,11 +155,10 @@ export default function HistoryPanel({
         <section className="hist__section">
           <h3 className="hist__h">Why It Endures</h3>
           <p>
-            No app, no rulebook, no governing body ever kept 31 alive — just the
-            fact that it teaches you to read a hand in seconds and dares you to
-            knock before someone beats you. It's the perfect campfire game:
-            quick to learn, agonizing to master, and over fast enough to play
-            “just one more.”
+            No app, no rulebook, no governing body ever kept 31 alive — just the fact that it
+            teaches you to read a hand in seconds and dares you to knock before someone beats you.
+            It's the perfect campfire game: quick to learn, agonizing to master, and over fast
+            enough to play “just one more.”
           </p>
         </section>
 

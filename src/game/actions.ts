@@ -137,8 +137,7 @@ function dealCards(s: GameState): void {
   // make the earliest, least-informed knock decision), so it must not sit on
   // one seat: the first deal opens on the lowest living seat, later deals on
   // the next living seat after the previous opener.
-  s.dealer =
-    s.dealNum <= 1 ? firstLivingFrom(s, 0) : firstLivingFrom(s, s.dealer + 1);
+  s.dealer = s.dealNum <= 1 ? firstLivingFrom(s, 0) : firstLivingFrom(s, s.dealer + 1);
   s.cur = s.dealer;
 
   // A natural (dealt) 31 wins instantly. With a single 52-card deck only one
@@ -157,13 +156,8 @@ function dealCards(s: GameState): void {
  * A dealt 31 (an ace plus two ten-value cards of one suit) wins the deal
  * instantly; three-of-a-kind scores 30½, so it never false-triggers here.
  */
-export function dealtBlitzIndex(
-  players: GamePlayer[],
-  options: GameOptions,
-): number {
-  return players.findIndex(
-    (p) => p.hand.length > 0 && scoreHand(p.hand, options) === 31,
-  );
+export function dealtBlitzIndex(players: GamePlayer[], options: GameOptions): number {
+  return players.findIndex((p) => p.hand.length > 0 && scoreHand(p.hand, options) === 31);
 }
 
 /** Index of the first non-eliminated seat at or after `from` (wraps around). */
@@ -188,8 +182,7 @@ function endTurn(s: GameState): void {
     s.cur = s.queue.shift()!;
   } else {
     // Guarantee the deal terminates even if AIs never reach a knock.
-    const nextRound =
-      s.dealPlayers > 0 ? Math.ceil((s.turnInDeal + 1) / s.dealPlayers) : 1;
+    const nextRound = s.dealPlayers > 0 ? Math.ceil((s.turnInDeal + 1) / s.dealPlayers) : 1;
     if (nextRound > MAX_ROUNDS_PER_DEAL) {
       resolveDeal(s, null);
       return;
@@ -232,8 +225,7 @@ function resolveDeal(s: GameState, winnerIdx: number | null): void {
     const min = Math.min(...rows.map((r) => r.score));
     for (const p of participants) {
       if (scoreHand(p.hand, opts) !== min) continue;
-      const livesLost =
-        opts.knockPenalty && knockerId !== null && p.id === knockerId ? 2 : 1;
+      const livesLost = opts.knockPenalty && knockerId !== null && p.id === knockerId ? 2 : 1;
       const outcome = takeDamage(p, livesLost, opts);
       const r = rowOf(p.id);
       r.isLoser = true;
@@ -242,8 +234,7 @@ function resolveDeal(s: GameState, winnerIdx: number | null): void {
     }
   }
 
-  const rounds =
-    s.dealPlayers > 0 ? Math.ceil(s.turnInDeal / s.dealPlayers) : 0;
+  const rounds = s.dealPlayers > 0 ? Math.ceil(s.turnInDeal / s.dealPlayers) : 0;
   s.scoreHistory.push({
     deal: s.dealNum,
     rounds,
@@ -251,10 +242,7 @@ function resolveDeal(s: GameState, winnerIdx: number | null): void {
     knockerId,
   });
   s.result = {
-    title:
-      winnerId !== null
-        ? `31! ${s.players[winnerIdx!].name} takes the deal`
-        : "Deal Over",
+    title: winnerId !== null ? `31! ${s.players[winnerIdx!].name} takes the deal` : "Deal Over",
     rows,
   };
   s.phase = "dealEnd";
@@ -267,11 +255,7 @@ function reshuffle(s: GameState): void {
   s.discard = [top];
 }
 
-function log(
-  s: GameState,
-  kind: LogEntry["kind"],
-  card: CardModel | null,
-): void {
+function log(s: GameState, kind: LogEntry["kind"], card: CardModel | null): void {
   const id = s.log.length === 0 ? 0 : s.log[s.log.length - 1].id + 1;
   s.log.push({ id, actor: s.players[s.cur].name, kind, card });
   if (s.log.length > 30) s.log.shift();

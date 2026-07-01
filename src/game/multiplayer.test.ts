@@ -8,24 +8,9 @@
  * always terminates. No Supabase needed; it's the authority logic end to end.
  */
 import { describe, it, expect } from "vitest";
-import {
-  createGameState,
-  applyAction,
-  type GameAction,
-  type NewGamePlayer,
-} from "./actions";
-import {
-  applyPlayerAction,
-  advanceAuthority,
-  redactState,
-  HIDDEN_CARD,
-} from "./authority";
-import {
-  DEFAULT_OPTIONS,
-  isAlive,
-  type AITraits,
-  type GameState,
-} from "./engine";
+import { createGameState, applyAction, type GameAction, type NewGamePlayer } from "./actions";
+import { applyPlayerAction, advanceAuthority, redactState, HIDDEN_CARD } from "./authority";
+import { DEFAULT_OPTIONS, isAlive, type AITraits, type GameState } from "./engine";
 
 const rnd = (n: number) => Math.floor(Math.random() * n);
 const traits = (): AITraits => ({
@@ -53,12 +38,9 @@ const seats = (humans: number, ai: number): NewGamePlayer[] => [
 ];
 
 const cardCount = (s: GameState) =>
-  s.deck.length +
-  s.discard.length +
-  s.players.reduce((n, p) => n + p.hand.length, 0);
+  s.deck.length + s.discard.length + s.players.reduce((n, p) => n + p.hand.length, 0);
 
-const hidden = (hand: { id: string }[]) =>
-  hand.every((c) => c.id === HIDDEN_CARD.id);
+const hidden = (hand: { id: string }[]) => hand.every((c) => c.id === HIDDEN_CARD.id);
 
 /**
  * A stand-in for the server: holds the one authoritative state, applies per-seat
@@ -69,9 +51,7 @@ class Server {
   state: GameState;
   constructor(players: NewGamePlayer[], options = DEFAULT_OPTIONS) {
     // Mirror the Edge Function's "start": deal, then settle AI turns.
-    this.state = advanceAuthority(
-      applyAction(createGameState(players, options), { type: "deal" }),
-    );
+    this.state = advanceAuthority(applyAction(createGameState(players, options), { type: "deal" }));
   }
   /** What seat `i` is allowed to see (what the wire would carry to that client). */
   view(i: number): GameState {
@@ -101,9 +81,7 @@ describe("online multiplayer integration", () => {
       for (let other = 0; other < 5; other++) {
         if (other === viewer) continue;
         expect(hidden(v.players[other].hand)).toBe(true);
-        expect(v.players[other].hand.length).toBe(
-          server.state.players[other].hand.length,
-        );
+        expect(v.players[other].hand.length).toBe(server.state.players[other].hand.length);
       }
       // The deck is never revealed; the discard pile is public.
       expect(hidden(v.deck)).toBe(true);

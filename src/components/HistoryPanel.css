@@ -73,11 +73,7 @@
   font-size: 1.3rem;
   letter-spacing: 0.06em;
   color: var(--cream);
-  background: linear-gradient(
-    180deg,
-    var(--c-draw),
-    color-mix(in srgb, var(--c-draw) 70%, black)
-  );
+  background: linear-gradient(180deg, var(--c-draw), color-mix(in srgb, var(--c-draw) 70%, black));
   padding: 12px;
   min-height: 50px;
   border-radius: 11px;

@@ -10,9 +10,7 @@ test("boots to the setup screen", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
-  await expect(
-    page.getByRole("button", { name: /start solo adventure/i }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /start solo adventure/i })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -33,9 +31,7 @@ test("plays a solo turn: deal, draw, discard", async ({ page }) => {
   await expect(page.locator(".board__ai")).toBeVisible({ timeout: 8000 });
 });
 
-test("About dialog opens, shows the version, and Escape closes it", async ({
-  page,
-}) => {
+test("About dialog opens, shows the version, and Escape closes it", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /^about$/i }).click();
 

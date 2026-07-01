@@ -86,18 +86,11 @@ export default function Lobby({
 
         {isHost ? (
           <>
-            <button
-              className="lobby__start"
-              type="button"
-              onClick={onStart}
-              disabled={!canStart}
-            >
+            <button className="lobby__start" type="button" onClick={onStart} disabled={!canStart}>
               {canStart ? "Start Game" : "Need 2+ players"}
             </button>
             {humansFilled < humans.length && canStart && (
-              <p className="lobby__note">
-                Unfilled human seats will be played by AI.
-              </p>
+              <p className="lobby__note">Unfilled human seats will be played by AI.</p>
             )}
             {startError && <p className="lobby__error">{startError}</p>}
           </>

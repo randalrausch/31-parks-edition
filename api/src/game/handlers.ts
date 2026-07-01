@@ -96,18 +96,15 @@ export async function handleJoin(
   const game = await store.getGame(gameId);
   const secret = await store.getSecret(gameId);
   if (!game || !secret) return fail(404, "No game with that code.");
-  if (game.rec.status !== "lobby")
-    return fail(409, "That game has already started.");
+  if (game.rec.status !== "lobby") return fail(409, "That game has already started.");
 
   const seats = game.rec.seats;
-  const seat =
-    seats.find((s) => !s.isAI && !s.filled) ?? seats.find((s) => s.isAI);
+  const seat = seats.find((s) => !s.isAI && !s.filled) ?? seats.find((s) => s.isAI);
   if (!seat) return fail(409, "That game is full.");
 
   const idx = seat.idx;
   const name =
-    (typeof body.name === "string" ? body.name.trim().slice(0, 40) : "") ||
-    `Player ${idx + 1}`;
+    (typeof body.name === "string" ? body.name.trim().slice(0, 40) : "") || `Player ${idx + 1}`;
   const tookAI = seat.isAI === true;
   seat.isAI = false;
   seat.filled = true;
@@ -115,9 +112,7 @@ export async function handleJoin(
   seat.avatar = "ranger";
   seat.emoji = null;
 
-  const players = (
-    secret.state as unknown as { players: Record<string, unknown>[] }
-  ).players;
+  const players = (secret.state as unknown as { players: Record<string, unknown>[] }).players;
   const player = players[idx];
   player.isAI = false;
   player.name = name;
@@ -153,8 +148,7 @@ export async function handleStart(
   if (!game || !secret) return fail(404, "That game no longer exists.");
   if (secret.seatTokens[String(body.seatToken)] !== 0)
     return fail(403, "Only the host can start the game.");
-  if (game.rec.status !== "lobby")
-    return fail(409, "The game has already started.");
+  if (game.rec.status !== "lobby") return fail(409, "The game has already started.");
 
   const seats = game.rec.seats;
   const state = secret.state as GameState & { players: { isAI: boolean }[] };
@@ -165,9 +159,7 @@ export async function handleStart(
       state.players[s.idx].isAI = true;
     }
   }
-  const dealt = advanceAuthority(
-    applyAction(secret.state, { type: "deal" } as GameAction),
-  );
+  const dealt = advanceAuthority(applyAction(secret.state, { type: "deal" } as GameAction));
   const next = bumped(game.rec, { seats, status: "playing" });
   if (
     !(await store.update(gameId, game.etag, next, {
@@ -190,18 +182,12 @@ export async function handleAct(
   const secret = await store.getSecret(gameId);
   if (!game || !secret) return fail(404, "That game no longer exists.");
   const idx = secret.seatTokens[String(body.seatToken)];
-  if (idx === undefined)
-    return fail(403, "Your seat is no longer valid for this game.");
+  if (idx === undefined) return fail(403, "Your seat is no longer valid for this game.");
   if (typeof body.action !== "object" || body.action === null)
     return fail(400, "That move wasn't understood.");
 
-  const seatId = (secret.state as GameState & { players: { id: string }[] })
-    .players[idx].id;
-  const next = applyPlayerAction(
-    secret.state,
-    seatId,
-    body.action as GameAction,
-  );
+  const seatId = (secret.state as GameState & { players: { id: string }[] }).players[idx].id;
+  const next = applyPlayerAction(secret.state, seatId, body.action as GameAction);
   // A no-op (wrong turn / unknown type / out of phase) returns the same reference.
   if (next === secret.state) return ok({ ok: false, reason: "not-applied" });
 
@@ -232,8 +218,7 @@ export async function handleState(
   const idx = typeof tok === "string" ? secret.seatTokens[tok] : undefined;
   const seatId =
     idx !== undefined
-      ? (secret.state as GameState & { players: { id: string }[] }).players[idx]
-          .id
+      ? (secret.state as GameState & { players: { id: string }[] }).players[idx].id
       : null;
   return ok({
     status: game.rec.status,

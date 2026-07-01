@@ -24,19 +24,9 @@ export interface ParkPickerProps {
 }
 
 /** Palette keys previewed in each card's color bar, dark → bright. */
-const SWATCH_KEYS: (keyof ThemePalette)[] = [
-  "primary",
-  "secondary",
-  "soft",
-  "gold",
-  "ember",
-];
+const SWATCH_KEYS: (keyof ThemePalette)[] = ["primary", "secondary", "soft", "gold", "ember"];
 
-export default function ParkPicker({
-  onPick,
-  heading = true,
-  columns,
-}: ParkPickerProps) {
+export default function ParkPicker({ onPick, heading = true, columns }: ParkPickerProps) {
   const { themeId, setThemeId } = useTheme();
 
   const handlePick = (id: string, available: boolean) => {
@@ -56,11 +46,7 @@ export default function ParkPicker({
       )}
       <div
         className="picker__grid"
-        style={
-          columns
-            ? { gridTemplateColumns: `repeat(${columns}, 1fr)` }
-            : undefined
-        }
+        style={columns ? { gridTemplateColumns: `repeat(${columns}, 1fr)` } : undefined}
       >
         {PARK_THEMES.map((park) => {
           const available = park.status === "available";
@@ -103,9 +89,7 @@ export default function ParkPicker({
                   <span className="park-card__name">{park.displayName}</span>
                 </span>
                 {active && <span className="park-card__badge">Selected</span>}
-                {!available && (
-                  <span className="park-card__ribbon">Coming Soon</span>
-                )}
+                {!available && <span className="park-card__ribbon">Coming Soon</span>}
               </span>
               <span className="park-card__body">
                 <span className="park-card__tagline">{park.tagline}</span>

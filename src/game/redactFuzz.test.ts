@@ -6,18 +6,8 @@
  * multiplayer.test.ts. Seeded RNG → reproducible failures.
  */
 import { describe, it, expect } from "vitest";
-import {
-  createGameState,
-  applyAction,
-  type GameAction,
-  type NewGamePlayer,
-} from "./actions";
-import {
-  applyPlayerAction,
-  advanceAuthority,
-  redactState,
-  HIDDEN_CARD,
-} from "./authority";
+import { createGameState, applyAction, type GameAction, type NewGamePlayer } from "./actions";
+import { applyPlayerAction, advanceAuthority, redactState, HIDDEN_CARD } from "./authority";
 import { isAlive, type GameState } from "./engine";
 
 // mulberry32 — tiny deterministic PRNG so any failure reproduces from the seed.
@@ -56,11 +46,8 @@ function seats(rand: () => number): NewGamePlayer[] {
 }
 
 const cardCount = (s: GameState) =>
-  s.deck.length +
-  s.discard.length +
-  s.players.reduce((n, p) => n + p.hand.length, 0);
-const allHidden = (hand: { id: string }[]) =>
-  hand.every((c) => c.id === HIDDEN_CARD.id);
+  s.deck.length + s.discard.length + s.players.reduce((n, p) => n + p.hand.length, 0);
+const allHidden = (hand: { id: string }[]) => hand.every((c) => c.id === HIDDEN_CARD.id);
 
 /** Assert redactState leaks nothing for a given viewer of the real state. */
 function assertNoLeak(real: GameState, viewer: number | null) {
@@ -90,8 +77,7 @@ function assertNoLeak(real: GameState, viewer: number | null) {
 }
 
 function checkAllViews(real: GameState) {
-  for (let viewer = 0; viewer < real.players.length; viewer++)
-    assertNoLeak(real, viewer);
+  for (let viewer = 0; viewer < real.players.length; viewer++) assertNoLeak(real, viewer);
   assertNoLeak(real, null); // spectator
 }
 
@@ -117,13 +103,9 @@ describe("redactState never leaks (fuzz)", () => {
         states++;
         if (state.phase === "dealEnd") {
           const alive = state.players.findIndex(isAlive);
-          state = applyPlayerAction(
-            state,
-            state.players[alive >= 0 ? alive : 0].id,
-            {
-              type: "nextDeal",
-            },
-          );
+          state = applyPlayerAction(state, state.players[alive >= 0 ? alive : 0].id, {
+            type: "nextDeal",
+          });
           continue;
         }
         const cur = state.cur;
@@ -131,9 +113,7 @@ describe("redactState never leaks (fuzz)", () => {
         let action: GameAction;
         if (state.phase === "drawing") {
           action =
-            state.knocker === null && rand() < 0.3
-              ? { type: "knock" }
-              : { type: "drawDeck" };
+            state.knocker === null && rand() < 0.3 ? { type: "knock" } : { type: "drawDeck" };
         } else {
           const hand = state.players[cur].hand;
           action = {

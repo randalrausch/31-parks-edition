@@ -12,11 +12,7 @@
   height: calc(var(--card-w, 86px) * 1.4);
   border-radius: 9px;
   padding: 0;
-  background: radial-gradient(
-    120% 90% at 50% 0%,
-    var(--card-cream) 0%,
-    var(--card-cream-2) 100%
-  );
+  background: radial-gradient(120% 90% at 50% 0%, var(--card-cream) 0%, var(--card-cream-2) 100%);
   box-shadow: var(--shadow-card);
   border: 1px solid rgba(120, 92, 40, 0.4);
   color: var(--card-ink);

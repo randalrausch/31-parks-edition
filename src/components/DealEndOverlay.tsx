@@ -23,8 +23,7 @@ export default function DealEndOverlay({
   const aliveCount = state.players.filter(isAlive).length;
   const gameEnding = aliveCount <= 1;
   const topScore = Math.max(...rows.map((r) => r.score));
-  const knockerId =
-    state.knocker !== null ? state.players[state.knocker]?.id : null;
+  const knockerId = state.knocker !== null ? state.players[state.knocker]?.id : null;
 
   return (
     <Modal open onClose={onNext} variant="modal--results" labelledBy="re-title">
@@ -43,9 +42,7 @@ export default function DealEndOverlay({
             >
               <div className="re__name">
                 {p.name}
-                {p.id === knockerId && (
-                  <span className="re__knock">🔨 Knocked</span>
-                )}
+                {p.id === knockerId && <span className="re__knock">🔨 Knocked</span>}
               </div>
               <div className="re__hand">
                 {p.hand.map((c) => (

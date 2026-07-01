@@ -48,10 +48,7 @@ function describeAction(a: GameAction): string {
   }
 }
 
-export function useNetworkGame(
-  gameId: string,
-  seatToken: string,
-): NetworkGameApi {
+export function useNetworkGame(gameId: string, seatToken: string): NetworkGameApi {
   const [snap, setSnap] = useState<NetworkSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -91,8 +88,7 @@ export function useNetworkGame(
     // state until the next slow poll ticks.
     const onOnline = () => void t.refresh().catch(() => {});
     const onVisible = () => {
-      if (document.visibilityState === "visible")
-        void t.refresh().catch(() => {});
+      if (document.visibilityState === "visible") void t.refresh().catch(() => {});
     };
     window.addEventListener("online", onOnline);
     document.addEventListener("visibilitychange", onVisible);
@@ -111,9 +107,7 @@ export function useNetworkGame(
     (a: GameAction) => {
       void ref.current?.act(a).catch((e) => {
         elog("net", `${a.type} failed`, e);
-        flashError(
-          `Couldn't ${describeAction(a)} — check your connection and try again.`,
-        );
+        flashError(`Couldn't ${describeAction(a)} — check your connection and try again.`);
       });
     },
     [flashError],

@@ -10,9 +10,7 @@
  * If both are set, Azure wins. If neither is set, online is disabled and the app
  * runs solo / pass-and-play only.
  */
-const env = (
-  import.meta as unknown as { env?: Record<string, string | undefined> }
-).env;
+const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env;
 
 export const azureApiBase = (env?.VITE_API_BASE ?? "").replace(/\/+$/, "");
 export const supabaseUrl = env?.VITE_SUPABASE_URL;

@@ -1,8 +1,8 @@
 /* ── Full-viewport game fold ── */
 .board-fold {
   min-height: 100dvh;
-  padding: calc(10px + var(--safe-t)) calc(10px + var(--safe-r))
-    calc(10px + var(--safe-b)) calc(10px + var(--safe-l));
+  padding: calc(10px + var(--safe-t)) calc(10px + var(--safe-r)) calc(10px + var(--safe-b))
+    calc(10px + var(--safe-l));
   display: flex;
   min-width: 0;
   overflow: hidden;
@@ -40,11 +40,7 @@
   z-index: 1;
   pointer-events: none;
   background:
-    radial-gradient(
-      120% 70% at 50% 0%,
-      transparent 55%,
-      rgba(5, 12, 8, 0.45) 100%
-    ),
+    radial-gradient(120% 70% at 50% 0%, transparent 55%, rgba(5, 12, 8, 0.45) 100%),
     linear-gradient(
       180deg,
       rgba(5, 12, 8, 0.45) 0%,

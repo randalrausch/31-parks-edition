@@ -1,17 +1,6 @@
 import { describe, it, expect } from "vitest";
-import {
-  createGameState,
-  applyAction,
-  dealtBlitzIndex,
-  type NewGamePlayer,
-} from "./actions";
-import {
-  DEFAULT_OPTIONS,
-  isAlive,
-  type AITraits,
-  type GamePlayer,
-  type GameState,
-} from "./engine";
+import { createGameState, applyAction, dealtBlitzIndex, type NewGamePlayer } from "./actions";
+import { DEFAULT_OPTIONS, isAlive, type AITraits, type GamePlayer, type GameState } from "./engine";
 
 const rnd = (n: number) => Math.floor(Math.random() * n);
 const traits = (): AITraits => ({
@@ -30,9 +19,7 @@ const aiPlayers = (n: number): NewGamePlayer[] =>
     traits: traits(),
   }));
 const cardCount = (s: GameState) =>
-  s.deck.length +
-  s.discard.length +
-  s.players.reduce((n, p) => n + p.hand.length, 0);
+  s.deck.length + s.discard.length + s.players.reduce((n, p) => n + p.hand.length, 0);
 
 describe("createGameState + deal", () => {
   it("deals three cards to each player and flips one discard", () => {
@@ -80,12 +67,8 @@ describe("dealt 31 (blitz) detection", () => {
   });
 
   it("does not mistake three of a kind (30½) for a 31", () => {
-    const trips = [
-      stub([card("A", "hearts"), card("A", "spades"), card("A", "clubs")]),
-    ];
-    expect(
-      dealtBlitzIndex(trips, { ...DEFAULT_OPTIONS, threeOfAKind: true }),
-    ).toBe(-1);
+    const trips = [stub([card("A", "hearts"), card("A", "spades"), card("A", "clubs")])];
+    expect(dealtBlitzIndex(trips, { ...DEFAULT_OPTIONS, threeOfAKind: true })).toBe(-1);
   });
 });
 
@@ -173,9 +156,7 @@ describe("invariants over many random full games", () => {
       while (s.phase !== "gameOver") {
         expect(cardCount(s)).toBe(52);
         if (s.phase === "drawing" || s.phase === "discarding") {
-          expect(s.players.some((p) => !isAlive(p) && p.hand.length > 0)).toBe(
-            false,
-          );
+          expect(s.players.some((p) => !isAlive(p) && p.hand.length > 0)).toBe(false);
         }
         if (s.phase === "dealEnd") {
           const tokens = s.players.reduce((t, p) => t + p.tokens, 0);
@@ -190,9 +171,7 @@ describe("invariants over many random full games", () => {
             } else {
               s = applyAction(
                 s,
-                Math.random() < 0.5
-                  ? { type: "drawDeck" }
-                  : { type: "takeDiscard" },
+                Math.random() < 0.5 ? { type: "drawDeck" } : { type: "takeDiscard" },
               );
               if (s.phase === "discarding") {
                 const h = s.players[s.cur].hand;

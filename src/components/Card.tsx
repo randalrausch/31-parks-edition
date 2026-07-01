@@ -12,15 +12,7 @@ const RED: Suit[] = ["hearts", "diamonds"];
 
 /** Crown / tiara / fleur treatment for the court cards, with a clear suit
  * medallion so the suit (which determines scoring) reads at a glance. */
-function CourtFigure({
-  rank,
-  suit,
-  color,
-}: {
-  rank: "J" | "Q" | "K";
-  suit: Suit;
-  color: string;
-}) {
+function CourtFigure({ rank, suit, color }: { rank: "J" | "Q" | "K"; suit: Suit; color: string }) {
   return (
     <svg viewBox="0 0 100 120" className="card__court" aria-hidden="true">
       <rect
@@ -36,10 +28,7 @@ function CourtFigure({
       />
       {rank === "K" && (
         <g>
-          <path
-            d="M30 40 L30 26 L40 36 L50 22 L60 36 L70 26 L70 40 Z"
-            fill="var(--gold)"
-          />
+          <path d="M30 40 L30 26 L40 36 L50 22 L60 36 L70 26 L70 40 Z" fill="var(--gold)" />
           <rect x="30" y="40" width="40" height="6" fill="var(--gold)" />
           <circle cx="50" cy="20" r="3.5" fill="var(--gold)" />
         </g>
@@ -59,26 +48,10 @@ function CourtFigure({
         </g>
       )}
       {/* robed body suggestion */}
-      <path
-        d="M22 114 Q22 74 50 64 Q78 74 78 114 Z"
-        fill={color}
-        opacity="0.9"
-      />
-      <path
-        d="M50 64 L50 114"
-        stroke="var(--gold)"
-        strokeWidth="1.5"
-        opacity="0.7"
-      />
+      <path d="M22 114 Q22 74 50 64 Q78 74 78 114 Z" fill={color} opacity="0.9" />
+      <path d="M50 64 L50 114" stroke="var(--gold)" strokeWidth="1.5" opacity="0.7" />
       {/* Suit medallion — the at-a-glance suit indicator */}
-      <circle
-        cx="50"
-        cy="74"
-        r="20"
-        fill="var(--card-cream)"
-        stroke={color}
-        strokeWidth="2.5"
-      />
+      <circle cx="50" cy="74" r="20" fill="var(--card-cream)" stroke={color} strokeWidth="2.5" />
       <g transform="translate(31, 55) scale(0.38)">
         <path d={SUIT_PATHS[suit]} fill={color} />
       </g>
@@ -133,36 +106,20 @@ export default function Card({
     >
       <span className="card__corner card__corner--tl" style={{ color }}>
         <span className="card__rank">{card.rank}</span>
-        <SuitGlyph
-          suit={card.suit}
-          className="card__corner-suit"
-          color={color}
-        />
+        <SuitGlyph suit={card.suit} className="card__corner-suit" color={color} />
       </span>
 
       <span className="card__center">
         {isCourt ? (
-          <CourtFigure
-            rank={card.rank as "J" | "Q" | "K"}
-            suit={card.suit}
-            color={color}
-          />
+          <CourtFigure rank={card.rank as "J" | "Q" | "K"} suit={card.suit} color={color} />
         ) : (
-          <SuitGlyph
-            suit={card.suit}
-            className="card__center-suit"
-            color={color}
-          />
+          <SuitGlyph suit={card.suit} className="card__center-suit" color={color} />
         )}
       </span>
 
       <span className="card__corner card__corner--br" style={{ color }}>
         <span className="card__rank">{card.rank}</span>
-        <SuitGlyph
-          suit={card.suit}
-          className="card__corner-suit"
-          color={color}
-        />
+        <SuitGlyph suit={card.suit} className="card__corner-suit" color={color} />
       </span>
     </Tag>
   );

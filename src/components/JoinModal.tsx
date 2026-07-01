@@ -74,12 +74,7 @@ export default function JoinModal({
           />
         </label>
         {error && <p className="join__error">{error}</p>}
-        <button
-          className="join__btn"
-          type="button"
-          onClick={join}
-          disabled={busy}
-        >
+        <button className="join__btn" type="button" onClick={join} disabled={busy}>
           {busy ? "Joining…" : "Join Game"}
         </button>
       </div>

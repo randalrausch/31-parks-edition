@@ -43,19 +43,15 @@ export function makeGameApi(base: string): GameApi {
 
   return {
     create: (config) => call({ op: "create", config }),
-    join: (code, name) =>
-      call({ op: "join", code: code.toUpperCase().trim(), name }),
-    start: (gameId, seatToken) =>
-      call({ op: "start", gameId, seatToken }).then(() => undefined),
+    join: (code, name) => call({ op: "join", code: code.toUpperCase().trim(), name }),
+    start: (gameId, seatToken) => call({ op: "start", gameId, seatToken }).then(() => undefined),
     act: (gameId, seatToken, action: GameAction) =>
       call({ op: "act", gameId, seatToken, action }).then(() => undefined),
     state: (gameId, seatToken) => call({ op: "state", gameId, seatToken }),
   };
 }
 
-export const azureGameApi: GameApi | null = azureEnabled
-  ? makeGameApi(azureApiBase)
-  : null;
+export const azureGameApi: GameApi | null = azureEnabled ? makeGameApi(azureApiBase) : null;
 
 /** Azure implementation of the swappable backend seam (see backend.ts). */
 export const azureBackend: GameBackend | null = azureGameApi

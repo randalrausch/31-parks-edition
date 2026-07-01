@@ -12,10 +12,7 @@ interface State {
   error: Error | null;
 }
 
-export default class ErrorBoundary extends Component<
-  { children: ReactNode },
-  State
-> {
+export default class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   state: State = { error: null };
 
   static getDerivedStateFromError(error: Error): State {
@@ -34,15 +31,11 @@ export default class ErrorBoundary extends Component<
         <div className="errbound__panel">
           <h1 className="errbound__title">Something went wrong</h1>
           <p className="errbound__msg">
-            The game hit an unexpected error. Reloading usually fixes it — your
-            saved games are unaffected.
+            The game hit an unexpected error. Reloading usually fixes it — your saved games are
+            unaffected.
           </p>
           <p className="errbound__detail">{this.state.error.message}</p>
-          <button
-            className="errbound__btn"
-            type="button"
-            onClick={() => window.location.reload()}
-          >
+          <button className="errbound__btn" type="button" onClick={() => window.location.reload()}>
             Reload
           </button>
         </div>

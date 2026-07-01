@@ -3,14 +3,7 @@
  * Picker, and projects the active palette onto CSS custom properties so the
  * entire UI recolors instantly when the park changes.
  */
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import type { ParkTheme } from "../types";
 import { DEFAULT_THEME_ID, THEMES_BY_ID, PLAYABLE_THEMES } from "../themes";
 
@@ -53,10 +46,7 @@ export function ParkThemeProvider({ children }: { children: ReactNode }) {
     } as React.CSSProperties;
   }, [theme]);
 
-  const value = useMemo(
-    () => ({ theme, themeId, setThemeId }),
-    [theme, themeId, setThemeId],
-  );
+  const value = useMemo(() => ({ theme, themeId, setThemeId }), [theme, themeId, setThemeId]);
 
   return (
     <ThemeContext.Provider value={value}>

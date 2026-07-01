@@ -1,22 +1,7 @@
 import { describe, it, expect } from "vitest";
-import {
-  createGameState,
-  applyAction,
-  type GameAction,
-  type NewGamePlayer,
-} from "./actions";
-import {
-  applyPlayerAction,
-  advanceAuthority,
-  redactState,
-  HIDDEN_CARD,
-} from "./authority";
-import {
-  DEFAULT_OPTIONS,
-  isAlive,
-  type AITraits,
-  type GameState,
-} from "./engine";
+import { createGameState, applyAction, type GameAction, type NewGamePlayer } from "./actions";
+import { applyPlayerAction, advanceAuthority, redactState, HIDDEN_CARD } from "./authority";
+import { DEFAULT_OPTIONS, isAlive, type AITraits, type GameState } from "./engine";
 
 const rnd = (n: number) => Math.floor(Math.random() * n);
 const traits = (): AITraits => ({
@@ -27,9 +12,7 @@ const traits = (): AITraits => ({
   risk: 1 + rnd(5),
 });
 const cardCount = (s: GameState) =>
-  s.deck.length +
-  s.discard.length +
-  s.players.reduce((n, p) => n + p.hand.length, 0);
+  s.deck.length + s.discard.length + s.players.reduce((n, p) => n + p.hand.length, 0);
 const hidden = (h: { id: string }[]) => h.every((c) => c.id === HIDDEN_CARD.id);
 
 const mixed = (humanIds: string[], aiCount: number): NewGamePlayer[] => [
@@ -85,28 +68,24 @@ describe("redactState", () => {
     expect(s.phase).toBe("dealEnd");
     const v = redactState(s, "h0");
     expect(
-      v.players.every((p, i) =>
-        p.hand.every((c, j) => c.id === s.players[i].hand[j].id),
-      ),
+      v.players.every((p, i) => p.hand.every((c, j) => c.id === s.players[i].hand[j].id)),
     ).toBe(true);
   });
 });
 
 describe("applyPlayerAction (authority)", () => {
   it("rejects an action from a seat that isn't the current player", () => {
-    const s = applyAction(
-      createGameState(mixed(["h0", "h1"], 0), DEFAULT_OPTIONS),
-      { type: "deal" },
-    );
+    const s = applyAction(createGameState(mixed(["h0", "h1"], 0), DEFAULT_OPTIONS), {
+      type: "deal",
+    });
     const wrong = s.players[(s.cur + 1) % 2].id;
     expect(applyPlayerAction(s, wrong, { type: "drawDeck" })).toBe(s); // unchanged
   });
 
   it("applies an action from the correct seat", () => {
-    const s = applyAction(
-      createGameState(mixed(["h0", "h1"], 0), DEFAULT_OPTIONS),
-      { type: "deal" },
-    );
+    const s = applyAction(createGameState(mixed(["h0", "h1"], 0), DEFAULT_OPTIONS), {
+      type: "deal",
+    });
     const after = applyPlayerAction(s, s.players[s.cur].id, {
       type: "drawDeck",
     });
@@ -117,10 +96,9 @@ describe("applyPlayerAction (authority)", () => {
     // In "drawing", a discard is the right seat + an allowed action type, but
     // wrong phase — the reducer no-ops it. Authority must collapse that back to
     // the original reference so the server can skip persisting/broadcasting.
-    const s = applyAction(
-      createGameState(mixed(["h0", "h1"], 0), DEFAULT_OPTIONS),
-      { type: "deal" },
-    );
+    const s = applyAction(createGameState(mixed(["h0", "h1"], 0), DEFAULT_OPTIONS), {
+      type: "deal",
+    });
     expect(s.phase).toBe("drawing");
     const after = applyPlayerAction(s, s.players[s.cur].id, {
       type: "discard",
@@ -130,10 +108,9 @@ describe("applyPlayerAction (authority)", () => {
   });
 
   it("rejects the server-internal 'deal' action (no mid-turn re-deal)", () => {
-    const s = applyAction(
-      createGameState(mixed(["h0", "h1"], 0), DEFAULT_OPTIONS),
-      { type: "deal" },
-    );
+    const s = applyAction(createGameState(mixed(["h0", "h1"], 0), DEFAULT_OPTIONS), {
+      type: "deal",
+    });
     const before = JSON.stringify(s);
     const after = applyPlayerAction(s, s.players[s.cur].id, {
       type: "deal",
@@ -142,10 +119,9 @@ describe("applyPlayerAction (authority)", () => {
   });
 
   it("lets only the host (seat 0) toggle the shared log setting", () => {
-    const s = applyAction(
-      createGameState(mixed(["h0", "h1"], 0), DEFAULT_OPTIONS),
-      { type: "deal" },
-    );
+    const s = applyAction(createGameState(mixed(["h0", "h1"], 0), DEFAULT_OPTIONS), {
+      type: "deal",
+    });
     expect(s.options.showLog).toBe(true);
     // A non-host attempt is a no-op (same reference, setting unchanged).
     const byOther = applyPlayerAction(s, "h1", {
@@ -160,9 +136,7 @@ describe("applyPlayerAction (authority)", () => {
     });
     expect(hidden.options.showLog).toBe(false);
     // …and a redundant set collapses back to a no-op (nothing to broadcast).
-    expect(
-      applyPlayerAction(hidden, "h0", { type: "setShowLog", value: false }),
-    ).toBe(hidden);
+    expect(applyPlayerAction(hidden, "h0", { type: "setShowLog", value: false })).toBe(hidden);
   });
 });
 
@@ -183,11 +157,7 @@ describe("advanceAuthority", () => {
     );
     const settled = advanceAuthority(s);
     const restsOnHuman = !settled.players[settled.cur].isAI;
-    expect(
-      restsOnHuman ||
-        settled.phase === "dealEnd" ||
-        settled.phase === "gameOver",
-    ).toBe(true);
+    expect(restsOnHuman || settled.phase === "dealEnd" || settled.phase === "gameOver").toBe(true);
   });
 });
 
@@ -220,9 +190,7 @@ describe("full async games (only human actions submitted)", () => {
         showLog: true,
         fullHistory: false,
       };
-      let s = advanceAuthority(
-        applyAction(createGameState(players, options), { type: "deal" }),
-      );
+      let s = advanceAuthority(applyAction(createGameState(players, options), { type: "deal" }));
       let steps = 0;
       while (s.phase !== "gameOver" && steps++ < 4000) {
         expect(cardCount(s)).toBe(52);
@@ -235,8 +203,7 @@ describe("full async games (only human actions submitted)", () => {
         expect(s.players[s.cur].isAI).toBe(false);
         const id = s.players[s.cur].id;
         if (s.phase === "drawing") {
-          const act: GameAction =
-            Math.random() < 0.3 ? { type: "knock" } : { type: "drawDeck" };
+          const act: GameAction = Math.random() < 0.3 ? { type: "knock" } : { type: "drawDeck" };
           const ns = applyPlayerAction(s, id, act);
           s = ns === s ? applyPlayerAction(s, id, { type: "drawDeck" }) : ns;
         } else {

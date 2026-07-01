@@ -9,14 +9,5 @@ export type { GameAction, NewGamePlayer } from "./actions";
 export { applyPlayerAction, advanceAuthority, redactState } from "./authority";
 export { APP_VERSION, PROTOCOL_VERSION } from "./version";
 export type { GameState, GameOptions } from "./engine";
-export {
-  buildCreateSetup,
-  sanitizeOptions,
-  clampName,
-  clampKey,
-} from "./config";
-export type {
-  CreateConfigInput,
-  CreateSetup,
-  SeatSetup,
-} from "./config";
+export { buildCreateSetup, sanitizeOptions, clampName, clampKey } from "./config";
+export type { CreateConfigInput, CreateSetup, SeatSetup } from "./config";

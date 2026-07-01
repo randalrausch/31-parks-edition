@@ -17,9 +17,7 @@ const sfxModules = import.meta.glob("../assets/sfx/*.{mp3,ogg,wav,m4a}", {
 }) as Record<string, string>;
 
 function sampleUrl(name: string): string | undefined {
-  const key = Object.keys(sfxModules).find((k) =>
-    k.split("/").pop()!.startsWith(`${name}.`),
-  );
+  const key = Object.keys(sfxModules).find((k) => k.split("/").pop()!.startsWith(`${name}.`));
   return key ? sfxModules[key] : undefined;
 }
 
@@ -42,8 +40,7 @@ function ac(): AudioContext | null {
   if (!ctx) {
     const Ctor =
       window.AudioContext ||
-      (window as unknown as { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctor) return null;
     ctx = new Ctor();
   }
@@ -73,11 +70,7 @@ export function sndDeal() {
   const a = ac();
   if (!a) return;
   const dur = 0.07;
-  const buffer = a.createBuffer(
-    1,
-    Math.floor(a.sampleRate * dur),
-    a.sampleRate,
-  );
+  const buffer = a.createBuffer(1, Math.floor(a.sampleRate * dur), a.sampleRate);
   const data = buffer.getChannelData(0);
   for (let i = 0; i < data.length; i++) {
     // soft attack, smooth decay — avoids the clicky/tinny edge
@@ -132,8 +125,7 @@ export function sndKnock() {
     // Sharp wooden transient (the initial "t")
     const nb = a.createBuffer(1, Math.floor(a.sampleRate * 0.03), a.sampleRate);
     const nd = nb.getChannelData(0);
-    for (let i = 0; i < nd.length; i++)
-      nd[i] = (Math.random() * 2 - 1) * (1 - i / nd.length);
+    for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * (1 - i / nd.length);
     const ns = a.createBufferSource();
     ns.buffer = nb;
     const bp = a.createBiquadFilter();

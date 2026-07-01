@@ -46,11 +46,7 @@ export default function OnlineGame({
           <div className="lobby__panel">
             <h1 className="lobby__title">Can't open this game</h1>
             <p className="lobby__waiting">{game.error}</p>
-            <button
-              className="lobby__start"
-              type="button"
-              onClick={() => window.location.reload()}
-            >
+            <button className="lobby__start" type="button" onClick={() => window.location.reload()}>
               Try again
             </button>
             <button className="lobby__leave" type="button" onClick={onLeave}>

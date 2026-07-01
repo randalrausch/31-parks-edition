@@ -6,11 +6,7 @@
 }
 .lobby__panel {
   width: min(440px, 100%);
-  background: linear-gradient(
-    180deg,
-    rgba(18, 39, 28, 0.95),
-    rgba(8, 18, 12, 0.96)
-  );
+  background: linear-gradient(180deg, rgba(18, 39, 28, 0.95), rgba(8, 18, 12, 0.96));
   border: 1.5px solid var(--chrome-line-strong);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-panel);

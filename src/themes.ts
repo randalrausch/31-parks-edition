@@ -21,11 +21,7 @@ import type { ParkTheme } from "./types";
 // park's vector art up front; the consumers render them inside <Suspense>.
 const GlacierScene = lazy(() => import("./art/GlacierScene"));
 const YellowstoneScene = lazy(() => import("./art/YellowstoneScene"));
-import {
-  GlacierEmblem,
-  YellowstoneEmblem,
-  makePosterEmblem,
-} from "./art/Emblems";
+import { GlacierEmblem, YellowstoneEmblem, makePosterEmblem } from "./art/Emblems";
 import {
   MountainAvatar,
   GoatAvatar,
@@ -262,8 +258,6 @@ export const THEMES_BY_ID: Record<string, ParkTheme> = Object.fromEntries(
   PARK_THEMES.map((t) => [t.id, t]),
 );
 
-export const PLAYABLE_THEMES = PARK_THEMES.filter(
-  (t) => t.status === "available",
-);
+export const PLAYABLE_THEMES = PARK_THEMES.filter((t) => t.status === "available");
 
 export const DEFAULT_THEME_ID = glacierTheme.id;

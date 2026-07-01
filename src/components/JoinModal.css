@@ -49,11 +49,7 @@
   font-size: 1.5rem;
   letter-spacing: 0.06em;
   color: var(--cream);
-  background: linear-gradient(
-    180deg,
-    var(--c-draw),
-    color-mix(in srgb, var(--c-draw) 70%, black)
-  );
+  background: linear-gradient(180deg, var(--c-draw), color-mix(in srgb, var(--c-draw) 70%, black));
   padding: 13px;
   min-height: 54px;
   border-radius: 12px;

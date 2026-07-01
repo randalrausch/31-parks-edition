@@ -9,7 +9,14 @@ function fixtures(overrides: Partial<GameRecord> = {}) {
       { id: "p0", name: "Host", isAI: false, avatarKey: "ranger" },
       { id: "p1", name: "Bot", isAI: true, avatarKey: "ranger" },
     ],
-    { threeOfAKind: false, grace: true, knockPenalty: true, sound: false, showLog: true, fullHistory: false },
+    {
+      threeOfAKind: false,
+      grace: true,
+      knockPenalty: true,
+      sound: false,
+      showLog: true,
+      fullHistory: false,
+    },
   );
   const rec: GameRecord = {
     gameId: "g1",
@@ -70,9 +77,7 @@ describe("GameStore (memory)", () => {
     // A concurrent writer bumps first.
     await store.update("g1", stale, { ...r0, version: 1 }, secret);
     // Our write with the now-stale etag must lose.
-    expect(
-      await store.update("g1", stale, { ...r0, version: 99 }, secret),
-    ).toBe(false);
+    expect(await store.update("g1", stale, { ...r0, version: 99 }, secret)).toBe(false);
     expect((await store.getGame("g1"))?.rec.version).toBe(1);
   });
 

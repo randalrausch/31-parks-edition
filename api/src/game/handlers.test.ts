@@ -36,8 +36,10 @@ async function newGame(store: GameStore) {
     code: string;
     seatToken: string;
   };
-  const joined = (await handleJoin(store, { code: created.code, name: "Pat" }))
-    .body as { seatIndex: number; seatToken: string };
+  const joined = (await handleJoin(store, { code: created.code, name: "Pat" })).body as {
+    seatIndex: number;
+    seatToken: string;
+  };
   return {
     gameId: created.gameId,
     code: created.code,
@@ -61,9 +63,7 @@ describe("handlers", () => {
     expect(b.code).toMatch(/^[A-HJ-NP-Z2-9]{5}$/);
     expect(typeof b.seatToken).toBe("string");
 
-    const st = (
-      await handleState(store, { gameId: b.gameId, seatToken: b.seatToken })
-    ).body as {
+    const st = (await handleState(store, { gameId: b.gameId, seatToken: b.seatToken })).body as {
       status: string;
       seatIndex: number;
       seats: { idx: number; filled: boolean }[];
@@ -102,8 +102,7 @@ describe("handlers", () => {
     });
     expect(started.status).toBe(200);
 
-    const st = (await handleState(store, { gameId, seatToken: host.seatToken }))
-      .body as {
+    const st = (await handleState(store, { gameId, seatToken: host.seatToken })).body as {
       status: string;
       state: { phase: string; players: { hand: unknown[] }[] };
     };
@@ -120,9 +119,7 @@ describe("handlers", () => {
     const { gameId, host, guest } = await newGame(store);
     await handleStart(store, { gameId, seatToken: host.seatToken });
 
-    const before = (
-      await handleState(store, { gameId, seatToken: host.seatToken })
-    ).body as {
+    const before = (await handleState(store, { gameId, seatToken: host.seatToken })).body as {
       version: number;
       seatIndex: number;
       state: { cur: number };
@@ -146,9 +143,7 @@ describe("handlers", () => {
       action: { type: "drawDeck" },
     });
     expect(applied.body).toEqual({ ok: true });
-    const after = (
-      await handleState(store, { gameId, seatToken: host.seatToken })
-    ).body as {
+    const after = (await handleState(store, { gameId, seatToken: host.seatToken })).body as {
       version: number;
     };
     expect(after.version).toBeGreaterThan(before.version);
@@ -159,9 +154,7 @@ describe("handlers", () => {
     const { gameId, host, guest } = await newGame(store);
     await handleStart(store, { gameId, seatToken: host.seatToken });
 
-    const asHost = (
-      await handleState(store, { gameId, seatToken: host.seatToken })
-    ).body as {
+    const asHost = (await handleState(store, { gameId, seatToken: host.seatToken })).body as {
       state: { players: { hand: { id: string }[] }[] };
     };
     // Opponent (seat 1) hand is fully hidden in the host's view, count preserved.
@@ -169,22 +162,14 @@ describe("handlers", () => {
     expect(oppHand.length).toBeGreaterThan(0);
     expect(oppHand.every((c) => c.id === HIDDEN_CARD.id)).toBe(true);
     // The host's own hand is real (not all hidden).
-    expect(
-      asHost.state.players[0].hand.some((c) => c.id !== HIDDEN_CARD.id),
-    ).toBe(true);
+    expect(asHost.state.players[0].hand.some((c) => c.id !== HIDDEN_CARD.id)).toBe(true);
 
     // From the guest's view, the relationship flips.
-    const asGuest = (
-      await handleState(store, { gameId, seatToken: guest.seatToken })
-    ).body as {
+    const asGuest = (await handleState(store, { gameId, seatToken: guest.seatToken })).body as {
       state: { players: { hand: { id: string }[] }[] };
     };
-    expect(
-      asGuest.state.players[0].hand.every((c) => c.id === HIDDEN_CARD.id),
-    ).toBe(true);
-    expect(
-      asGuest.state.players[1].hand.some((c) => c.id !== HIDDEN_CARD.id),
-    ).toBe(true);
+    expect(asGuest.state.players[0].hand.every((c) => c.id === HIDDEN_CARD.id)).toBe(true);
+    expect(asGuest.state.players[1].hand.some((c) => c.id !== HIDDEN_CARD.id)).toBe(true);
   });
 
   it("version reports the Azure provider", () => {

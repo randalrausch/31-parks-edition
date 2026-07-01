@@ -23,21 +23,10 @@ const DUST = [
   { left: "88%", top: "66%", delay: "5s", dur: "17s" },
 ];
 
-function HeroLayer({
-  theme,
-  className,
-}: {
-  theme: ParkTheme;
-  className: string;
-}) {
+function HeroLayer({ theme, className }: { theme: ParkTheme; className: string }) {
   const Scene = theme.Scene;
   return theme.sceneImage ? (
-    <img
-      className={className}
-      src={theme.sceneImage}
-      alt=""
-      aria-hidden="true"
-    />
+    <img className={className} src={theme.sceneImage} alt="" aria-hidden="true" />
   ) : Scene ? (
     <div className={className}>
       {/* Scene may be code-split (React.lazy) — cover the rare fallback load. */}
@@ -68,19 +57,12 @@ export default function HeroBackground({ themeId }: { themeId: string }) {
   return (
     <div className={`hero hero--${cur}`} aria-hidden="true">
       {/* crossfade stack */}
-      {prevTheme && (
-        <HeroLayer theme={prevTheme} className="hero__img hero__img--prev" />
-      )}
+      {prevTheme && <HeroLayer theme={prevTheme} className="hero__img hero__img--prev" />}
       <HeroLayer theme={curTheme} className="hero__img hero__img--cur" />
 
       {/* blurred, masked edge copy of the current scene */}
       {curTheme.sceneImage && (
-        <img
-          className="hero__edge"
-          src={curTheme.sceneImage}
-          alt=""
-          aria-hidden="true"
-        />
+        <img className="hero__edge" src={curTheme.sceneImage} alt="" aria-hidden="true" />
       )}
 
       {/* ambient motion */}

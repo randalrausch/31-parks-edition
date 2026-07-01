@@ -33,8 +33,7 @@ export const AI_CHARACTERS: AICharacter[] = [
     emoji: "🦬",
     homePark: "Yellowstone",
     personality: "Slow, steady, impossible to rattle.",
-    style:
-      "Conservative. Keeps improving until he has a solid hand. Almost never bluffs.",
+    style: "Conservative. Keeps improving until he has a solid hand. Almost never bluffs.",
     catchPhrase: "No need to rush.",
     traits: { bluff: 1, memory: 3, patience: 5, aggression: 2, risk: 2 },
   },
@@ -64,8 +63,7 @@ export const AI_CHARACTERS: AICharacter[] = [
     emoji: "🌄",
     homePark: "Theodore Roosevelt",
     personality: "Tough, adaptable, doesn't mind rough terrain.",
-    style:
-      "Flexible. Switches suits more often than others when chances appear.",
+    style: "Flexible. Switches suits more often than others when chances appear.",
     catchPhrase: "Plans are made to change.",
     traits: { bluff: 2, memory: 4, patience: 3, aggression: 3, risk: 3 },
   },
@@ -75,8 +73,7 @@ export const AI_CHARACTERS: AICharacter[] = [
     emoji: "🌲",
     homePark: "Glacier",
     personality: "Calm, thoughtful, quietly observant.",
-    style:
-      "Analytical. Watches every discard and adjusts. Rarely wastes a turn.",
+    style: "Analytical. Watches every discard and adjusts. Rarely wastes a turn.",
     catchPhrase: "The cards always tell a story.",
     traits: { bluff: 1, memory: 5, patience: 5, aggression: 2, risk: 2 },
   },
@@ -116,20 +113,13 @@ export const AI_CHARACTERS: AICharacter[] = [
     emoji: "🎒",
     homePark: "Glacier",
     personality: "Quiet wilderness guide who thrives under pressure.",
-    style:
-      "Clutch. Cautious early, far more aggressive when down to his last token.",
+    style: "Clutch. Cautious early, far more aggressive when down to his last token.",
     catchPhrase: "The best trails aren't the easy ones.",
     traits: { bluff: 3, memory: 4, patience: 4, aggression: 5, risk: 4 },
   },
 ];
 
-export const TRAIT_KEYS: (keyof AITraits)[] = [
-  "bluff",
-  "memory",
-  "patience",
-  "aggression",
-  "risk",
-];
+export const TRAIT_KEYS: (keyof AITraits)[] = ["bluff", "memory", "patience", "aggression", "risk"];
 
 export const CHARACTERS_BY_ID: Record<string, AICharacter> = Object.fromEntries(
   AI_CHARACTERS.map((c) => [c.id, c]),

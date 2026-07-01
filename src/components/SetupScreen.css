@@ -4,8 +4,8 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: calc(24px + var(--safe-t)) calc(16px + var(--safe-r))
-    calc(40px + var(--safe-b)) calc(16px + var(--safe-l));
+  padding: calc(24px + var(--safe-t)) calc(16px + var(--safe-r)) calc(40px + var(--safe-b))
+    calc(16px + var(--safe-l));
   overflow-y: auto;
 }
 
@@ -42,13 +42,7 @@
   inset: 0;
   border-radius: inherit;
   padding: 2.5px;
-  background: linear-gradient(
-    155deg,
-    #f4dca0,
-    #c69a45 32%,
-    #7a5320 64%,
-    #e8c068
-  );
+  background: linear-gradient(155deg, #f4dca0, #c69a45 32%, #7a5320 64%, #e8c068);
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
@@ -643,11 +637,7 @@
   font-weight: 600;
   font-size: 0.86rem;
   color: var(--cream);
-  background: linear-gradient(
-    180deg,
-    var(--c-draw),
-    color-mix(in srgb, var(--c-draw) 70%, black)
-  );
+  background: linear-gradient(180deg, var(--c-draw), color-mix(in srgb, var(--c-draw) 70%, black));
   border: 1px solid rgba(255, 255, 255, 0.16);
   padding: 12px;
   min-height: 48px;

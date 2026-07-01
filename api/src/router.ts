@@ -69,8 +69,7 @@ export function makeRouter(
     const e = hits.get(key);
     if (!e || now > e.reset) {
       hits.set(key, { n: 1, reset: now + windowMs });
-      if (hits.size > 5000)
-        for (const [k, v] of hits) if (now > v.reset) hits.delete(k);
+      if (hits.size > 5000) for (const [k, v] of hits) if (now > v.reset) hits.delete(k);
       return false;
     }
     e.n += 1;
@@ -105,16 +104,11 @@ export function makeRouter(
       // + global/day) that actually bound cost across all Function instances.
       if (limited(`create:${req.ip}`, 15, 600_000))
         return reply(429, {
-          error:
-            "You're creating games too quickly — try again in a few minutes.",
+          error: "You're creating games too quickly — try again in a few minutes.",
         });
-      if (
-        rateLimiter &&
-        !(await rateLimiter.allowCreate(req.ip, new Date().toISOString()))
-      )
+      if (rateLimiter && !(await rateLimiter.allowCreate(req.ip, new Date().toISOString())))
         return reply(429, {
-          error:
-            "Too many games are being created right now — please try again later.",
+          error: "Too many games are being created right now — please try again later.",
         });
     }
 

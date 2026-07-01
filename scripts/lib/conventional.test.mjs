@@ -28,19 +28,14 @@ describe("classify", () => {
   it("reads type, scope, and breaking marker", () => {
     expect(classify(commit("feat(board): add X")).type).toBe("feat");
     expect(classify(commit("fix!: drop Y")).breaking).toBe(true);
-    expect(
-      classify(commit("refactor: z", "BREAKING CHANGE: wire changed")).breaking,
-    ).toBe(true);
+    expect(classify(commit("refactor: z", "BREAKING CHANGE: wire changed")).breaking).toBe(true);
     expect(classify(commit("nonsense line")).type).toBe(null);
   });
 });
 
 describe("decideRelease", () => {
   it("picks the highest bump present (breaking > feat > fix)", () => {
-    const d = decideRelease(
-      [commit("fix: a"), commit("feat: b"), commit("feat!: c")],
-      "0.2.0",
-    );
+    const d = decideRelease([commit("fix: a"), commit("feat: b"), commit("feat!: c")], "0.2.0");
     expect(d.bump).toBe("major");
     expect(d.nextVersion).toBe("0.3.0"); // 0.x breaking → minor
     expect(d.releasable).toBe(true);

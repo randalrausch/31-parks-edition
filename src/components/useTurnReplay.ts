@@ -50,8 +50,7 @@ const SUIT: Record<Suit, string> = {
   diamonds: "♦",
   clubs: "♣",
 };
-const cardName = (c: CardModel | null | undefined) =>
-  c ? `${c.rank}${SUIT[c.suit]}` : "a card";
+const cardName = (c: CardModel | null | undefined) => (c ? `${c.rank}${SUIT[c.suit]}` : "a card");
 
 interface Shown {
   version: number;
@@ -60,10 +59,7 @@ interface Shown {
   discard: CardModel[];
 }
 
-export function useTurnReplay(
-  snap: NetworkSnapshot | null,
-  viewerName: string | null,
-): ReplayView {
+export function useTurnReplay(snap: NetworkSnapshot | null, viewerName: string | null): ReplayView {
   const [view, setView] = useState<ReplayView>(IDLE);
   const shownRef = useRef<Shown | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -92,11 +88,7 @@ export function useTurnReplay(
     };
 
     // First load, no change / stale, or a fresh deal: just show the live board.
-    if (
-      !shown ||
-      snap.version <= shown.version ||
-      s.dealNum !== shown.dealNum
-    ) {
+    if (!shown || snap.version <= shown.version || s.dealNum !== shown.dealNum) {
       clear();
       settleNow();
       return;
@@ -140,8 +132,7 @@ export function useTurnReplay(
         else if (e.kind === "takeDiscard") running.pop();
       }
       const knocked = g.some((e) => e.kind === "knock");
-      const drop =
-        [...g].reverse().find((e) => e.kind === "discard")?.card ?? null;
+      const drop = [...g].reverse().find((e) => e.kind === "discard")?.card ?? null;
       const took = g.some((e) => e.kind === "takeDiscard");
       const note = knocked
         ? `${actor} knocked!`

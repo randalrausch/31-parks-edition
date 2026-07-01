@@ -16,9 +16,7 @@ const audioModules = import.meta.glob("../assets/audio/*.{mp3,ogg,m4a}", {
 }) as Record<string, string>;
 
 function audioFor(id: string): string | undefined {
-  const key = Object.keys(audioModules).find((k) =>
-    k.split("/").pop()!.startsWith(`${id}.`),
-  );
+  const key = Object.keys(audioModules).find((k) => k.split("/").pop()!.startsWith(`${id}.`));
   return key ? audioModules[key] : undefined;
 }
 

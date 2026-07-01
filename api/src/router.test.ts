@@ -44,17 +44,13 @@ describe("router", () => {
       readJson: async () => ({}),
     });
     // an allowed origin is echoed back verbatim
-    expect(
-      (await route(opt("https://b.app"))).headers[
-        "Access-Control-Allow-Origin"
-      ],
-    ).toBe("https://b.app");
+    expect((await route(opt("https://b.app"))).headers["Access-Control-Allow-Origin"]).toBe(
+      "https://b.app",
+    );
     // an origin not in the list falls back to the first (effectively denied)
-    expect(
-      (await route(opt("https://evil.app"))).headers[
-        "Access-Control-Allow-Origin"
-      ],
-    ).toBe("https://a.app");
+    expect((await route(opt("https://evil.app"))).headers["Access-Control-Allow-Origin"]).toBe(
+      "https://a.app",
+    );
   });
 
   it("rejects unknown ops with 400", async () => {

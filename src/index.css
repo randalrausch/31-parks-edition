@@ -102,12 +102,7 @@ button {
 .theme-root {
   min-height: 100%;
   background:
-    radial-gradient(
-      1200px 600px at 50% -10%,
-      var(--chrome-bg-2),
-      transparent 70%
-    ),
-    var(--chrome-bg);
+    radial-gradient(1200px 600px at 50% -10%, var(--chrome-bg-2), transparent 70%), var(--chrome-bg);
 }
 
 /* Headings */

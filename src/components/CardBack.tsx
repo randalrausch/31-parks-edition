@@ -17,12 +17,7 @@ export interface CardBackProps {
   className?: string;
 }
 
-export default function CardBack({
-  theme,
-  size = "md",
-  fanStyle,
-  className,
-}: CardBackProps) {
+export default function CardBack({ theme, size = "md", fanStyle, className }: CardBackProps) {
   const active = useTheme().theme;
   const t = theme ?? active;
   const Emblem = t.Emblem;
@@ -31,9 +26,7 @@ export default function CardBack({
 
   return (
     <div
-      className={["cardback", `cardback--${size}`, className]
-        .filter(Boolean)
-        .join(" ")}
+      className={["cardback", `cardback--${size}`, className].filter(Boolean).join(" ")}
       style={fanStyle}
     >
       {useImg ? (

@@ -51,26 +51,14 @@ describe("cardValue", () => {
 
 describe("scoreHand", () => {
   it("sums only same-suit cards", () => {
-    expect(
-      scoreHand([c("A", "spades"), c("K", "spades"), c("8", "spades")], opts()),
-    ).toBe(29);
+    expect(scoreHand([c("A", "spades"), c("K", "spades"), c("8", "spades")], opts())).toBe(29);
   });
   it("takes the best single suit from a mixed hand", () => {
     // A♠ alone (11) vs K♥+8♦ split — best single suit is the Ace's 11.
-    expect(
-      scoreHand(
-        [c("A", "spades"), c("K", "hearts"), c("8", "diamonds")],
-        opts(),
-      ),
-    ).toBe(11);
+    expect(scoreHand([c("A", "spades"), c("K", "hearts"), c("8", "diamonds")], opts())).toBe(11);
   });
   it("reaches a perfect 31 with Ace + two tens of one suit", () => {
-    expect(
-      scoreHand(
-        [c("A", "hearts"), c("K", "hearts"), c("10", "hearts")],
-        opts(),
-      ),
-    ).toBe(31);
+    expect(scoreHand([c("A", "hearts"), c("K", "hearts"), c("10", "hearts")], opts())).toBe(31);
   });
   it("scores three of a kind as 30.5 only when the rule is on", () => {
     const trips = [c("7", "spades"), c("7", "hearts"), c("7", "clubs")];
@@ -90,31 +78,19 @@ describe("bestHandScore", () => {
   it("scores the best legal 3-card hand while holding 4 (mid-draw)", () => {
     // Four spades total 39, but no legal hand keeps four — the best 3-card hand
     // drops the 8 and keeps A+K+10 = 31.
-    const four = [
-      c("A", "spades"),
-      c("K", "spades"),
-      c("10", "spades"),
-      c("8", "spades"),
-    ];
+    const four = [c("A", "spades"), c("K", "spades"), c("10", "spades"), c("8", "spades")];
     expect(scoreHand(four, opts())).toBe(39); // the illegal 4-card total
     expect(bestHandScore(four, opts())).toBe(31);
   });
   it("finds three of a kind by dropping the odd card (rule on)", () => {
-    const four = [
-      c("7", "spades"),
-      c("7", "hearts"),
-      c("7", "clubs"),
-      c("K", "diamonds"),
-    ];
+    const four = [c("7", "spades"), c("7", "hearts"), c("7", "clubs"), c("K", "diamonds")];
     expect(bestHandScore(four, opts({ threeOfAKind: true }))).toBe(30.5);
   });
 });
 
 describe("bestSuit", () => {
   it("returns the suit contributing the score", () => {
-    expect(
-      bestSuit([c("A", "spades"), c("K", "spades"), c("2", "hearts")]),
-    ).toBe("spades");
+    expect(bestSuit([c("A", "spades"), c("K", "spades"), c("2", "hearts")])).toBe("spades");
   });
 });
 
@@ -163,20 +139,12 @@ describe("AI trait → behaviour mappings", () => {
     }
   });
   it("makes greedy chasers hold out for a strong hand", () => {
-    expect(
-      aiKnockTarget(CHARACTERS_BY_ID["half-dome-hank"].traits),
-    ).toBeGreaterThanOrEqual(26);
-    expect(
-      aiKnockTarget(CHARACTERS_BY_ID["summit-sam"].traits),
-    ).toBeGreaterThanOrEqual(26);
+    expect(aiKnockTarget(CHARACTERS_BY_ID["half-dome-hank"].traits)).toBeGreaterThanOrEqual(26);
+    expect(aiKnockTarget(CHARACTERS_BY_ID["summit-sam"].traits)).toBeGreaterThanOrEqual(26);
   });
   it("makes patient builders hold out too", () => {
-    expect(
-      aiKnockTarget(CHARACTERS_BY_ID["paula-pine"].traits),
-    ).toBeGreaterThanOrEqual(26);
-    expect(
-      aiKnockTarget(CHARACTERS_BY_ID["bison-bill"].traits),
-    ).toBeGreaterThanOrEqual(26);
+    expect(aiKnockTarget(CHARACTERS_BY_ID["paula-pine"].traits)).toBeGreaterThanOrEqual(26);
+    expect(aiKnockTarget(CHARACTERS_BY_ID["bison-bill"].traits)).toBeGreaterThanOrEqual(26);
   });
   it("scales bluff and sloppiness with their traits", () => {
     expect(
