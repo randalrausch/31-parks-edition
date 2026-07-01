@@ -17,6 +17,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "postbuild": "node scripts/patch-swa-csp.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "test": "vitest run",
