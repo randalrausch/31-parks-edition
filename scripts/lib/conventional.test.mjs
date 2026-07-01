@@ -5,6 +5,7 @@ import {
   classify,
   decideRelease,
   renderChangelog,
+  compareVersions,
 } from "./conventional.mjs";
 
 const commit = (subject, body = "") => ({ subject, body });
@@ -21,6 +22,22 @@ describe("nextVersion", () => {
   });
   it("parses a leading v and missing parts", () => {
     expect(parseVersion("v0.2.0")).toEqual({ major: 0, minor: 2, patch: 0 });
+  });
+});
+
+describe("compareVersions (release-tag integrity guard)", () => {
+  it("orders by major, then minor, then patch", () => {
+    expect(compareVersions("1.0.0", "2.0.0")).toBe(-1);
+    expect(compareVersions("0.3.0", "0.2.9")).toBe(1);
+    expect(compareVersions("0.2.1", "0.2.2")).toBe(-1);
+    expect(compareVersions("v0.4.0", "0.4.0")).toBe(0); // tolerates a leading v
+  });
+  it("detects a tag that fell behind APP_VERSION (the missing-tag-push bug)", () => {
+    // A prior release bumped version.ts to 0.4.0 but its tag never pushed, so the
+    // newest tag on the remote is still the baseline — the guard must flag it.
+    expect(compareVersions("v0.2.0", "0.4.0")).toBe(-1);
+    // In a healthy repo the newest tag equals APP_VERSION.
+    expect(compareVersions("v0.4.0", "0.4.0")).toBe(0);
   });
 });
 

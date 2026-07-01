@@ -12,7 +12,7 @@
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync, existsSync, appendFileSync } from "node:fs";
-import { decideRelease, renderChangelog } from "./lib/conventional.mjs";
+import { decideRelease, renderChangelog, compareVersions } from "./lib/conventional.mjs";
 
 const DRY = process.argv.includes("--dry");
 const root = new URL("..", import.meta.url);
@@ -104,6 +104,30 @@ if (!tag) {
   setOutput("tag", `v${current}`);
   setOutput("notes_file", notesFile);
   console.log(`[release] no tags yet — seeding baseline v${current}`);
+  process.exit(0);
+}
+
+// Integrity guard: after a correct release the newest tag and APP_VERSION are the
+// SAME X.Y.Z (the workflow bumps version.ts and tags the same commit). If the tag
+// is BEHIND the version, a previous release bumped version.ts but never pushed its
+// tag — so `git describe` is stuck in the past and `commitsSince(tag)` would
+// re-count already-released history, bumping on every push (this is exactly what
+// produced v0.2.2/v0.2.3 off non-releasing commits). Refuse and ask a human rather
+// than guess a bogus range.
+if (compareVersions(tag, current) < 0) {
+  const notes = path(".release-ambiguous.md");
+  if (!DRY)
+    writeFileSync(
+      notes,
+      `Release tags are out of sync: the newest tag is \`${tag}\` but APP_VERSION is \`${current}\`.\n\n` +
+        `A previous release bumped the version but its tag never reached the remote, so the ` +
+        `changelog would re-count already-released commits. Fix by tagging the current release ` +
+        `commit and pushing it:\n\n    git tag v${current} && git push origin v${current}\n\n` +
+        `then re-run. (The workflow now pushes release tags explicitly, so this shouldn't recur.)\n`,
+    );
+  setOutput("status", "needs-input");
+  setOutput("current", current);
+  console.log(`[release] tag ${tag} is behind APP_VERSION ${current} — tags out of sync`);
   process.exit(0);
 }
 

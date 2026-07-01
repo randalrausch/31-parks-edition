@@ -27,6 +27,16 @@ export function parseVersion(v) {
   return m ? { major: +m[1], minor: +m[2], patch: +m[3] } : { major: 0, minor: 0, patch: 0 };
 }
 
+/** Compare two semver-ish strings: -1 if a < b, 0 if equal, 1 if a > b. */
+export function compareVersions(a, b) {
+  const pa = parseVersion(a);
+  const pb = parseVersion(b);
+  for (const k of ["major", "minor", "patch"]) {
+    if (pa[k] !== pb[k]) return pa[k] < pb[k] ? -1 : 1;
+  }
+  return 0;
+}
+
 /** Next version string for a bump, applying the pre-1.0 breaking→minor rule. */
 export function nextVersion(current, bump) {
   const p = parseVersion(current);

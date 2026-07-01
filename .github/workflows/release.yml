@@ -72,8 +72,15 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -m "chore(release): ${{ steps.decide.outputs.tag }} [skip ci]"
+          git push origin HEAD:main
+          # Tag the release commit and push the tag EXPLICITLY. The previous
+          # `git push --follow-tags` pushes only ANNOTATED tags, so these
+          # lightweight release tags never reached origin — leaving `git describe`
+          # stuck at the baseline and re-counting all history on every release
+          # (the cause of the spurious v0.2.2/v0.2.3 bumps). An explicit push (as
+          # the baseline step already does) guarantees the tag lands.
           git tag "${{ steps.decide.outputs.tag }}"
-          git push origin HEAD:main --follow-tags
+          git push origin "${{ steps.decide.outputs.tag }}"
           gh release create "${{ steps.decide.outputs.tag }}" \
             --title "${{ steps.decide.outputs.tag }}" \
             --notes-file .release-notes.md
