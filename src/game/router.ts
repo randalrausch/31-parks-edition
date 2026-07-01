@@ -9,6 +9,7 @@
 import {
   handleAct,
   handleCreate,
+  handleHealth,
   handleJoin,
   handleStart,
   handleState,
@@ -110,6 +111,10 @@ export function makeRouter(
 
     const op = String(body?.op ?? "");
     if (op === "version") return reply(200, handleVersion(provider).body);
+    if (op === "health") {
+      const r = await handleHealth(store, provider);
+      return reply(r.status, r.body);
+    }
 
     if (op === "create") {
       // Cheap per-instance first line, then the durable shared caps (per-IP/hour

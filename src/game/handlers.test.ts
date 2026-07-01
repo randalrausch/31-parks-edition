@@ -12,6 +12,7 @@ import {
   handleAct,
   handleState,
   handleVersion,
+  handleHealth,
 } from "./handlers";
 import { HIDDEN_CARD } from "./authority";
 import type { GameStore } from "./store";
@@ -181,5 +182,25 @@ describe("handlers", () => {
     expect(b.ok).toBe(true);
     expect(b.provider).toBe("Azure");
     expect(typeof b.version).toBe("string");
+  });
+
+  it("health does a datastore round-trip and reports healthy (200)", async () => {
+    const store = makeMemoryStore();
+    const res = await handleHealth(store, "Azure");
+    expect(res.status).toBe(200);
+    const b = res.body as { healthy: boolean; provider: string };
+    expect(b.healthy).toBe(true);
+    expect(b.provider).toBe("Azure");
+  });
+
+  it("health reports 503 when the datastore is unreachable", async () => {
+    const broken = {
+      getByCode: async () => {
+        throw new Error("db down");
+      },
+    } as unknown as GameStore;
+    const res = await handleHealth(broken, "Supabase");
+    expect(res.status).toBe(503);
+    expect((res.body as { healthy: boolean }).healthy).toBe(false);
   });
 });

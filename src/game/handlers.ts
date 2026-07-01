@@ -230,3 +230,20 @@ export function handleVersion(provider: string): OpResult {
     protocol: PROTOCOL_VERSION,
   });
 }
+
+/* ─────────────────────────── health ─────────────────────────── */
+
+/**
+ * Liveness+readiness probe. Unlike `version` (a static literal that says nothing
+ * about the datastore), this does a trivial round-trip — a code lookup that
+ * touches storage but creates/mutates nothing — so a monitor can tell "backend
+ * up AND its database reachable" (200) from "backend up but storage down" (503).
+ */
+export async function handleHealth(store: GameStore, provider: string): Promise<OpResult> {
+  try {
+    await store.getByCode("__health__"); // sentinel; returns null, proves reachability
+    return ok({ ok: true, healthy: true, provider, protocol: PROTOCOL_VERSION });
+  } catch {
+    return { status: 503, body: { ok: true, healthy: false, provider } };
+  }
+}
