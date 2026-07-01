@@ -22,6 +22,8 @@ import {
   advanceAuthority,
   redactState,
   buildCreateSetup,
+  APP_VERSION,
+  PROTOCOL_VERSION,
 } from "../_shared/engine.mjs";
 
 // @ts-expect-error — Deno global
@@ -58,10 +60,9 @@ function corsFor(reqOrigin: string | null): Record<string, string> {
   };
 }
 
-/** Bump with releases (the deployed function's version, shown in About). Kept
- * in step with the Azure backend's FN_VERSION so both providers report the same
- * release. */
-const FN_VERSION = "0.2.0";
+// The deployed version (shown in About) comes from the shared version module,
+// bundled into engine.mjs — so both backends and the frontend always report the
+// same release, and there's no per-file version string to keep in sync.
 
 /**
  * Best-effort, per-instance rate limiting. Edge instances are ephemeral and not
@@ -261,7 +262,12 @@ Deno.serve(async (req: Request) => {
   }
   const op = body.op as string;
   if (op === "version")
-    return json({ ok: true, version: FN_VERSION, provider: "Supabase" });
+    return json({
+      ok: true,
+      version: APP_VERSION,
+      provider: "Supabase",
+      protocol: PROTOCOL_VERSION,
+    });
   // state/version are high-volume / trivial; don't log them as requests.
   if (op !== "state" && op !== "version") logEvent("request", { op });
 

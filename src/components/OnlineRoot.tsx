@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 import type { CreateConfig } from "../game/gameApi";
 import { activeBackend } from "../game/backend";
+import { fetchBackendInfo, backendCompatible } from "../game/multiplayerConfig";
 import { elog } from "../game/debug";
 import {
   type OnlineSession,
@@ -35,10 +36,24 @@ export default function OnlineRoot({
   );
   const [creating, setCreating] = useState(intent.type === "create");
   const [error, setError] = useState<string | null>(null);
+  // Protocol preflight: don't let a stale tab start an online game against a
+  // backend it may not understand. "checking" until the probe returns; "stale"
+  // only on a definite protocol mismatch (unreachable/older backends pass).
+  const [compat, setCompat] = useState<"checking" | "ok" | "stale">("checking");
 
-  // Create-intent: make the room on mount.
   useEffect(() => {
-    if (intent.type !== "create" || !activeBackend) return;
+    let cancelled = false;
+    fetchBackendInfo().then((info) => {
+      if (!cancelled) setCompat(backendCompatible(info) ? "ok" : "stale");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Create-intent: make the room once the compatibility check has passed.
+  useEffect(() => {
+    if (intent.type !== "create" || !activeBackend || compat !== "ok") return;
     let cancelled = false;
     activeBackend.api
       .create(intent.config)
@@ -64,12 +79,34 @@ export default function OnlineRoot({
     return () => {
       cancelled = true;
     };
-  }, [intent]);
+  }, [intent, compat]);
 
   const leave = () => {
     clearSession();
     onExit();
   };
+
+  // Out-of-date tab: the live backend speaks a different wire protocol.
+  if (compat === "stale") {
+    return (
+      <div className="lobby">
+        <div className="lobby__panel">
+          <h1 className="lobby__title">Update Available</h1>
+          <p className="lobby__waiting">
+            Online play was updated. Refresh the page to get the latest version,
+            then start or rejoin your game.
+          </p>
+          <button
+            className="lobby__leave"
+            type="button"
+            onClick={() => window.location.reload()}
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (session) {
     return <OnlineGame session={session} onLeave={leave} />;

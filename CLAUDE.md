@@ -54,3 +54,29 @@ no migration needed for a new option.
   other — shared UI belongs in `BoardParts`).
 - `npm run test` (full vitest suite)
 - `npm run build` (production build)
+
+## Versioning & releases
+
+**One version source:** `src/game/version.ts` exports `APP_VERSION` (human
+semver) and `PROTOCOL_VERSION` (wire contract). The frontend (via `vite.config.ts`)
+and both backends (via the bundled `engine.mjs` / direct import) all read it, so
+they can never report different releases. `APP_VERSION` is maintained
+**automatically** — do not hand-edit it.
+
+**Commits drive the version.** Write [Conventional Commits](https://www.conventionalcommits.org/):
+`feat: …` (→ minor), `fix:`/`perf: …` (→ patch), `feat!:` or a `BREAKING CHANGE:`
+footer (→ major; while pre-1.0 that's a minor bump, never an accidental 1.0.0).
+`chore/docs/refactor/test/ci/style` don't trigger a release. On push to `main`,
+`.github/workflows/release.yml` runs `scripts/release.mjs`: it bumps
+`APP_VERSION`, prepends `CHANGELOG.md`, rebuilds `engine.mjs`, tags `vX.Y.Z`, and
+publishes a GitHub Release. If it can't classify the commits, it opens an issue
+asking a human instead of guessing — so **pick the right commit type**, and if
+you're unsure whether a change is release-worthy or breaking, ask.
+
+**`PROTOCOL_VERSION` is manual.** Bump it (in `version.ts`) ONLY when the
+client↔server wire contract changes incompatibly — the op surface, the
+`redactState` shape, or seat-token semantics. A client whose `PROTOCOL_VERSION`
+differs from the live backend's is told to refresh (`OnlineRoot` / About). When a
+change to `src/game/` might be a protocol break and you're not certain, ask
+before committing rather than risk silently breaking live games. Bumping it means
+rebuilding `engine.mjs`.

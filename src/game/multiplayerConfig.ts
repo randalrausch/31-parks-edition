@@ -22,10 +22,28 @@ export const azureEnabled = Boolean(azureApiBase);
 export const supabaseEnabled = Boolean(supabaseUrl && supabaseKey);
 export const multiplayerEnabled = azureEnabled || supabaseEnabled;
 
+import { PROTOCOL_VERSION } from "./version";
+
 export interface BackendInfo {
   provider: string;
   version: string;
+  /** The backend's wire-protocol version (absent on older backends). */
+  protocol?: number;
 }
+
+/**
+ * Whether this client can safely talk to the given backend. A protocol mismatch
+ * means one side was deployed with an incompatible wire contract; the client
+ * should tell the user to refresh rather than risk a broken online game. An
+ * absent protocol (older backend that predates the field) is treated as
+ * compatible so nothing breaks during the rollout.
+ */
+export function backendCompatible(info: BackendInfo | null): boolean {
+  if (!info || info.protocol === undefined) return true;
+  return info.protocol === PROTOCOL_VERSION;
+}
+
+export { PROTOCOL_VERSION };
 
 /**
  * Ask the configured backend to identify itself (provider + version) via its
@@ -56,6 +74,7 @@ export async function fetchBackendInfo(): Promise<BackendInfo | null> {
     return {
       provider: typeof d.provider === "string" ? d.provider : "online",
       version: typeof d.version === "string" ? d.version : "?",
+      protocol: typeof d.protocol === "number" ? d.protocol : undefined,
     };
   } catch {
     return null;

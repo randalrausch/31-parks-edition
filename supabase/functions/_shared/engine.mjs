@@ -445,6 +445,10 @@ function redactState(state, viewerId) {
   };
 }
 
+// src/game/version.ts
+var APP_VERSION = "0.2.0";
+var PROTOCOL_VERSION = 1;
+
 // src/game/config.ts
 var TRAIT_KEYS = ["bluff", "memory", "patience", "aggression", "risk"];
 var BOOL_OPTS = [
@@ -519,6 +523,8 @@ function buildCreateSetup(config) {
   };
 }
 export {
+  APP_VERSION,
+  PROTOCOL_VERSION,
   advanceAuthority,
   applyAction,
   applyPlayerAction,
