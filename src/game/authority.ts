@@ -45,8 +45,7 @@ export function aiTurnActions(s: GameState): GameAction[] {
   // drawDeck → simulate the draw so the discard is chosen from the new hand.
   const drew = applyAction(s, { type: "drawDeck" });
   const p = drew.players[drew.cur];
-  const playRandom =
-    Math.random() < aiPlayRandomChance(p.traits ?? DEFAULT_TRAITS);
+  const playRandom = Math.random() < aiPlayRandomChance(p.traits ?? DEFAULT_TRAITS);
   const idx = aiDiscardIndex(p.hand, drew.options, playRandom);
   return [{ type: "drawDeck" }, { type: "discard", cardId: p.hand[idx].id }];
 }
@@ -87,11 +86,7 @@ const PLAYER_TURN_ACTIONS = new Set<GameAction["type"]>([
   "knock",
 ]);
 
-export function applyPlayerAction(
-  state: GameState,
-  seatId: string,
-  action: GameAction,
-): GameState {
+export function applyPlayerAction(state: GameState, seatId: string, action: GameAction): GameState {
   if (action.type === "setShowLog") {
     // A shared table display setting, controlled by the host (seat 0) only, so
     // one player can't reveal/hide the action feed for everyone else. Applies in
@@ -133,18 +128,13 @@ function settledOrSame(state: GameState, next: GameState): GameState {
  * every hand is revealed. Pass `null` for a spectator (sees no hands until
  * reveal). The discard pile, tokens, turn, log, and results are always public.
  */
-export function redactState(
-  state: GameState,
-  viewerId: string | null,
-): GameState {
+export function redactState(state: GameState, viewerId: string | null): GameState {
   const revealAll = state.phase === "dealEnd" || state.phase === "gameOver";
   return {
     ...state,
     deck: state.deck.map(() => HIDDEN_CARD),
     players: state.players.map((p) =>
-      revealAll || p.id === viewerId
-        ? p
-        : { ...p, hand: p.hand.map(() => HIDDEN_CARD) },
+      revealAll || p.id === viewerId ? p : { ...p, hand: p.hand.map(() => HIDDEN_CARD) },
     ),
   };
 }

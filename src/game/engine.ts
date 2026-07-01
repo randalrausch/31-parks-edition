@@ -7,21 +7,7 @@ import type { CardModel, Rank, Suit } from "../types";
 import { cardValue } from "../types";
 
 export const SUITS: Suit[] = ["spades", "hearts", "diamonds", "clubs"];
-export const RANKS: Rank[] = [
-  "A",
-  "2",
-  "3",
-  "4",
-  "5",
-  "6",
-  "7",
-  "8",
-  "9",
-  "10",
-  "J",
-  "Q",
-  "K",
-];
+export const RANKS: Rank[] = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 
 /** 1–5 behavioral traits that define an AI character's play. */
 export interface AITraits {
@@ -186,8 +172,7 @@ export function shuffle<T>(arr: T[]): T[] {
 
 export function makeDeck(): CardModel[] {
   const d: CardModel[] = [];
-  for (const s of SUITS)
-    for (const r of RANKS) d.push({ id: `${r}-${s}`, rank: r, suit: s });
+  for (const s of SUITS) for (const r of RANKS) d.push({ id: `${r}-${s}`, rank: r, suit: s });
   return shuffle(d);
 }
 
@@ -203,9 +188,7 @@ export function scoreHand(hand: CardModel[], opts: GameOptions): number {
     return 30.5;
   let best = 0;
   for (const suit of SUITS) {
-    const t = hand
-      .filter((c) => c.suit === suit)
-      .reduce((n, c) => n + cardValue(c.rank), 0);
+    const t = hand.filter((c) => c.suit === suit).reduce((n, c) => n + cardValue(c.rank), 0);
     if (t > best) best = t;
   }
   return best;
@@ -241,9 +224,7 @@ export function bestSuit(hand: CardModel[]): Suit | null {
   let best = 0;
   let suit: Suit | null = null;
   for (const s of SUITS) {
-    const t = hand
-      .filter((c) => c.suit === s)
-      .reduce((n, c) => n + cardValue(c.rank), 0);
+    const t = hand.filter((c) => c.suit === s).reduce((n, c) => n + cardValue(c.rank), 0);
     if (t > best) {
       best = t;
       suit = s;
@@ -263,20 +244,14 @@ export function isAlive(p: GamePlayer): boolean {
  * boards so the "Round N" readout can't drift between the solo and online views.
  */
 export function roundNo(s: GameState): number {
-  return s.dealPlayers > 0
-    ? Math.max(1, Math.ceil(s.turnInDeal / s.dealPlayers))
-    : 1;
+  return s.dealPlayers > 0 ? Math.max(1, Math.ceil(s.turnInDeal / s.dealPlayers)) : 1;
 }
 export function isEliminated(p: GamePlayer): boolean {
   return !isAlive(p);
 }
 
 /** Apply token loss; returns the outcome. Mutates the player (engine-local). */
-export function takeDamage(
-  player: GamePlayer,
-  amount: number,
-  opts: GameOptions,
-): DamageOutcome {
+export function takeDamage(player: GamePlayer, amount: number, opts: GameOptions): DamageOutcome {
   const hadTokens = player.tokens;
   player.tokens = Math.max(0, player.tokens - amount);
   if (player.tokens === 0) {
@@ -294,9 +269,7 @@ export function takeDamage(
 /* ── AI ─────────────────────────────────────────────────────────────────── */
 
 export type AIPlan =
-  | { kind: "knock" }
-  | { kind: "takeDiscard"; handIndex: number }
-  | { kind: "drawDeck" };
+  { kind: "knock" } | { kind: "takeDiscard"; handIndex: number } | { kind: "drawDeck" };
 
 /* ── Trait → behavior mappings ──
    These translate a character's 1–5 traits into concrete decisions. */
@@ -388,11 +361,7 @@ export function planAITurn(state: GameState): AIPlan {
 }
 
 /** After an AI draws from the deck, choose which card to discard. */
-export function aiDiscardIndex(
-  hand: CardModel[],
-  opts: GameOptions,
-  playRandom: boolean,
-): number {
+export function aiDiscardIndex(hand: CardModel[], opts: GameOptions, playRandom: boolean): number {
   if (playRandom) return Math.floor(Math.random() * hand.length);
   let worst = 0;
   let bestRem = -1;

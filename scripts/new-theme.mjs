@@ -11,7 +11,7 @@ const id = (rawId || "").trim();
 const displayName = nameParts.join(" ").trim() || (id ? id.replace(/-/g, " ") : "");
 
 if (!/^[a-z][a-z0-9-]*$/.test(id) || !displayName) {
-  console.error("Usage: node scripts/new-theme.mjs <kebab-id> \"<Display Name>\"");
+  console.error('Usage: node scripts/new-theme.mjs <kebab-id> "<Display Name>"');
   console.error('Example: node scripts/new-theme.mjs yosemite "Yosemite"');
   process.exit(1);
 }

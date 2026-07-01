@@ -27,13 +27,7 @@ import {
   HandHud,
   ActionBar,
 } from "./BoardParts";
-import {
-  bestSuit,
-  bestHandScore,
-  isAlive,
-  roundNo,
-  type GameState,
-} from "../game/engine";
+import { bestSuit, bestHandScore, isAlive, roundNo, type GameState } from "../game/engine";
 import type { NetworkGameApi } from "../game/useNetworkGame";
 import { useTurnReplay } from "./useTurnReplay";
 import "./GameBoard.css";
@@ -68,20 +62,14 @@ export default function OnlineGameBoard({
   const [revealDeal, setRevealDeal] = useState<GameState | null>(null);
   const dismissedDeal = useRef(-1);
   useEffect(() => {
-    if (
-      s &&
-      s.phase === "dealEnd" &&
-      s.result &&
-      s.dealNum !== dismissedDeal.current
-    ) {
+    if (s && s.phase === "dealEnd" && s.result && s.dealNum !== dismissedDeal.current) {
       setRevealDeal((prev) => (prev && prev.dealNum === s.dealNum ? prev : s));
     }
   }, [s]);
 
   // Pace opponent (AI/remote) turns: the server settles them atomically, so we
   // replay the new public log moves one beat at a time for natural flow.
-  const viewerName =
-    s && viewer >= 0 ? (s.players[viewer]?.name ?? null) : null;
+  const viewerName = s && viewer >= 0 ? (s.players[viewer]?.name ?? null) : null;
   const replay = useTurnReplay(snap, viewerName);
 
   if (!s) {
@@ -114,14 +102,9 @@ export default function OnlineGameBoard({
   // While opponents are being replayed, lock controls and show the stepped
   // discard pile / acting seat rather than the (already-settled) live values.
   const busy = replay.busy;
-  const topDiscard = busy
-    ? replay.discardTop
-    : (s.discard[s.discard.length - 1] ?? null);
+  const topDiscard = busy ? replay.discardTop : (s.discard[s.discard.length - 1] ?? null);
   const activeSeat = busy ? replay.actingSeat : s.cur;
-  const myTurn =
-    !busy &&
-    s.cur === viewer &&
-    (s.phase === "drawing" || s.phase === "discarding");
+  const myTurn = !busy && s.cur === viewer && (s.phase === "drawing" || s.phase === "discarding");
   const canDraw = myTurn && s.phase === "drawing";
   const discarding = myTurn && s.phase === "discarding";
   const counting = me ? bestSuit(me.hand) : null;
@@ -231,9 +214,7 @@ export default function OnlineGameBoard({
                   interactive={discarding}
                   counting={counting}
                   selected={selected}
-                  onSelect={(i) =>
-                    discarding && setSelected(selected === i ? null : i)
-                  }
+                  onSelect={(i) => discarding && setSelected(selected === i ? null : i)}
                 />
                 <HandHud score={handScore} />
                 <ActionBar
@@ -257,9 +238,7 @@ export default function OnlineGameBoard({
               // explicit instead of an empty hand + dead buttons.
               <div className="board__spectating">
                 <PlayerHead player={me} turnText=" (You)" />
-                <p className="board__spectating-note">
-                  You're out — watching until the game ends.
-                </p>
+                <p className="board__spectating-note">You're out — watching until the game ends.</p>
               </div>
             ))}
         </div>
@@ -290,19 +269,11 @@ export default function OnlineGameBoard({
         <DealEndOverlay state={revealDeal} onNext={dismissReveal} />
       ) : (
         s.phase === "gameOver" && (
-          <GameOverOverlay
-            state={s}
-            onNewGame={onLeave}
-            ctaLabel="Back to Menu"
-          />
+          <GameOverOverlay state={s} onNewGame={onLeave} ctaLabel="Back to Menu" />
         )
       )}
       <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
-      <Modal
-        open={parksOpen}
-        onClose={() => setParksOpen(false)}
-        labelledBy="parks-title"
-      >
+      <Modal open={parksOpen} onClose={() => setParksOpen(false)} labelledBy="parks-title">
         <h2 id="parks-title" className="board__modal-title">
           Switch Park
         </h2>

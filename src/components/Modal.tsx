@@ -16,16 +16,9 @@ export interface ModalProps {
   labelledBy?: string;
 }
 
-const FOCUSABLE =
-  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
-export default function Modal({
-  open,
-  onClose,
-  children,
-  variant,
-  labelledBy,
-}: ModalProps) {
+export default function Modal({ open, onClose, children, variant, labelledBy }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,9 +34,7 @@ export default function Modal({
       }
       if (e.key !== "Tab" || !panel) return;
       // Keep Tab focus inside the dialog.
-      const items = Array.from(
-        panel.querySelectorAll<HTMLElement>(FOCUSABLE),
-      ).filter(
+      const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
         (el) => !el.hasAttribute("disabled") && el.offsetParent !== null,
       );
       if (items.length === 0) {
@@ -93,12 +84,7 @@ export default function Modal({
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          className="modal__close"
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-        >
+        <button className="modal__close" type="button" onClick={onClose} aria-label="Close">
           ✕
         </button>
         {children}

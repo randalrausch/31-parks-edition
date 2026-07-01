@@ -32,11 +32,7 @@ self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches
       .keys()
-      .then((keys) =>
-        Promise.all(
-          keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)),
-        ),
-      )
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -68,9 +64,7 @@ self.addEventListener("fetch", (e) => {
           // Guard against caching a SPA-fallback page (index.html, served with
           // 200 for a missing asset) under a JS/CSS URL — that would poison the
           // cache so the asset is "broken" forever. Only cache real assets.
-          const isHtml = (res.headers.get("content-type") || "").includes(
-            "text/html",
-          );
+          const isHtml = (res.headers.get("content-type") || "").includes("text/html");
           if (res.ok && res.type === "basic" && !isHtml) {
             const copy = res.clone();
             caches.open(CACHE).then((c) => c.put(req, copy));

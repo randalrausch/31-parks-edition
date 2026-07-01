@@ -19,16 +19,8 @@ import { StarDivider } from "../art/Glyphs";
 import { titleImage } from "../titleArt";
 import { useAmbientAudio, hasAmbientAudio } from "../game/ambientAudio";
 import { multiplayerEnabled } from "../game/multiplayerConfig";
-import {
-  DEFAULT_OPTIONS,
-  type AITraits,
-  type GameOptions,
-} from "../game/engine";
-import {
-  AI_CHARACTERS,
-  CHARACTERS_BY_ID,
-  TRAIT_KEYS,
-} from "../game/aiCharacters";
+import { DEFAULT_OPTIONS, type AITraits, type GameOptions } from "../game/engine";
+import { AI_CHARACTERS, CHARACTERS_BY_ID, TRAIT_KEYS } from "../game/aiCharacters";
 import { characterImage } from "../game/charArt";
 import type { GameConfig, PlayerConfig } from "../game/useGame";
 import "./SetupScreen.css";
@@ -194,9 +186,7 @@ export default function SetupScreen({
   const [humans, setHumans] = useState(1);
   // Each AI slot holds a chosen character id — randomized on load, all distinct
   // (only one of any character can play at a time).
-  const [aiCharIds, setAiCharIds] = useState<string[]>(() =>
-    shuffledCharIds().slice(0, 3),
-  );
+  const [aiCharIds, setAiCharIds] = useState<string[]>(() => shuffledCharIds().slice(0, 3));
   const [options, setOptions] = useState<GameOptions>(DEFAULT_OPTIONS);
   const [names, setNames] = useState<string[]>(Array(MAX_PLAYERS).fill(""));
   const [helpOpen, setHelpOpen] = useState(false);
@@ -229,10 +219,8 @@ export default function SetupScreen({
       next[i] = id;
       return next;
     });
-  const setName = (i: number, v: string) =>
-    setNames((p) => p.map((n, j) => (j === i ? v : n)));
-  const toggle = (key: keyof GameOptions) =>
-    setOptions((o) => ({ ...o, [key]: !o[key] }));
+  const setName = (i: number, v: string) => setNames((p) => p.map((n, j) => (j === i ? v : n)));
+  const toggle = (key: keyof GameOptions) => setOptions((o) => ({ ...o, [key]: !o[key] }));
 
   const start = () => {
     if (tooFew) return;
@@ -326,14 +314,7 @@ export default function SetupScreen({
             aria-label="Theme settings"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle
-                cx="12"
-                cy="12"
-                r="3.2"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
+              <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="2" />
               <path
                 d="M12 2.5v3M12 18.5v3M21.5 12h-3M5.5 12h-3M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1M18.7 18.7l-2.1-2.1M7.4 7.4 5.3 5.3"
                 stroke="currentColor"
@@ -347,11 +328,7 @@ export default function SetupScreen({
         {/* Plaque: NPS-style bronze-and-wood badge with the 31 logo */}
         <div className="setup__plaque setup__arr setup__arr--1">
           {titleImage ? (
-            <img
-              className="setup__title-img"
-              src={titleImage}
-              alt="31 — National Parks Edition"
-            />
+            <img className="setup__title-img" src={titleImage} alt="31 — National Parks Edition" />
           ) : (
             <div className="setup__title-fallback">
               <span className="setup__title-31">31</span>
@@ -362,26 +339,17 @@ export default function SetupScreen({
 
         {/* What is 31 */}
         <p className="setup__about setup__arr setup__arr--3">
-          <strong>31</strong> is a fast, classic card game. Draw and discard to
-          build the highest total in a single suit — as close to{" "}
-          <strong>31</strong> as you can. Knock when you're confident; each deal
-          the lowest hand loses a token. The last player with a token wins.
+          <strong>31</strong> is a fast, classic card game. Draw and discard to build the highest
+          total in a single suit — as close to <strong>31</strong> as you can. Knock when you're
+          confident; each deal the lowest hand loses a token. The last player with a token wins.
         </p>
 
         <div className="setup__links setup__arr setup__arr--3">
-          <button
-            className="setup__link"
-            type="button"
-            onClick={() => setHelpOpen(true)}
-          >
+          <button className="setup__link" type="button" onClick={() => setHelpOpen(true)}>
             Learn to Play →
           </button>
           <span className="setup__link-sep">·</span>
-          <button
-            className="setup__link"
-            type="button"
-            onClick={() => setHistoryOpen(true)}
-          >
+          <button className="setup__link" type="button" onClick={() => setHistoryOpen(true)}>
             History of 31 →
           </button>
         </div>
@@ -434,11 +402,7 @@ export default function SetupScreen({
                     <div className="ai-card" key={i}>
                       <div className="ai-card__head">
                         {characterImage(c.id) ? (
-                          <img
-                            className="ai-card__portrait"
-                            src={characterImage(c.id)}
-                            alt=""
-                          />
+                          <img className="ai-card__portrait" src={characterImage(c.id)} alt="" />
                         ) : (
                           <span className="ai-card__emoji">{c.emoji}</span>
                         )}
@@ -455,9 +419,7 @@ export default function SetupScreen({
                           ))}
                         </select>
                       </div>
-                      <div className="ai-card__park">
-                        {c.homePark} National Park
-                      </div>
+                      <div className="ai-card__park">{c.homePark} National Park</div>
                       <div className="ai-card__style">{c.style}</div>
                       <div className="ai-card__phrase">“{c.catchPhrase}”</div>
                       <TraitBars traits={c.traits} />
@@ -468,9 +430,7 @@ export default function SetupScreen({
             </div>
           )}
 
-          <p
-            className={`setup__count-note${tooFew ? " setup__count-note--warn" : ""}`}
-          >
+          <p className={`setup__count-note${tooFew ? " setup__count-note--warn" : ""}`}>
             {tooFew
               ? "Add at least 2 players."
               : `${total} players · ${humans} human${humans === 1 ? "" : "s"}, ${ai} AI`}
@@ -525,11 +485,7 @@ export default function SetupScreen({
 
         {multiplayerEnabled && onCreateOnline && (
           <div className="setup__online setup__arr setup__arr--5">
-            <button
-              className="setup__online-btn"
-              type="button"
-              onClick={createOnline}
-            >
+            <button className="setup__online-btn" type="button" onClick={createOnline}>
               Create Online Game
             </button>
             <button
@@ -543,11 +499,7 @@ export default function SetupScreen({
         )}
 
         <footer className="setup__footer">
-          <button
-            type="button"
-            className="setup__about-link"
-            onClick={() => setAboutOpen(true)}
-          >
+          <button type="button" className="setup__about-link" onClick={() => setAboutOpen(true)}>
             About
           </button>
         </footer>
@@ -556,17 +508,13 @@ export default function SetupScreen({
       <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
       <HistoryPanel open={historyOpen} onClose={() => setHistoryOpen(false)} />
       <About open={aboutOpen} onClose={() => setAboutOpen(false)} />
-      <Modal
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        labelledBy="set-title"
-      >
+      <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} labelledBy="set-title">
         <h2 id="set-title" className="setup__modal-title">
           Theme
         </h2>
         <p className="setup__modal-note">
-          Currently playing <strong>{theme.displayName}</strong>. Pick a park —
-          you can also switch mid-game.
+          Currently playing <strong>{theme.displayName}</strong>. Pick a park — you can also switch
+          mid-game.
         </p>
         <ParkPicker heading={false} onPick={() => setSettingsOpen(false)} />
       </Modal>

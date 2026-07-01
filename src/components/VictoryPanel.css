@@ -25,11 +25,7 @@
 .victory__overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(5, 12, 8, 0.15) 0%,
-    rgba(5, 12, 8, 0.82) 78%
-  );
+  background: linear-gradient(180deg, rgba(5, 12, 8, 0.15) 0%, rgba(5, 12, 8, 0.82) 78%);
 }
 .victory__content {
   position: relative;

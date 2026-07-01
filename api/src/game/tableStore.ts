@@ -31,9 +31,7 @@ const MAX_STATE_BYTES = 60_000; // Table Storage string property cap is 64 KB.
 
 function connString(): string | undefined {
   const c = process.env.TABLES_CONNECTION || process.env.AzureWebJobsStorage;
-  return c && (c.includes("AccountKey") || c.includes("UseDevelopmentStorage"))
-    ? c
-    : undefined;
+  return c && (c.includes("AccountKey") || c.includes("UseDevelopmentStorage")) ? c : undefined;
 }
 
 export function tableClient(table: string): TableClient {
@@ -45,9 +43,7 @@ export function tableClient(table: string): TableClient {
   }
   const account = process.env.STORAGE_ACCOUNT;
   if (!account) {
-    throw new Error(
-      "Set STORAGE_ACCOUNT (managed identity) or TABLES_CONNECTION (Azurite).",
-    );
+    throw new Error("Set STORAGE_ACCOUNT (managed identity) or TABLES_CONNECTION (Azurite).");
   }
   return new TableClient(
     `https://${account}.table.core.windows.net`,
@@ -93,8 +89,7 @@ const fromGameRow = (e: GameRow): GameRecord => ({
 
 function toSecretRow(gameId: string, s: SecretRecord): SecretRow {
   const state = JSON.stringify(s.state);
-  if (state.length > MAX_STATE_BYTES)
-    throw new StateTooLargeError(state.length);
+  if (state.length > MAX_STATE_BYTES) throw new StateTooLargeError(state.length);
   return {
     partitionKey: gameId,
     rowKey: "secret",
@@ -103,8 +98,7 @@ function toSecretRow(gameId: string, s: SecretRecord): SecretRow {
   };
 }
 
-const is = (e: unknown, code: number) =>
-  e instanceof RestError && e.statusCode === code;
+const is = (e: unknown, code: number) => e instanceof RestError && e.statusCode === code;
 
 export function makeTableStore(): GameStore {
   const games = tableClient("Games");

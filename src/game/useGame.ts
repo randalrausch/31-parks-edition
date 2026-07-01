@@ -19,12 +19,7 @@
  *                  player's hand.
  */
 import { useCallback, useEffect, useReducer, useRef } from "react";
-import {
-  type GameOptions,
-  type GameState,
-  type AITraits,
-  isAlive,
-} from "./engine";
+import { type GameOptions, type GameState, type AITraits, isAlive } from "./engine";
 import { LocalTransport, type Transport } from "./transport";
 import { aiTurnActions } from "./authority";
 import type { GameAction, NewGamePlayer } from "./actions";
@@ -108,8 +103,7 @@ export function useGame(): SoloGameApi {
     transportRef.current?.dispatch(action);
     authRef.current = transportRef.current?.getState() ?? null;
   };
-  const multipleHumans = () =>
-    (A()?.players.filter((p) => !p.isAI && isAlive(p)).length ?? 0) > 1;
+  const multipleHumans = () => (A()?.players.filter((p) => !p.isAI && isAlive(p)).length ?? 0) > 1;
 
   /* ── flow control (presentation) ─────────────────────────────────────── */
 
@@ -130,9 +124,7 @@ export function useGame(): SoloGameApi {
       } else {
         pres.viewPhase = multipleHumans() ? "cover" : null;
         pres.status =
-          a.knocker !== null
-            ? `${a.players[a.knocker].name} knocked — your last hand`
-            : "";
+          a.knocker !== null ? `${a.players[a.knocker].name} knocked — your last hand` : "";
         render();
       }
     } else if (a.phase === "dealEnd") {
@@ -257,8 +249,7 @@ export function useGame(): SoloGameApi {
 
   const drawDeck = useCallback(() => {
     const a = A();
-    if (!a || P().committing || a.phase !== "drawing" || a.players[a.cur].isAI)
-      return;
+    if (!a || P().committing || a.phase !== "drawing" || a.players[a.cur].isAI) return;
     dispatch({ type: "drawDeck" });
     beep(sndDeal);
     P().selected = null;
@@ -268,8 +259,7 @@ export function useGame(): SoloGameApi {
 
   const drawDiscard = useCallback(() => {
     const a = A();
-    if (!a || P().committing || a.phase !== "drawing" || a.players[a.cur].isAI)
-      return;
+    if (!a || P().committing || a.phase !== "drawing" || a.players[a.cur].isAI) return;
     if (a.discard.length === 0) return;
     dispatch({ type: "takeDiscard" });
     beep(sndDeal);
@@ -291,13 +281,7 @@ export function useGame(): SoloGameApi {
   const confirmDiscard = useCallback(() => {
     const a = A();
     const pres = P();
-    if (
-      !a ||
-      pres.committing ||
-      pres.selected === null ||
-      a.phase !== "discarding"
-    )
-      return;
+    if (!a || pres.committing || pres.selected === null || a.phase !== "discarding") return;
     const card = a.players[a.cur].hand[pres.selected];
     if (!card) return;
     pres.selected = null;

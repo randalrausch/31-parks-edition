@@ -10,8 +10,6 @@ const charModules = import.meta.glob("../assets/chars/*.{webp,png,jpg,jpeg}", {
 }) as Record<string, string>;
 
 export function characterImage(id: string): string | undefined {
-  const key = Object.keys(charModules).find((k) =>
-    k.split("/").pop()!.startsWith(`${id}.`),
-  );
+  const key = Object.keys(charModules).find((k) => k.split("/").pop()!.startsWith(`${id}.`));
   return key ? charModules[key] : undefined;
 }

@@ -4,11 +4,7 @@
  * a Grand-Prismatic-style thermal pool with a mineral rim and steam, two-tone
  * rolling hills, lodgepole pines, a bison on a rise, and framing foreground.
  */
-export default function YellowstoneScene({
-  className,
-}: {
-  className?: string;
-}) {
+export default function YellowstoneScene({ className }: { className?: string }) {
   const pines = (
     x0: number,
     x1: number,
@@ -72,14 +68,7 @@ export default function YellowstoneScene({
       {/* Sky */}
       <rect x="0" y="0" width="1200" height="540" fill="url(#ys-sky)" />
       <circle cx="880" cy="200" r="230" fill="url(#ys-sun)" />
-      <circle
-        cx="880"
-        cy="200"
-        r="60"
-        fill="#fdeec3"
-        opacity="0.9"
-        filter="url(#ys-soft)"
-      />
+      <circle cx="880" cy="200" r="60" fill="#fdeec3" opacity="0.9" filter="url(#ys-soft)" />
 
       {/* Warm clouds */}
       <g filter="url(#ys-soft)" fill="#f0ddb8" opacity="0.8">
@@ -89,10 +78,7 @@ export default function YellowstoneScene({
       </g>
 
       {/* Far hills (hazy) */}
-      <path
-        d="M0 340 Q 200 296 430 330 T 850 320 T 1200 338 L 1200 470 L 0 470 Z"
-        fill="#c79a52"
-      />
+      <path d="M0 340 Q 200 296 430 330 T 850 320 T 1200 338 L 1200 470 L 0 470 Z" fill="#c79a52" />
       <rect
         x="0"
         y="320"
@@ -108,10 +94,7 @@ export default function YellowstoneScene({
         d="M0 400 Q 280 336 560 384 T 1060 372 T 1200 400 L 1200 500 L 0 500 Z"
         fill="#a9742f"
       />
-      <path
-        d="M0 430 Q 300 392 620 424 T 1200 420 L 1200 500 L 0 500 Z"
-        fill="#8a5a22"
-      />
+      <path d="M0 430 Q 300 392 620 424 T 1200 420 L 1200 500 L 0 500 Z" fill="#8a5a22" />
       {/* ridge pines on the mid hill */}
       <g>{pines(0, 1200, 412, 26, 40, "#3a3f1c", "ridge")}</g>
 
@@ -146,14 +129,7 @@ export default function YellowstoneScene({
       <g>
         <ellipse cx="470" cy="612" rx="452" ry="158" fill="#d8c08a" />
         <ellipse cx="470" cy="610" rx="412" ry="138" fill="url(#ys-pool)" />
-        <ellipse
-          cx="470"
-          cy="606"
-          rx="150"
-          ry="46"
-          fill="#7fcdd6"
-          opacity="0.7"
-        />
+        <ellipse cx="470" cy="606" rx="150" ry="46" fill="#7fcdd6" opacity="0.7" />
         <g fill="#f3f1e4" opacity="0.3" filter="url(#ys-soft)">
           <ellipse cx="330" cy="556" rx="80" ry="16" />
           <ellipse cx="580" cy="560" rx="92" ry="17" />
@@ -161,14 +137,8 @@ export default function YellowstoneScene({
       </g>
 
       {/* Foreground terrace */}
-      <path
-        d="M0 700 Q 280 648 470 666 Q 720 692 1200 652 L 1200 800 L 0 800 Z"
-        fill="#2a1c0e"
-      />
-      <path
-        d="M0 738 Q 360 712 760 730 T 1200 724 L 1200 800 L 0 800 Z"
-        fill="#160f06"
-      />
+      <path d="M0 700 Q 280 648 470 666 Q 720 692 1200 652 L 1200 800 L 0 800 Z" fill="#2a1c0e" />
+      <path d="M0 738 Q 360 712 760 730 T 1200 724 L 1200 800 L 0 800 Z" fill="#160f06" />
 
       {/* Bison on the right rise */}
       <g transform="translate(980,628)" fill="#1c1206">

@@ -9,8 +9,7 @@ export function makeCode(): string {
   const bytes = new Uint8Array(5);
   crypto.getRandomValues(bytes);
   let c = "";
-  for (let i = 0; i < 5; i++)
-    c += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
+  for (let i = 0; i < 5; i++) c += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
   return c;
 }
 

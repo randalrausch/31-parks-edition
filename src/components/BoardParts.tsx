@@ -74,11 +74,7 @@ export function BoardLog({
           </button>
         )}
       </div>
-      <LogFeed
-        entries={entries}
-        limit={showingAll ? undefined : recentLimit}
-        newestFirst
-      />
+      <LogFeed entries={entries} limit={showingAll ? undefined : recentLimit} newestFirst />
       {expandable && (
         <button
           type="button"
@@ -86,9 +82,7 @@ export function BoardLog({
           onClick={onToggleExpand}
           aria-expanded={showingAll}
         >
-          {showingAll
-            ? "Show recent only"
-            : `Show full deal history (${entries.length})`}
+          {showingAll ? "Show recent only" : `Show full deal history (${entries.length})`}
         </button>
       )}
     </div>
@@ -188,14 +182,7 @@ const PickParkIcon = () => (
 );
 const HelpIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
-    <circle
-      cx="12"
-      cy="12"
-      r="9.5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    />
+    <circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" strokeWidth="2" />
     <path
       d="M9.2 9.3c.2-1.6 1.4-2.6 2.9-2.6 1.6 0 2.8 1 2.8 2.5 0 2.3-2.7 2.2-2.7 4.3"
       fill="none"
@@ -242,12 +229,7 @@ export function ToolButton({
   children: ReactNode;
 }) {
   return (
-    <button
-      className="board__tool"
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-    >
+    <button className="board__tool" type="button" onClick={onClick} aria-label={label}>
       {children}
     </button>
   );
@@ -318,11 +300,7 @@ export function Piles({
           >
             <span className="piles__stack-shadow piles__stack-shadow--3" />
             <span className="piles__stack-shadow piles__stack-shadow--2" />
-            {deckCount > 0 ? (
-              <CardBack size="md" />
-            ) : (
-              <span className="piles__empty">Empty</span>
-            )}
+            {deckCount > 0 ? <CardBack size="md" /> : <span className="piles__empty">Empty</span>}
             <span className="piles__label">Deck · {deckCount}</span>
           </button>
           <button
@@ -339,9 +317,7 @@ export function Piles({
             ) : (
               <span className="piles__label">Discard</span>
             )}
-            {topDiscard && (
-              <span className="piles__label piles__label--under">Discard</span>
-            )}
+            {topDiscard && <span className="piles__label piles__label--under">Discard</span>}
           </button>
         </div>
         {status}
@@ -351,13 +327,7 @@ export function Piles({
 }
 
 /** The local player's head: avatar, name + turn label, and tokens. */
-export function PlayerHead({
-  player,
-  turnText,
-}: {
-  player: GamePlayer;
-  turnText: string;
-}) {
+export function PlayerHead({ player, turnText }: { player: GamePlayer; turnText: string }) {
   return (
     <div className="board__you-head">
       <Avatar
@@ -409,8 +379,7 @@ export function HandFan({
               transform: `rotate(${(i - mid) * 4}deg) translateY(${selected === i ? -30 : 0}px)`,
               marginInline: "-6px",
               zIndex: selected === i ? 50 : i,
-              opacity:
-                interactive && selected !== null && selected !== i ? 0.62 : 1,
+              opacity: interactive && selected !== null && selected !== i ? 0.62 : 1,
               transition: "transform 0.14s ease, opacity 0.14s ease",
             }}
           />
@@ -466,12 +435,7 @@ export function ActionBar({
         </button>
       ) : (
         <>
-          <button
-            className="btn btn--draw"
-            type="button"
-            onClick={onDrawDeck}
-            disabled={!canDraw}
-          >
+          <button className="btn btn--draw" type="button" onClick={onDrawDeck} disabled={!canDraw}>
             Draw Deck
           </button>
           <button
@@ -482,12 +446,7 @@ export function ActionBar({
           >
             Take Discard
           </button>
-          <button
-            className="btn btn--knock"
-            type="button"
-            onClick={onKnock}
-            disabled={!canKnock}
-          >
+          <button className="btn btn--knock" type="button" onClick={onKnock} disabled={!canKnock}>
             Knock
           </button>
         </>

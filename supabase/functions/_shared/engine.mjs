@@ -7,21 +7,7 @@ function cardValue(rank) {
 
 // src/game/engine.ts
 var SUITS = ["spades", "hearts", "diamonds", "clubs"];
-var RANKS = [
-  "A",
-  "2",
-  "3",
-  "4",
-  "5",
-  "6",
-  "7",
-  "8",
-  "9",
-  "10",
-  "J",
-  "Q",
-  "K"
-];
+var RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 var DEFAULT_TRAITS = {
   bluff: 2,
   memory: 3,
@@ -49,8 +35,7 @@ function shuffle(arr) {
 }
 function makeDeck() {
   const d = [];
-  for (const s of SUITS)
-    for (const r of RANKS) d.push({ id: `${r}-${s}`, rank: r, suit: s });
+  for (const s of SUITS) for (const r of RANKS) d.push({ id: `${r}-${s}`, rank: r, suit: s });
   return shuffle(d);
 }
 function scoreHand(hand, opts) {
@@ -260,9 +245,7 @@ function dealCards(s) {
   }
 }
 function dealtBlitzIndex(players, options) {
-  return players.findIndex(
-    (p) => p.hand.length > 0 && scoreHand(p.hand, options) === 31
-  );
+  return players.findIndex((p) => p.hand.length > 0 && scoreHand(p.hand, options) === 31);
 }
 function firstLivingFrom(s, from) {
   const n = s.players.length;
@@ -451,13 +434,7 @@ var PROTOCOL_VERSION = 1;
 
 // src/game/config.ts
 var TRAIT_KEYS = ["bluff", "memory", "patience", "aggression", "risk"];
-var BOOL_OPTS = [
-  "threeOfAKind",
-  "grace",
-  "knockPenalty",
-  "sound",
-  "fullHistory"
-];
+var BOOL_OPTS = ["threeOfAKind", "grace", "knockPenalty", "sound", "fullHistory"];
 var clampName = (s, fallback) => (typeof s === "string" ? s.trim().slice(0, 40) : "") || fallback;
 var clampKey = (s, fallback) => typeof s === "string" && /^[a-z0-9-]{1,32}$/.test(s) ? s : fallback;
 var clampImage = (s) => typeof s === "string" && s.length <= 512 ? s : void 0;
@@ -480,10 +457,7 @@ function sanitizeOptions(o) {
 }
 function buildCreateSetup(config) {
   const humans = Math.max(1, Math.min(8, Number(config.humans) | 0));
-  const ai = (Array.isArray(config.ai) ? config.ai : []).slice(
-    0,
-    Math.max(0, 8 - humans)
-  );
+  const ai = (Array.isArray(config.ai) ? config.ai : []).slice(0, Math.max(0, 8 - humans));
   const players = [];
   const seats = [];
   for (let i = 0; i < humans; i++) {

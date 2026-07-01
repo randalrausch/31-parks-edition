@@ -44,13 +44,11 @@ export default function ScoreChart({
 
   const innerW = W - PAD_L - PAD_R;
   const xOf = (i: number) =>
-    PAD_L +
-    (history.length === 1 ? innerW / 2 : (i / (history.length - 1)) * innerW);
+    PAD_L + (history.length === 1 ? innerW / 2 : (i / (history.length - 1)) * innerW);
 
   const scoreBottom = SCORE_TOP + SCORE_H;
   const yScore = (v: number) =>
-    scoreBottom -
-    ((Math.min(Math.max(v, Y_MIN), Y_MAX) - Y_MIN) / (Y_MAX - Y_MIN)) * SCORE_H;
+    scoreBottom - ((Math.min(Math.max(v, Y_MIN), Y_MAX) - Y_MIN) / (Y_MAX - Y_MIN)) * SCORE_H;
 
   const roundsBottom = ROUNDS_TOP + ROUNDS_H;
   const roundsMax = Math.max(...history.map((h) => h.rounds), 1);
@@ -74,19 +72,8 @@ export default function ScoreChart({
         </text>
         {scoreGrid.map((g) => (
           <g key={`sg-${g}`}>
-            <line
-              x1={PAD_L}
-              y1={yScore(g)}
-              x2={W - PAD_R}
-              y2={yScore(g)}
-              className="chart__grid"
-            />
-            <text
-              x={PAD_L - 7}
-              y={yScore(g) + 4}
-              className="chart__ylabel"
-              textAnchor="end"
-            >
+            <line x1={PAD_L} y1={yScore(g)} x2={W - PAD_R} y2={yScore(g)} className="chart__grid" />
+            <text x={PAD_L - 7} y={yScore(g) + 4} className="chart__ylabel" textAnchor="end">
               {g}
             </text>
           </g>
@@ -102,12 +89,7 @@ export default function ScoreChart({
             .join(" ");
           return (
             <g key={p.id}>
-              <polyline
-                points={pts}
-                fill="none"
-                stroke={color}
-                strokeWidth="2.5"
-              />
+              <polyline points={pts} fill="none" stroke={color} strokeWidth="2.5" />
               {history.map((h, i) => {
                 const sc = h.scores[p.id];
                 if (sc === undefined) return null;
@@ -143,11 +125,7 @@ export default function ScoreChart({
         })}
 
         {/* ── ROUNDS PLOT ── */}
-        <text
-          x={PAD_L}
-          y={ROUNDS_TOP - 8}
-          className="chart__caption chart__caption--rounds"
-        >
+        <text x={PAD_L} y={ROUNDS_TOP - 8} className="chart__caption chart__caption--rounds">
           Rounds played
         </text>
         <line
@@ -182,13 +160,7 @@ export default function ScoreChart({
 
         {/* shared X (deal) labels */}
         {history.map((h, i) => (
-          <text
-            key={`x-${i}`}
-            x={xOf(i)}
-            y={H - 8}
-            className="chart__xlabel"
-            textAnchor="middle"
-          >
+          <text key={`x-${i}`} x={xOf(i)} y={H - 8} className="chart__xlabel" textAnchor="middle">
             Deal {h.deal}
           </text>
         ))}
@@ -197,16 +169,11 @@ export default function ScoreChart({
       <div className="chart__legend">
         {players.map((p, pi) => (
           <span key={p.id} className="chart__legend-item">
-            <span
-              className="chart__swatch"
-              style={{ background: COLORS[pi % COLORS.length] }}
-            />
+            <span className="chart__swatch" style={{ background: COLORS[pi % COLORS.length] }} />
             {p.name}
           </span>
         ))}
-        <span className="chart__legend-item chart__legend-item--note">
-          🔨 knocked
-        </span>
+        <span className="chart__legend-item chart__legend-item--note">🔨 knocked</span>
       </div>
     </div>
   );

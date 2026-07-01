@@ -33,13 +33,7 @@ import {
   HandHud,
   ActionBar,
 } from "./BoardParts";
-import {
-  bestSuit,
-  bestHandScore,
-  isAlive,
-  roundNo,
-  type GameState,
-} from "../game/engine";
+import { bestSuit, bestHandScore, isAlive, roundNo, type GameState } from "../game/engine";
 import type { SoloGameApi } from "../game/useGame";
 import "./GameBoard.css";
 
@@ -77,8 +71,7 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
   const aliveCount = s.players.filter(isAlive).length;
   const topDiscard = s.discard[s.discard.length - 1] ?? null;
 
-  const isHumanTurn =
-    !cur.isAI && (s.phase === "drawing" || s.phase === "discarding");
+  const isHumanTurn = !cur.isAI && (s.phase === "drawing" || s.phase === "discarding");
   const canDraw = !cur.isAI && s.phase === "drawing";
   const discarding = s.phase === "discarding";
   const counting = bestSuit(cur.hand);
@@ -144,11 +137,7 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
         <div className="board__current">
           {cur.isAI ? (
             <div className="board__ai">
-              <Avatar
-                avatarKey={cur.avatarKey}
-                emoji={cur.emoji}
-                image={cur.image}
-              />
+              <Avatar avatarKey={cur.avatarKey} emoji={cur.emoji} image={cur.image} />
               <span className="board__ai-name">{cur.name}</span>
               <span className="board__ai-think">is thinking…</span>
               <div className="board__ai-cards">
@@ -159,10 +148,7 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
             </div>
           ) : (
             <>
-              <PlayerHead
-                player={cur}
-                turnText={discarding ? " · discard a card" : "'s turn"}
-              />
+              <PlayerHead player={cur} turnText={discarding ? " · discard a card" : "'s turn"} />
               <HandFan
                 hand={cur.hand}
                 interactive={discarding}
@@ -182,9 +168,7 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
                 onKnock={game.knock}
                 onConfirmDiscard={game.confirmDiscard}
               />
-              {!isHumanTurn && !discarding && (
-                <div className="board__wait">Waiting…</div>
-              )}
+              {!isHumanTurn && !discarding && <div className="board__wait">Waiting…</div>}
             </>
           )}
         </div>
@@ -200,18 +184,12 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
           onReady={game.coverReady}
         />
       )}
-      {s.phase === "dealEnd" && (
-        <DealEndOverlay state={s as GameState} onNext={game.nextDeal} />
-      )}
+      {s.phase === "dealEnd" && <DealEndOverlay state={s as GameState} onNext={game.nextDeal} />}
       {s.phase === "gameOver" && (
         <GameOverOverlay state={s as GameState} onNewGame={game.newGame} />
       )}
       <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
-      <Modal
-        open={parksOpen}
-        onClose={() => setParksOpen(false)}
-        labelledBy="parks-title"
-      >
+      <Modal open={parksOpen} onClose={() => setParksOpen(false)} labelledBy="parks-title">
         <h2 id="parks-title" className="board__modal-title">
           Switch Park
         </h2>

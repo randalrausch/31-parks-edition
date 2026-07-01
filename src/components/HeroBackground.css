@@ -52,16 +52,8 @@
   object-fit: cover;
   filter: blur(14px);
   transform: scale(1.08);
-  -webkit-mask-image: radial-gradient(
-    ellipse 62% 60% at 50% 48%,
-    transparent 60%,
-    #000 100%
-  );
-  mask-image: radial-gradient(
-    ellipse 62% 60% at 50% 48%,
-    transparent 60%,
-    #000 100%
-  );
+  -webkit-mask-image: radial-gradient(ellipse 62% 60% at 50% 48%, transparent 60%, #000 100%);
+  mask-image: radial-gradient(ellipse 62% 60% at 50% 48%, transparent 60%, #000 100%);
   pointer-events: none;
 }
 
@@ -71,11 +63,7 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(
-      ellipse 70% 66% at 50% 46%,
-      transparent 52%,
-      rgba(6, 13, 9, 0.66) 100%
-    ),
+    radial-gradient(ellipse 70% 66% at 50% 46%, transparent 52%, rgba(6, 13, 9, 0.66) 100%),
     linear-gradient(
       180deg,
       rgba(6, 13, 9, 0.42) 0%,
@@ -98,16 +86,8 @@
 
 .hero__fog {
   background:
-    radial-gradient(
-      60% 40% at 30% 70%,
-      rgba(244, 240, 230, 0.1),
-      transparent 70%
-    ),
-    radial-gradient(
-      50% 35% at 75% 60%,
-      rgba(244, 240, 230, 0.08),
-      transparent 70%
-    );
+    radial-gradient(60% 40% at 30% 70%, rgba(244, 240, 230, 0.1), transparent 70%),
+    radial-gradient(50% 35% at 75% 60%, rgba(244, 240, 230, 0.08), transparent 70%);
   animation: hero-fog 26s ease-in-out infinite alternate;
 }
 @keyframes hero-fog {
@@ -202,20 +182,12 @@
 /* Glacier: moving light rays already via .hero__rays (kept subtle for all);
    add a brighter cool sheen. */
 .hero--glacier .hero__accent {
-  background: linear-gradient(
-    115deg,
-    rgba(190, 220, 235, 0.06),
-    transparent 40%
-  );
+  background: linear-gradient(115deg, rgba(190, 220, 235, 0.06), transparent 40%);
   animation: hero-sheen 12s ease-in-out infinite alternate;
 }
 /* Yellowstone: warm steam drifting up from the geyser (center-right). */
 .hero--yellowstone .hero__accent {
-  background: radial-gradient(
-    26% 42% at 62% 52%,
-    rgba(247, 244, 236, 0.18),
-    transparent 72%
-  );
+  background: radial-gradient(26% 42% at 62% 52%, rgba(247, 244, 236, 0.18), transparent 72%);
   animation: hero-steam 9s ease-in-out infinite alternate;
 }
 /* Theodore Roosevelt: a soft warm prairie haze that gently waves at the base. */

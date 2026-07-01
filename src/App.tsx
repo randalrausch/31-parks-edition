@@ -25,11 +25,7 @@ function Shell() {
 
   // DEV: #demo auto-starts a sample solo game (for screenshots).
   useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      window.location.hash === "#demo" &&
-      !game.state
-    ) {
+    if (typeof window !== "undefined" && window.location.hash === "#demo" && !game.state) {
       game.startGame({
         players: [
           { name: "You", isAI: false, avatarKey: "ranger" },
@@ -71,9 +67,7 @@ function Shell() {
   return (
     <SetupScreen
       onStart={game.startGame}
-      onCreateOnline={(config: CreateConfig) =>
-        setIntent({ type: "create", config })
-      }
+      onCreateOnline={(config: CreateConfig) => setIntent({ type: "create", config })}
       onJoinOnline={() => setIntent({ type: "join" })}
     />
   );

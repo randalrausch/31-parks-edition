@@ -22,17 +22,10 @@ export default function GameOverOverlay({
 }) {
   const { theme } = useTheme();
   const winner = state.players.find((p) => p.id === state.winnerId) ?? null;
-  const Art = winner
-    ? (AVATAR_ART[winner.avatarKey] ?? MountainAvatar)
-    : MountainAvatar;
+  const Art = winner ? (AVATAR_ART[winner.avatarKey] ?? MountainAvatar) : MountainAvatar;
 
   return (
-    <Modal
-      open
-      onClose={onNewGame}
-      variant="modal--victory"
-      labelledBy="go-title"
-    >
+    <Modal open onClose={onNewGame} variant="modal--victory" labelledBy="go-title">
       <div className="victory">
         <div className="victory__scene">
           <ParkScene theme={theme} className="victory__scene-svg" />
@@ -48,9 +41,7 @@ export default function GameOverOverlay({
               <Art />
             )}
           </span>
-          <span className="victory__eyebrow">
-            Champion of {theme.displayName}
-          </span>
+          <span className="victory__eyebrow">Champion of {theme.displayName}</span>
           <h2 className="victory__title" id="go-title">
             {winner ? `${winner.name} Wins!` : "Game Over"}
           </h2>
@@ -65,11 +56,7 @@ export default function GameOverOverlay({
         </div>
       )}
 
-      <button
-        className="victory__cta victory__cta--block"
-        type="button"
-        onClick={onNewGame}
-      >
+      <button className="victory__cta victory__cta--block" type="button" onClick={onNewGame}>
         {ctaLabel}
       </button>
     </Modal>

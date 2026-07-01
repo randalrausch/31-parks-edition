@@ -24,18 +24,14 @@ export function parseVersion(v) {
   const m = String(v)
     .replace(/^v/, "")
     .match(/^(\d+)\.(\d+)\.(\d+)/);
-  return m
-    ? { major: +m[1], minor: +m[2], patch: +m[3] }
-    : { major: 0, minor: 0, patch: 0 };
+  return m ? { major: +m[1], minor: +m[2], patch: +m[3] } : { major: 0, minor: 0, patch: 0 };
 }
 
 /** Next version string for a bump, applying the pre-1.0 breaking→minor rule. */
 export function nextVersion(current, bump) {
   const p = parseVersion(current);
   if (bump === "major") {
-    return p.major === 0
-      ? `0.${p.minor + 1}.0`
-      : `${p.major + 1}.0.0`;
+    return p.major === 0 ? `0.${p.minor + 1}.0` : `${p.major + 1}.0.0`;
   }
   if (bump === "minor") return `${p.major}.${p.minor + 1}.0`;
   if (bump === "patch") return `${p.major}.${p.minor}.${p.patch + 1}`;
@@ -47,8 +43,7 @@ export function classify(commit) {
   const m = String(commit.subject ?? "").match(SUBJECT_RE);
   if (!m) return { type: null, subject: commit.subject ?? "" };
   const type = m[1].toLowerCase();
-  const breaking =
-    !!m[2] || /(^|\n)BREAKING[ -]CHANGE:/.test(commit.body ?? "");
+  const breaking = !!m[2] || /(^|\n)BREAKING[ -]CHANGE:/.test(commit.body ?? "");
   return { type, breaking, desc: m[3].trim() };
 }
 
@@ -85,13 +80,7 @@ export function decideRelease(commits, currentVersion) {
     }
   }
 
-  const bump = hasBreaking
-    ? "major"
-    : hasFeat
-      ? "minor"
-      : hasPatch
-        ? "patch"
-        : null;
+  const bump = hasBreaking ? "major" : hasFeat ? "minor" : hasPatch ? "patch" : null;
   const releasable = bump !== null;
   // Only prompt a human when there's *no* clear signal AND something couldn't be
   // parsed — a clean run of only chore/docs commits is an unambiguous "no release".

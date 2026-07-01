@@ -28,10 +28,7 @@ import {
 
 // @ts-expect-error — Deno global
 const env = (k: string) => Deno.env.get(k);
-const admin = createClient(
-  env("SUPABASE_URL"),
-  env("SUPABASE_SERVICE_ROLE_KEY"),
-);
+const admin = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"));
 
 /**
  * CORS origin allow-list, kept in parity with the Azure router. ALLOWED_ORIGIN
@@ -53,8 +50,7 @@ function corsFor(reqOrigin: string | null): Record<string, string> {
       : (ALLOWED_ORIGINS[0] ?? "*");
   return {
     "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     Vary: "Origin",
   };
@@ -75,8 +71,7 @@ function rateLimited(key: string, max: number, windowMs: number): boolean {
   const e = hits.get(key);
   if (!e || now > e.reset) {
     hits.set(key, { n: 1, reset: now + windowMs });
-    if (hits.size > 5000)
-      for (const [k, v] of hits) if (now > v.reset) hits.delete(k);
+    if (hits.size > 5000) for (const [k, v] of hits) if (now > v.reset) hits.delete(k);
     return false;
   }
   e.n += 1;
@@ -96,11 +91,7 @@ const clientIp = (req: Request) =>
 const MAX_GAMES_PER_DAY = Number(env("MAX_GAMES_PER_DAY")) || 500;
 const MAX_GAMES_PER_IP_PER_HOUR = Number(env("MAX_GAMES_PER_IP_PER_HOUR")) || 20;
 const safeKey = (s: string) => s.replace(/[^A-Za-z0-9.:_-]/g, "_").slice(0, 200);
-async function incrIfBelow(
-  bucket: string,
-  windowKey: string,
-  limit: number,
-): Promise<boolean> {
+async function incrIfBelow(bucket: string, windowKey: string, limit: number): Promise<boolean> {
   try {
     const { data, error } = await admin.rpc("incr_if_below", {
       p_bucket: bucket,
@@ -121,8 +112,7 @@ async function allowCreate(ip: string): Promise<boolean> {
   const now = new Date().toISOString();
   const day = now.slice(0, 10); // YYYY-MM-DD
   const hour = now.slice(0, 13); // YYYY-MM-DDTHH
-  if (!(await incrIfBelow("global", `d:${day}`, MAX_GAMES_PER_DAY)))
-    return false;
+  if (!(await incrIfBelow("global", `d:${day}`, MAX_GAMES_PER_DAY))) return false;
   return incrIfBelow("ip", `${safeKey(ip)}:${hour}`, MAX_GAMES_PER_IP_PER_HOUR);
 }
 
@@ -134,9 +124,7 @@ async function allowCreate(ip: string): Promise<boolean> {
  * on either provider.
  */
 async function sweepOldGames(): Promise<void> {
-  const cutoff = new Date(
-    Date.now() - 14 * 24 * 60 * 60 * 1000,
-  ).toISOString();
+  const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
   const { error } = await admin.from("games").delete().lt("updated_at", cutoff);
   if (error) logEvent("sweep.error", { message: error.message });
   else logEvent("sweep.ok", {});
@@ -150,9 +138,7 @@ async function sweepOldGames(): Promise<void> {
  */
 function logEvent(event: string, data: Record<string, unknown> = {}): void {
   try {
-    console.log(
-      JSON.stringify({ ts: new Date().toISOString(), event, ...data }),
-    );
+    console.log(JSON.stringify({ ts: new Date().toISOString(), event, ...data }));
   } catch {
     console.log(`game ${event}`);
   }
@@ -164,8 +150,7 @@ function makeCode(): string {
   const bytes = new Uint8Array(5);
   crypto.getRandomValues(bytes);
   let c = "";
-  for (let i = 0; i < 5; i++)
-    c += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
+  for (let i = 0; i < 5; i++) c += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
   return c;
 }
 const token = () => crypto.randomUUID();
@@ -179,11 +164,7 @@ async function loadByCode(code: string) {
   return data;
 }
 async function loadById(id: string) {
-  const { data: game } = await admin
-    .from("games")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+  const { data: game } = await admin.from("games").select("*").eq("id", id).maybeSingle();
   if (!game) return null;
   const { data: secret } = await admin
     .from("game_secrets")
@@ -350,16 +331,12 @@ Deno.serve(async (req: Request) => {
         });
       const loaded = await loadById(game.id);
       if (!loaded)
-        return fail(
-          "join.no-state",
-          "Something went wrong opening that game.",
-          500,
-          { gameId: game.id },
-        );
+        return fail("join.no-state", "Something went wrong opening that game.", 500, {
+          gameId: game.id,
+        });
       const idx = seat.idx as number;
       const name =
-        (typeof body.name === "string" ? body.name.trim().slice(0, 40) : "") ||
-        `Player ${idx + 1}`;
+        (typeof body.name === "string" ? body.name.trim().slice(0, 40) : "") || `Player ${idx + 1}`;
       const tookAI = seat.isAI === true;
       seat.isAI = false;
       seat.filled = true;
@@ -384,12 +361,9 @@ Deno.serve(async (req: Request) => {
       // together, so two players can't take the same seat and the two rows can
       // never half-commit.
       if (!(await commitGame(game.id, game.version, { seats, state, seatTokens })))
-        return fail(
-          "join.conflict",
-          "The game just changed — please try again.",
-          409,
-          { gameId: game.id },
-        );
+        return fail("join.conflict", "The game just changed — please try again.", 409, {
+          gameId: game.id,
+        });
       logEvent("join", { gameId: game.id, seat: idx, tookAI });
       return json({ gameId: game.id, seatIndex: idx, seatToken: t });
     }
@@ -397,16 +371,12 @@ Deno.serve(async (req: Request) => {
     /* ── start ── */
     if (op === "start") {
       const loaded = await loadById(body.gameId as string);
-      if (!loaded)
-        return fail("start.no-game", "That game no longer exists.", 404);
+      if (!loaded) return fail("start.no-game", "That game no longer exists.", 404);
       const idx = loaded.secret.seat_tokens[body.seatToken as string];
       if (idx !== 0)
-        return fail(
-          "start.not-host",
-          "Only the host can start the game.",
-          403,
-          { gameId: loaded.game.id },
-        );
+        return fail("start.not-host", "Only the host can start the game.", 403, {
+          gameId: loaded.game.id,
+        });
       if (loaded.game.status !== "lobby")
         return fail("start.already", "The game has already started.", 409, {
           gameId: loaded.game.id,
@@ -430,12 +400,9 @@ Deno.serve(async (req: Request) => {
           seatTokens: loaded.secret.seat_tokens,
         }))
       )
-        return fail(
-          "start.conflict",
-          "The game just changed — please try again.",
-          409,
-          { gameId: loaded.game.id },
-        );
+        return fail("start.conflict", "The game just changed — please try again.", 409, {
+          gameId: loaded.game.id,
+        });
       logEvent("start", { gameId: loaded.game.id, phase: dealt.phase });
       return json({ ok: true });
     }
@@ -443,16 +410,12 @@ Deno.serve(async (req: Request) => {
     /* ── act ── */
     if (op === "act") {
       const loaded = await loadById(body.gameId as string);
-      if (!loaded)
-        return fail("act.no-game", "That game no longer exists.", 404);
+      if (!loaded) return fail("act.no-game", "That game no longer exists.", 404);
       const idx = loaded.secret.seat_tokens[body.seatToken as string];
       if (idx === undefined)
-        return fail(
-          "act.bad-token",
-          "Your seat is no longer valid for this game.",
-          403,
-          { gameId: loaded.game.id },
-        );
+        return fail("act.bad-token", "Your seat is no longer valid for this game.", 403, {
+          gameId: loaded.game.id,
+        });
       if (typeof body.action !== "object" || body.action === null)
         return fail("act.bad-action", "That move wasn't understood.", 400, {
           gameId: loaded.game.id,
@@ -504,13 +467,10 @@ Deno.serve(async (req: Request) => {
     /* ── state ── */
     if (op === "state") {
       const loaded = await loadById(body.gameId as string);
-      if (!loaded)
-        return fail("state.no-game", "That game no longer exists.", 404);
+      if (!loaded) return fail("state.no-game", "That game no longer exists.", 404);
       const tok = body.seatToken as string | undefined;
-      const idx =
-        tok !== undefined ? loaded.secret.seat_tokens[tok] : undefined;
-      const seatId =
-        idx !== undefined ? loaded.secret.state.players[idx].id : null;
+      const idx = tok !== undefined ? loaded.secret.seat_tokens[tok] : undefined;
+      const seatId = idx !== undefined ? loaded.secret.state.players[idx].id : null;
       return json({
         status: loaded.game.status,
         version: loaded.game.version,

@@ -35,13 +35,7 @@ type Backend =
   | { kind: "unreachable" }
   | { kind: "live"; info: BackendInfo };
 
-export default function About({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+export default function About({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [backend, setBackend] = useState<Backend>(
     multiplayerEnabled ? { kind: "checking" } : { kind: "off" },
   );
@@ -69,8 +63,7 @@ export default function About({
           : `${backend.info.provider} · v${backend.info.version}`;
 
   // A live backend on a different wire protocol means this tab is out of date.
-  const outOfDate =
-    backend.kind === "live" && !backendCompatible(backend.info);
+  const outOfDate = backend.kind === "live" && !backendCompatible(backend.info);
 
   return (
     <Modal open={open} onClose={onClose} labelledBy="about-title">
@@ -78,9 +71,7 @@ export default function About({
         <h2 id="about-title" className="about__title">
           31 · National Parks Edition
         </h2>
-        <p className="about__tagline">
-          A vintage WPA-poster take on the classic card game 31.
-        </p>
+        <p className="about__tagline">A vintage WPA-poster take on the classic card game 31.</p>
 
         <dl className="about__rows">
           <div className="about__row">
@@ -119,11 +110,7 @@ export default function About({
           <a href={REPO} target="_blank" rel="noopener noreferrer">
             Source code
           </a>
-          <a
-            href={`${REPO}/issues/new`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+          <a href={`${REPO}/issues/new`} target="_blank" rel="noopener noreferrer">
             Report an issue
           </a>
         </div>

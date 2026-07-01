@@ -44,10 +44,8 @@ export function makeGameApi(client: SupabaseClient): GameApi {
   }
   return {
     create: (config) => call({ op: "create", config }),
-    join: (code, name) =>
-      call({ op: "join", code: code.toUpperCase().trim(), name }),
-    start: (gameId, seatToken) =>
-      call({ op: "start", gameId, seatToken }).then(() => undefined),
+    join: (code, name) => call({ op: "join", code: code.toUpperCase().trim(), name }),
+    start: (gameId, seatToken) => call({ op: "start", gameId, seatToken }).then(() => undefined),
     act: (gameId, seatToken, action) =>
       call({ op: "act", gameId, seatToken, action }).then(() => undefined),
     state: (gameId, seatToken) => call({ op: "state", gameId, seatToken }),
@@ -81,11 +79,7 @@ function subscribeToGame(
     )
     .subscribe((status) => {
       if (status === "SUBSCRIBED") onStatus?.(true);
-      else if (
-        status === "CHANNEL_ERROR" ||
-        status === "TIMED_OUT" ||
-        status === "CLOSED"
-      )
+      else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED")
         onStatus?.(false);
     });
   return () => void client.removeChannel(channel);

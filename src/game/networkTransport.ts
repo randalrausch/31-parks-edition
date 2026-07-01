@@ -134,10 +134,7 @@ export class NetworkTransport {
       },
     );
     // Safety-net poll in case a change event is dropped (or push isn't offered).
-    this.pollTimer = setInterval(
-      () => void this.refresh(),
-      NetworkTransport.POLL_MS,
-    );
+    this.pollTimer = setInterval(() => void this.refresh(), NetworkTransport.POLL_MS);
   }
 
   async act(action: GameAction): Promise<void> {
@@ -168,8 +165,7 @@ export class NetworkTransport {
       // authority already moved, so resync to the truth instead of erroring.
       // Detect it structurally (HTTP 409), with the legacy message match kept as
       // a fallback for older backend builds.
-      const conflict =
-        (e instanceof BackendError && e.conflict) || /\bretry\b/i.test(msg);
+      const conflict = (e instanceof BackendError && e.conflict) || /\bretry\b/i.test(msg);
       if (conflict) {
         dlog("net", `act ${action.type} conflict — resyncing`);
         await this.refresh();

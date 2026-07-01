@@ -72,14 +72,7 @@ export default function GlacierScene({ className }: { className?: string }) {
       {/* Sky */}
       <rect x="0" y="0" width="1200" height="520" fill="url(#gl-sky)" />
       <circle cx="270" cy="150" r="180" fill="url(#gl-sun)" />
-      <circle
-        cx="270"
-        cy="150"
-        r="46"
-        fill="#fbf6e2"
-        opacity="0.85"
-        filter="url(#gl-soft)"
-      />
+      <circle cx="270" cy="150" r="46" fill="#fbf6e2" opacity="0.85" filter="url(#gl-soft)" />
 
       {/* Clouds — flat WPA bands with soft underside */}
       <g filter="url(#gl-soft)">
@@ -182,24 +175,15 @@ export default function GlacierScene({ className }: { className?: string }) {
       <g>{pines(-10, 1220, 596, 70, 20, "#1a3f33", "near")}</g>
 
       {/* Foreground rocky bluff + mountain goat (right) */}
-      <path
-        d="M820,800 L820,628 Q900,600 1000,612 Q1110,628 1200,604 L1200,800 Z"
-        fill="#22302c"
-      />
-      <path
-        d="M820,648 Q900,624 1000,632 Q1110,646 1200,628 L1200,800 L820,800 Z"
-        fill="#16231f"
-      />
+      <path d="M820,800 L820,628 Q900,600 1000,612 Q1110,628 1200,604 L1200,800 Z" fill="#22302c" />
+      <path d="M820,648 Q900,624 1000,632 Q1110,646 1200,628 L1200,800 L820,800 Z" fill="#16231f" />
       {/* goat */}
       <g transform="translate(966,572)">
         <path
           d="M0,28 q4,-22 26,-25 q16,-2 24,8 l6,16 l-8,4 l-4,-10 l-7,1 l-1,12 l-8,0 l-1,-12 q-13,1 -22,-3 l-3,12 l-8,-1 l4,-16 z"
           fill="#eef3f3"
         />
-        <path
-          d="M0,28 q-4,-16 6,-24 q10,2 18,4 l-2,8 q-12,-2 -18,2 z"
-          fill="#cfdcdd"
-        />
+        <path d="M0,28 q-4,-16 6,-24 q10,2 18,4 l-2,8 q-12,-2 -18,2 z" fill="#cfdcdd" />
         {/* legs */}
         <g fill="#dfe9ea">
           <rect x="10" y="30" width="4" height="14" />
@@ -208,10 +192,7 @@ export default function GlacierScene({ className }: { className?: string }) {
           <rect x="52" y="29" width="4" height="14" />
         </g>
         {/* head + horns */}
-        <path
-          d="M-4,8 l-12,-3 q-5,-3 -1,-8 l9,-1 l2,-9 l7,1 l-1,17 z"
-          fill="#eef3f3"
-        />
+        <path d="M-4,8 l-12,-3 q-5,-3 -1,-8 l9,-1 l2,-9 l7,1 l-1,17 z" fill="#eef3f3" />
         <path d="M-13,-2 q-6,-9 -2,-17 q4,6 5,15 z" fill="#5a4a3a" />
         <path d="M-7,-3 q-3,-9 1,-16 q3,6 3,14 z" fill="#6b5a48" />
       </g>

@@ -38,13 +38,7 @@ export interface CreateConfigInput {
 
 const TRAIT_KEYS = ["bluff", "memory", "patience", "aggression", "risk"] as const;
 /** Boolean options that default to false — an explicit `true` turns them on. */
-const BOOL_OPTS = [
-  "threeOfAKind",
-  "grace",
-  "knockPenalty",
-  "sound",
-  "fullHistory",
-] as const;
+const BOOL_OPTS = ["threeOfAKind", "grace", "knockPenalty", "sound", "fullHistory"] as const;
 
 /** Trim + cap a client string; fall back when empty/absent. */
 export const clampName = (s: unknown, fallback: string): string =>
@@ -99,18 +93,13 @@ export interface CreateSetup {
  */
 export function buildCreateSetup(config: CreateConfigInput): CreateSetup {
   const humans = Math.max(1, Math.min(8, Number(config.humans) | 0));
-  const ai = (Array.isArray(config.ai) ? config.ai : []).slice(
-    0,
-    Math.max(0, 8 - humans),
-  );
+  const ai = (Array.isArray(config.ai) ? config.ai : []).slice(0, Math.max(0, 8 - humans));
 
   const players: NewGamePlayer[] = [];
   const seats: SeatSetup[] = [];
   for (let i = 0; i < humans; i++) {
     const isCreator = i === 0;
-    const name = isCreator
-      ? clampName(config.creatorName, "Player 1")
-      : `Player ${i + 1}`;
+    const name = isCreator ? clampName(config.creatorName, "Player 1") : `Player ${i + 1}`;
     players.push({ id: `p${i}`, name, isAI: false, avatarKey: "ranger" });
     seats.push({
       idx: i,

@@ -12,32 +12,20 @@
  * After adding a new image, restart the dev server (or rebuild) so the glob
  * picks it up.
  */
-const sceneModules = import.meta.glob(
-  "./assets/parks/*-scene.{jpg,jpeg,png,webp}",
-  {
-    eager: true,
-    query: "?url",
-    import: "default",
-  },
-) as Record<string, string>;
+const sceneModules = import.meta.glob("./assets/parks/*-scene.{jpg,jpeg,png,webp}", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
 
-const backModules = import.meta.glob(
-  "./assets/parks/*-back.{jpg,jpeg,png,webp}",
-  {
-    eager: true,
-    query: "?url",
-    import: "default",
-  },
-) as Record<string, string>;
+const backModules = import.meta.glob("./assets/parks/*-back.{jpg,jpeg,png,webp}", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
 
-function find(
-  map: Record<string, string>,
-  id: string,
-  suffix: string,
-): string | undefined {
-  const key = Object.keys(map).find((k) =>
-    k.split("/").pop()!.startsWith(`${id}-${suffix}.`),
-  );
+function find(map: Record<string, string>, id: string, suffix: string): string | undefined {
+  const key = Object.keys(map).find((k) => k.split("/").pop()!.startsWith(`${id}-${suffix}.`));
   return key ? map[key] : undefined;
 }
 

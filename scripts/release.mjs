@@ -46,22 +46,19 @@ function commitsSince(tag) {
   const range = `${tag}..HEAD`;
   const RS = "\x1e";
   const US = "\x1f";
-  const raw = git(
-    "log",
-    range,
-    "--no-merges",
-    `--format=%H${US}%s${US}%b${RS}`,
+  const raw = git("log", range, "--no-merges", `--format=%H${US}%s${US}%b${RS}`);
+  return (
+    raw
+      .split(RS)
+      .map((r) => r.trim())
+      .filter(Boolean)
+      .map((r) => {
+        const [hash, subject, body] = r.split(US);
+        return { hash, subject, body: body ?? "" };
+      })
+      // Ignore the release bot's own version-bump commits.
+      .filter((c) => !/^chore\(release\):/.test(c.subject))
   );
-  return raw
-    .split(RS)
-    .map((r) => r.trim())
-    .filter(Boolean)
-    .map((r) => {
-      const [hash, subject, body] = r.split(US);
-      return { hash, subject, body: body ?? "" };
-    })
-    // Ignore the release bot's own version-bump commits.
-    .filter((c) => !/^chore\(release\):/.test(c.subject));
 }
 
 function replaceInFile(file, re, replacement) {
@@ -77,11 +74,7 @@ function bumpVersionFiles(version) {
   // both backends. The package.json `version` fields are decorative npm metadata
   // and are deliberately left alone — editing them would desync the lockfiles and
   // break `npm ci` in CI for no display benefit.
-  replaceInFile(
-    "src/game/version.ts",
-    /(APP_VERSION\s*=\s*")[^"]+(")/,
-    `$1${version}$2`,
-  );
+  replaceInFile("src/game/version.ts", /(APP_VERSION\s*=\s*")[^"]+(")/, `$1${version}$2`);
 }
 
 function prependChangelog(section) {
@@ -105,10 +98,7 @@ const tag = lastTag();
 // computed from the whole pre-automation history. Future runs bump from here.
 if (!tag) {
   if (!DRY)
-    writeFileSync(
-      notesFile,
-      `Baseline release v${current}. Automated versioning starts here.\n`,
-    );
+    writeFileSync(notesFile, `Baseline release v${current}. Automated versioning starts here.\n`);
   setOutput("status", "baseline");
   setOutput("version", current);
   setOutput("tag", `v${current}`);

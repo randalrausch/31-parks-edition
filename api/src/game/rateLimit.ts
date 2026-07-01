@@ -36,8 +36,7 @@ function makeLimiter(counter: Counter): RateLimiter {
     async allowCreate(ip, nowIso) {
       const day = nowIso.slice(0, 10); // YYYY-MM-DD
       const hour = nowIso.slice(0, 13); // YYYY-MM-DDTHH
-      if (!(await counter.incrIfBelow("global", `d:${day}`, maxPerDay())))
-        return false;
+      if (!(await counter.incrIfBelow("global", `d:${day}`, maxPerDay()))) return false;
       return counter.incrIfBelow("ip", `${safe(ip)}:${hour}`, maxPerIpHour());
     },
   };
@@ -57,8 +56,7 @@ export function makeMemoryRateLimiter(): RateLimiter {
   });
 }
 
-const isStatus = (e: unknown, code: number) =>
-  e instanceof RestError && e.statusCode === code;
+const isStatus = (e: unknown, code: number) => e instanceof RestError && e.statusCode === code;
 
 /** Table Storage counter with ETag CAS + bounded retry; fail-open on infra errors. */
 export function makeTableRateLimiter(): RateLimiter {
@@ -90,11 +88,9 @@ export function makeTableRateLimiter(): RateLimiter {
           if (count >= limit) return false; // over the cap
           try {
             if (etag) {
-              await c.updateEntity(
-                { partitionKey: pk, rowKey: rk, count: count + 1 },
-                "Replace",
-                { etag },
-              );
+              await c.updateEntity({ partitionKey: pk, rowKey: rk, count: count + 1 }, "Replace", {
+                etag,
+              });
             } else {
               await c.createEntity({ partitionKey: pk, rowKey: rk, count: 1 });
             }

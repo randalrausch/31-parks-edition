@@ -18,9 +18,7 @@ const RED: Suit[] = ["hearts", "diamonds"];
 
 function CardChip({ card }: { card: CardModel }) {
   return (
-    <span
-      className={`logfeed__card${RED.includes(card.suit) ? " logfeed__card--red" : ""}`}
-    >
+    <span className={`logfeed__card${RED.includes(card.suit) ? " logfeed__card--red" : ""}`}>
       {card.rank}
       {SUIT_SYMBOL[card.suit]}
     </span>
@@ -42,9 +40,7 @@ function Line({ entry }: { entry: LogEntry }) {
           discarded <CardChip card={entry.card} />
         </span>
       )}
-      {entry.kind === "knock" && (
-        <span className="logfeed__knock">knocked!</span>
-      )}
+      {entry.kind === "knock" && <span className="logfeed__knock">knocked!</span>}
     </li>
   );
 }
@@ -68,9 +64,7 @@ export default function LogFeed({
   const items = newestFirst ? [...recent].reverse() : recent;
   return (
     <ul className={`logfeed ${className ?? ""}`}>
-      {items.length === 0 && emptyText && (
-        <li className="logfeed__empty">{emptyText}</li>
-      )}
+      {items.length === 0 && emptyText && <li className="logfeed__empty">{emptyText}</li>}
       {items.map((e) => (
         <Line key={e.id} entry={e} />
       ))}

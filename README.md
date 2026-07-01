@@ -162,7 +162,7 @@ wins.
 
 ## Tech
 
-React 18, TypeScript, Vite 6, plain CSS, Supabase (optional, for multiplayer),
+React 19, TypeScript, Vite 8, plain CSS, Supabase (optional, for multiplayer),
 and Vitest. There are no game-logic dependencies; the rules are pure,
 serializable TypeScript shared by the client and the server.
 

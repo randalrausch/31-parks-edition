@@ -11,11 +11,7 @@ import type { CreateConfig } from "../game/gameApi";
 import { activeBackend } from "../game/backend";
 import { fetchBackendInfo, backendCompatible } from "../game/multiplayerConfig";
 import { elog } from "../game/debug";
-import {
-  type OnlineSession,
-  saveSession,
-  clearSession,
-} from "../game/onlineSession";
+import { type OnlineSession, saveSession, clearSession } from "../game/onlineSession";
 import OnlineGame from "./OnlineGame";
 import JoinModal from "./JoinModal";
 
@@ -93,14 +89,10 @@ export default function OnlineRoot({
         <div className="lobby__panel">
           <h1 className="lobby__title">Update Available</h1>
           <p className="lobby__waiting">
-            Online play was updated. Refresh the page to get the latest version,
-            then start or rejoin your game.
+            Online play was updated. Refresh the page to get the latest version, then start or
+            rejoin your game.
           </p>
-          <button
-            className="lobby__leave"
-            type="button"
-            onClick={() => window.location.reload()}
-          >
+          <button className="lobby__leave" type="button" onClick={() => window.location.reload()}>
             Refresh
           </button>
         </div>

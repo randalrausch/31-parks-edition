@@ -7,13 +7,7 @@
 import { Suspense, useState } from "react";
 import type { ParkTheme } from "../types";
 
-export default function ParkScene({
-  theme,
-  className,
-}: {
-  theme: ParkTheme;
-  className?: string;
-}) {
+export default function ParkScene({ theme, className }: { theme: ParkTheme; className?: string }) {
   const [failed, setFailed] = useState(false);
   const Scene = theme.Scene;
 

@@ -15,9 +15,7 @@ function debugEnabled(): boolean {
     /* storage unavailable */
   }
   try {
-    return Boolean(
-      (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV,
-    );
+    return Boolean((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV);
   } catch {
     return false;
   }

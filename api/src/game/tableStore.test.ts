@@ -29,8 +29,7 @@ async function azuriteReachable(): Promise<boolean> {
 let up = false;
 beforeAll(async () => {
   up = await azuriteReachable();
-  if (!up)
-    console.warn("Azurite not reachable — skipping TableGameStore suite.");
+  if (!up) console.warn("Azurite not reachable — skipping TableGameStore suite.");
 });
 
 function fixtures(): { rec: GameRecord; secret: SecretRecord } {
@@ -41,7 +40,14 @@ function fixtures(): { rec: GameRecord; secret: SecretRecord } {
       { id: "p0", name: "Host", isAI: false, avatarKey: "ranger" },
       { id: "p1", name: "Bot", isAI: true, avatarKey: "ranger" },
     ],
-    { threeOfAKind: false, grace: true, knockPenalty: true, sound: false, showLog: true, fullHistory: false },
+    {
+      threeOfAKind: false,
+      grace: true,
+      knockPenalty: true,
+      sound: false,
+      showLog: true,
+      fullHistory: false,
+    },
   );
   return {
     rec: {
@@ -76,9 +82,7 @@ describe("TableGameStore (Azurite)", () => {
     expect(sec?.seatTokens).toEqual({ "tok-host": 0 });
   });
 
-  it("atomic batch update succeeds with the current etag and rotates it", async ({
-    skip,
-  }) => {
+  it("atomic batch update succeeds with the current etag and rotates it", async ({ skip }) => {
     if (!up) return skip();
     const { makeTableStore } = await import("./tableStore.js");
     const store = makeTableStore();
@@ -97,9 +101,7 @@ describe("TableGameStore (Azurite)", () => {
     expect(after?.etag).not.toBe(etag);
   });
 
-  it("update with a stale etag loses the CAS race (no half-commit)", async ({
-    skip,
-  }) => {
+  it("update with a stale etag loses the CAS race (no half-commit)", async ({ skip }) => {
     if (!up) return skip();
     const { makeTableStore } = await import("./tableStore.js");
     const store = makeTableStore();
@@ -107,19 +109,12 @@ describe("TableGameStore (Azurite)", () => {
     await store.createGame(rec, secret);
     const { rec: r0, etag: stale } = (await store.getGame(rec.gameId))!;
     await store.update(rec.gameId, stale, { ...r0, version: 1 }, secret); // winner
-    const lost = await store.update(
-      rec.gameId,
-      stale,
-      { ...r0, version: 99 },
-      secret,
-    );
+    const lost = await store.update(rec.gameId, stale, { ...r0, version: 99 }, secret);
     expect(lost).toBe(false);
     expect((await store.getGame(rec.gameId))?.rec.version).toBe(1);
   });
 
-  it("deleteExpired removes past-expiry games and their code index", async ({
-    skip,
-  }) => {
+  it("deleteExpired removes past-expiry games and their code index", async ({ skip }) => {
     if (!up) return skip();
     const { makeTableStore } = await import("./tableStore.js");
     const store = makeTableStore();

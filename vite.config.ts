@@ -7,18 +7,12 @@ import { readFileSync } from "node:fs";
 // Human semver comes from the shared version module (src/game/version.ts) — the
 // same source both backends read, kept in step by the release workflow — so the
 // frontend never reports a different release than the server.
-const versionSrc = readFileSync(
-  new URL("./src/game/version.ts", import.meta.url),
-  "utf8",
-);
-const appSemver =
-  versionSrc.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1] ?? "0.0.0";
+const versionSrc = readFileSync(new URL("./src/game/version.ts", import.meta.url), "utf8");
+const appSemver = versionSrc.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1] ?? "0.0.0";
 let gitSha = "dev";
 try {
   // execFileSync (no shell) with a fixed arg list — no injection surface.
-  gitSha = execFileSync("git", ["rev-parse", "--short", "HEAD"])
-    .toString()
-    .trim();
+  gitSha = execFileSync("git", ["rev-parse", "--short", "HEAD"]).toString().trim();
 } catch {
   gitSha = (process.env.GITHUB_SHA || "").slice(0, 7) || "dev";
 }

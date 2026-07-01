@@ -61,15 +61,11 @@ describe("azureClient makeGameApi", () => {
 
   it("a 409 'retry' rejects with a message containing retry (so the transport resyncs)", async () => {
     stubFetch(409, { error: "The game just changed — please retry." });
-    await expect(
-      makeGameApi("/api").act("g", "t", { type: "drawDeck" }),
-    ).rejects.toThrow(/retry/i);
+    await expect(makeGameApi("/api").act("g", "t", { type: "drawDeck" })).rejects.toThrow(/retry/i);
   });
 
   it("surfaces the server's error message on other failures", async () => {
     stubFetch(404, { error: "No game with that code." });
-    await expect(makeGameApi("/api").join("ZZZZZ", "x")).rejects.toThrow(
-      "No game with that code.",
-    );
+    await expect(makeGameApi("/api").join("ZZZZZ", "x")).rejects.toThrow("No game with that code.");
   });
 });

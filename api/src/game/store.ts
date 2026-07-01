@@ -51,12 +51,7 @@ export interface GameStore {
    * Atomic compare-and-set: replace the game+secret pair iff the public record's
    * ETag still matches `etag`. Resolves false on a mismatch (caller -> 409 retry).
    */
-  update(
-    gameId: string,
-    etag: string,
-    rec: GameRecord,
-    secret: SecretRecord,
-  ): Promise<boolean>;
+  update(gameId: string, etag: string, rec: GameRecord, secret: SecretRecord): Promise<boolean>;
   /** Delete games whose expiresAt is at or before `nowIso`. Returns the count. */
   deleteExpired(nowIso: string): Promise<number>;
 }

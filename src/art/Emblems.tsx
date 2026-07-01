@@ -28,10 +28,7 @@ export function GlacierEmblem({ className }: { className?: string }) {
       <rect x="8" y="8" width="104" height="152" fill="url(#gle-sky)" />
       <circle cx="34" cy="36" r="11" fill="#fbf6e2" opacity="0.85" />
       {/* far range */}
-      <polygon
-        points="8,82 30,52 52,80 74,48 96,78 112,64 112,96 8,96"
-        fill="#9fb8c9"
-      />
+      <polygon points="8,82 30,52 52,80 74,48 96,78 112,64 112,96 8,96" fill="#9fb8c9" />
       {/* hero peak two-tone + snow */}
       <polygon points="34,96 66,40 98,96" fill="#5f8199" />
       <polygon points="66,40 98,96 66,96" fill="#456279" />
@@ -82,18 +79,9 @@ export function makePosterEmblem(colors: {
           </linearGradient>
         </defs>
         <rect width="120" height="168" fill={colors.land} />
-        <rect
-          x="8"
-          y="8"
-          width="104"
-          height="152"
-          fill={`url(#pe-${colors.id})`}
-        />
+        <rect x="8" y="8" width="104" height="152" fill={`url(#pe-${colors.id})`} />
         <circle cx="86" cy="40" r="12" fill="#f4e3b2" opacity="0.5" />
-        <polygon
-          points="8,96 38,44 64,90 86,52 112,92 112,120 8,120"
-          fill={colors.peak}
-        />
+        <polygon points="8,96 38,44 64,90 86,52 112,92 112,120 8,120" fill={colors.peak} />
         <polygon points="86,52 98,74 74,74" fill="#f4e3b2" opacity="0.85" />
         <g fill={colors.land}>
           <polygon points="8,124 28,96 48,124" />
@@ -132,10 +120,7 @@ export function YellowstoneEmblem({ className }: { className?: string }) {
       <rect x="8" y="8" width="104" height="152" fill="url(#yse-sky)" />
       <circle cx="86" cy="42" r="15" fill="#fdeec3" opacity="0.9" />
       {/* hills */}
-      <path
-        d="M8 92 Q 40 76 70 90 T 112 88 L 112 110 L 8 110 Z"
-        fill="#a9742f"
-      />
+      <path d="M8 92 Q 40 76 70 90 T 112 88 L 112 110 L 8 110 Z" fill="#a9742f" />
       {/* geyser plume */}
       <g fill="#f3f1e7">
         <path d="M52 110 q-8 -36 2 -64 q-6 -24 6 -42 q6 16 4 38 q8 28 -2 68 z" />
