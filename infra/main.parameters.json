@@ -7,6 +7,7 @@
     "resourceGroupName": { "value": "${AZURE_RESOURCE_GROUP}" },
 
     "customDomain": { "value": "${CUSTOM_DOMAIN}" },
+    "extraAllowedOrigins": { "value": "${EXTRA_ALLOWED_ORIGINS}" },
     "budgetAlertEmail": { "value": "${BUDGET_ALERT_EMAIL}" },
     "monthlyBudgetAmount": { "value": 10 },
     "maxFunctionInstances": { "value": 5 },

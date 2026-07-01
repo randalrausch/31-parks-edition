@@ -94,6 +94,7 @@ the real values never touch a tracked file:
 | `AZURE_RESOURCE_GROUP` | Custom resource-group name (optional; default `rg-31-parks-edition-<env>`). |
 | `BUDGET_ALERT_EMAIL` | Email for budget alerts. **The budget is only created if this is set.** |
 | `CUSTOM_DOMAIN` | A **subdomain** to bind (e.g. `play.example.com`). Apex/root domains (e.g. `play31.fun`) are set up in the Portal instead — see "Custom domain" below. |
+| `EXTRA_ALLOWED_ORIGINS` | Comma-separated site origins allowed to call the API, for a domain bound **outside** this template (e.g. an apex added in the Portal): `https://play31.fun`. Without it the browser's cross-origin call is blocked and the About dialog shows **Backend: Unreachable**. A `CUSTOM_DOMAIN` subdomain is added automatically and doesn't need this. |
 
 ```bash
 azd env set BUDGET_ALERT_EMAIL you@example.com
@@ -110,9 +111,9 @@ Edit the literals and re-run `azd provision`:
 | `maxGamesPerDay` | `500` | Global hard ceiling on games created per day. |
 | `maxGamesPerIpPerHour` | `20` | Per-IP create cap per hour. |
 
-`environmentName`, `location`, `resourceGroupName`, `customDomain`, and
-`budgetAlertEmail` are all `${...}` references filled from the azd environment
-above — leave those as-is.
+`environmentName`, `location`, `resourceGroupName`, `customDomain`,
+`extraAllowedOrigins`, and `budgetAlertEmail` are all `${...}` references filled
+from the azd environment above — leave those as-is.
 
 ### Custom domain
 
@@ -155,6 +156,17 @@ incremental deploys won't disturb a Portal-added domain).
 
 3. Back in Azure, click **Validate / Add**. Azure verifies the TXT, then issues
    the TLS cert (a few minutes). `https://play31.fun` then serves directly.
+4. **Allow the new origin to call the API**, or the site loads but shows
+   **Backend: Unreachable** (the Function's CORS still only trusts the old
+   `*.azurestaticapps.net` origin). Add the apex to the allowlist and re-provision:
+   ```bash
+   azd env set EXTRA_ALLOWED_ORIGINS https://play31.fun
+   azd provision
+   ```
+   This adds `https://play31.fun` to both the Function App's CORS `allowedOrigins`
+   and its `ALLOWED_ORIGIN` app setting; the SWA default hostname keeps working
+   too. (A `CUSTOM_DOMAIN` subdomain is allowlisted automatically — this step is
+   only for domains bound in the Portal.)
 
 > **What gives you the bare apex URL:** adding **`play31.fun`** (not
 > `www.play31.fun` or any prefix) in step 1 is the only thing that determines the
@@ -274,5 +286,7 @@ reason this option exists.
   *Storage Table Data Contributor* role) — there is **no data connection string**.
 - The Functions *runtime* store (`AzureWebJobsStorage`) uses a standard storage
   connection string; it holds no game data.
-- CORS is locked to the Static Web App origin. Never put a storage key or the
-  `service_role`-style secret into a `VITE_` variable (those ship to the browser).
+- CORS is restricted to the Static Web App origin plus any custom domains you
+  add (`customDomain` / `EXTRA_ALLOWED_ORIGINS`) — not open to the world. Never
+  put a storage key or the `service_role`-style secret into a `VITE_` variable
+  (those ship to the browser).

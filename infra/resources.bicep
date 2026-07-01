@@ -3,7 +3,8 @@
 // Security: GAME DATA in Table Storage is accessed by the Function App's
 // system-assigned managed identity (Storage Table Data Contributor) — NO secret.
 // The Functions runtime store uses a connection string (standard for Consumption;
-// holds no game data). CORS is locked to the Static Web App origin.
+// holds no game data). CORS allows the Static Web App origin plus any custom
+// domains (customDomain + extraAllowedOrigins).
 //
 // Cost guards: a max scale-out cap, a Log Analytics daily ingestion cap, durable
 // rate-limit ceilings (passed to the app), and an optional monthly Budget alert.
@@ -11,6 +12,8 @@ param location string
 param resourceToken string
 param tags object
 param customDomain string
+@description('Extra site origins allowed to call the API, comma-separated (e.g. https://play31.fun). Needed for apex/custom domains bound outside this template, e.g. in the Portal.')
+param extraAllowedOrigins string = ''
 param monthlyBudgetAmount int
 param budgetAlertEmail string
 param maxFunctionInstances int
@@ -85,6 +88,12 @@ resource swaCustomDomain 'Microsoft.Web/staticSites/customDomains@2023-12-01' = 
 }
 
 var swaOrigin = 'https://${swa.properties.defaultHostname}'
+// Every origin the SPA may be served from: the SWA default hostname, an optional
+// CNAME-delegated custom subdomain, and any extra origins (e.g. an apex domain
+// bound in the Portal). union() dedups; the app reflects whichever one calls.
+var customDomainOrigin = empty(customDomain) ? [] : [ 'https://${customDomain}' ]
+var extraOriginList = empty(extraAllowedOrigins) ? [] : split(extraAllowedOrigins, ',')
+var allowedOrigins = union([ swaOrigin ], customDomainOrigin, extraOriginList)
 var storageConn = 'DefaultEndpointsProtocol=https;AccountName=${storage.name};AccountKey=${storage.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
 
 resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
@@ -114,7 +123,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
       // Cap peak concurrency so a flood can't fan out to hundreds of instances.
       functionAppScaleLimit: maxFunctionInstances
       cors: {
-        allowedOrigins: [ swaOrigin ]
+        allowedOrigins: allowedOrigins
       }
       appSettings: [
         { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
@@ -125,7 +134,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'WEBSITE_CONTENTSHARE', value: 'func-${resourceToken}' }
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
         { name: 'STORAGE_ACCOUNT', value: storage.name }
-        { name: 'ALLOWED_ORIGIN', value: swaOrigin }
+        { name: 'ALLOWED_ORIGIN', value: join(allowedOrigins, ',') }
         // Durable abuse/cost caps (enforced by the app's rate limiter).
         { name: 'MAX_GAMES_PER_DAY', value: string(maxGamesPerDay) }
         { name: 'MAX_GAMES_PER_IP_PER_HOUR', value: string(maxGamesPerIpPerHour) }

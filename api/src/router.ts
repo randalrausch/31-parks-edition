@@ -18,6 +18,8 @@ import type { RateLimiter } from "./game/rateLimit.js";
 export interface RawRequest {
   method: string;
   ip: string;
+  /** The request's `Origin` header, if any — used to reflect an allowed origin. */
+  origin?: string;
   readJson: () => Promise<unknown>;
 }
 export interface RawResponse {
@@ -38,19 +40,31 @@ export function makeRouter(
   store: GameStore,
   opts: { allowedOrigin?: string; rateLimiter?: RateLimiter } = {},
 ) {
-  const origin = opts.allowedOrigin ?? process.env.ALLOWED_ORIGIN ?? "*";
+  // ALLOWED_ORIGIN may be a single origin or a comma-separated list (SWA default
+  // hostname + any custom domains). "*" (or empty) allows any origin. For a list
+  // we reflect the caller's Origin when it's allowed, so a single Function can
+  // serve both https://<swa>.azurestaticapps.net and https://play31.fun.
+  const originSetting = opts.allowedOrigin ?? process.env.ALLOWED_ORIGIN ?? "*";
+  const allowedOrigins = originSetting
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const allowAnyOrigin =
+    allowedOrigins.length === 0 || allowedOrigins.includes("*");
+  const allowOriginFor = (reqOrigin?: string): string => {
+    if (allowAnyOrigin) return "*";
+    if (reqOrigin && allowedOrigins.includes(reqOrigin)) return reqOrigin;
+    // A caller from a non-allowed origin gets the first configured origin, which
+    // won't match their Origin — so the browser correctly blocks the response.
+    return allowedOrigins[0];
+  };
   const rateLimiter = opts.rateLimiter;
-  const cors = (): Record<string, string> => ({
-    "Access-Control-Allow-Origin": origin,
+  const cors = (reqOrigin?: string): Record<string, string> => ({
+    "Access-Control-Allow-Origin": allowOriginFor(reqOrigin),
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "content-type",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
-  });
-  const reply = (status: number, body: unknown): RawResponse => ({
-    status,
-    headers: { ...cors(), "Content-Type": "application/json" },
-    body,
   });
 
   const hits = new Map<string, { n: number; reset: number }>();
@@ -68,7 +82,14 @@ export function makeRouter(
   };
 
   return async function route(req: RawRequest): Promise<RawResponse> {
-    if (req.method === "OPTIONS") return { status: 204, headers: cors() };
+    const corsHeaders = cors(req.origin);
+    const reply = (status: number, body: unknown): RawResponse => ({
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      body,
+    });
+
+    if (req.method === "OPTIONS") return { status: 204, headers: corsHeaders };
     if (req.method !== "POST") return reply(405, { error: "POST only." });
 
     if (limited(req.ip, 90, 60_000))

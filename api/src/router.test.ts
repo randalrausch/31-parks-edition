@@ -3,9 +3,10 @@ import { makeRouter, type RawRequest } from "./router.js";
 import { makeMemoryStore } from "./game/memoryStore.js";
 import { makeMemoryRateLimiter } from "./game/rateLimit.js";
 
-const post = (body: unknown, ip = "1.2.3.4"): RawRequest => ({
+const post = (body: unknown, ip = "1.2.3.4", origin?: string): RawRequest => ({
   method: "POST",
   ip,
+  origin,
   readJson: async () => body,
 });
 
@@ -31,6 +32,45 @@ describe("router", () => {
     const res = await route(post({ op: "version" }));
     expect(res.headers["Access-Control-Allow-Origin"]).toBe("https://x.app");
     expect((res.body as { provider: string }).provider).toBe("Azure");
+  });
+
+  it("reflects the caller's origin when it's in the allowed list", async () => {
+    const route = makeRouter(makeMemoryStore(), {
+      allowedOrigin: "https://swa.azurestaticapps.net, https://play31.fun",
+    });
+    const swa = await route(
+      post({ op: "version" }, "1.2.3.4", "https://swa.azurestaticapps.net"),
+    );
+    expect(swa.headers["Access-Control-Allow-Origin"]).toBe(
+      "https://swa.azurestaticapps.net",
+    );
+    const apex = await route(
+      post({ op: "version" }, "1.2.3.4", "https://play31.fun"),
+    );
+    expect(apex.headers["Access-Control-Allow-Origin"]).toBe(
+      "https://play31.fun",
+    );
+  });
+
+  it("falls back to the first allowed origin for a non-allowed caller", async () => {
+    const route = makeRouter(makeMemoryStore(), {
+      allowedOrigin: "https://play31.fun, https://swa.azurestaticapps.net",
+    });
+    const res = await route(
+      post({ op: "version" }, "1.2.3.4", "https://evil.example.com"),
+    );
+    // Not the caller's origin → the browser blocks the response, as intended.
+    expect(res.headers["Access-Control-Allow-Origin"]).toBe(
+      "https://play31.fun",
+    );
+  });
+
+  it("allows any origin when configured with '*'", async () => {
+    const route = makeRouter(makeMemoryStore(), { allowedOrigin: "*" });
+    const res = await route(
+      post({ op: "version" }, "1.2.3.4", "https://anything.example"),
+    );
+    expect(res.headers["Access-Control-Allow-Origin"]).toBe("*");
   });
 
   it("rejects unknown ops with 400", async () => {
