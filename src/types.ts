@@ -1,4 +1,10 @@
-import type { ComponentType } from "react";
+import type { ComponentType, LazyExoticComponent } from "react";
+
+/** A scene/art component that may be code-split (React.lazy) to keep it out of
+ * the initial bundle — rendered inside a <Suspense> boundary by its consumer. */
+type SceneComponent =
+  | ComponentType<{ className?: string }>
+  | LazyExoticComponent<ComponentType<{ className?: string }>>;
 
 /* ──────────────────────────────────────────────────────────────────────────
    Card model
@@ -81,8 +87,9 @@ export interface ParkTheme {
   /** Optional raster card-back artwork; falls back to the SVG `Emblem`. */
   backImage?: string;
   /** Optional full-bleed vector background; a park may instead ship a raster
-   * `sceneImage`. ParkScene prefers `sceneImage` and falls back to this. */
-  Scene?: ComponentType<{ className?: string }>;
+   * `sceneImage`. ParkScene prefers `sceneImage` and falls back to this. May be
+   * a lazily-loaded (code-split) component — render it inside <Suspense>. */
+  Scene?: SceneComponent;
   /** Compact scene used on card backs and picker thumbnails. */
   Emblem: ComponentType<{ className?: string }>;
   /** Avatars available for this park's seats. */

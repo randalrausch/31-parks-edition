@@ -4,7 +4,7 @@
  * it gracefully falls back to the vector `Scene`. This lets real artwork drop in
  * with zero code changes while never leaving a blank table.
  */
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import type { ParkTheme } from "../types";
 
 export default function ParkScene({
@@ -30,5 +30,11 @@ export default function ParkScene({
       />
     );
   }
-  return Scene ? <Scene className={className} /> : null;
+  // Scene may be code-split (React.lazy); a Suspense boundary covers the rare
+  // fallback load. fallback=null keeps the table from flashing while it arrives.
+  return Scene ? (
+    <Suspense fallback={null}>
+      <Scene className={className} />
+    </Suspense>
+  ) : null;
 }
