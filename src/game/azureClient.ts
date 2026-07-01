@@ -66,5 +66,19 @@ export const azureBackend: GameBackend | null = azureGameApi
       api: azureGameApi,
       // No push channel — polling in NetworkTransport drives convergence.
       subscribe: () => () => {},
+      // Fire-and-forget crash report to the Function's logs. keepalive lets it
+      // survive a page unload; failures are swallowed so it never worsens a crash.
+      reportError: (report) => {
+        try {
+          void fetch(`${azureApiBase}/game`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ op: "clientError", ...report }),
+            keepalive: true,
+          }).catch(() => {});
+        } catch {
+          /* never throw from the error reporter */
+        }
+      },
     }
   : null;

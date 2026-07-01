@@ -112,5 +112,16 @@ export const supabaseBackend: GameBackend | null =
         api: gameApi,
         subscribe: (gameId, onChange, onStatus) =>
           subscribeToGame(supabase!, gameId, onChange, onStatus),
+        // Fire-and-forget crash report to the Edge Function's logs; swallow any
+        // failure so the reporter never worsens the error it's reporting.
+        reportError: (report) => {
+          try {
+            void supabase!.functions
+              .invoke("game", { body: { op: "clientError", ...report } })
+              .catch(() => {});
+          } catch {
+            /* never throw from the error reporter */
+          }
+        },
       }
     : null;

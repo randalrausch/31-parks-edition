@@ -247,3 +247,34 @@ export async function handleHealth(store: GameStore, provider: string): Promise<
     return { status: 503, body: { ok: true, healthy: false, provider } };
   }
 }
+
+/* ──────────────────────────── clientError ───────────────────────────── */
+
+/**
+ * Off-device sink for client-side errors (render crashes, reconnect failures).
+ * The client has nowhere to report crashes on its own — this logs a bounded,
+ * structured line to server stdout, which App Insights (Azure) / function logs
+ * (Supabase) capture, so operators can see how often players hit an error.
+ *
+ * Every field is client-controlled and untrusted: each is clamped and ONLY ever
+ * logged (never executed, persisted, or reflected), so an anonymous caller can't
+ * do more than emit one bounded log line — and it sits behind the per-IP limiter.
+ */
+export function handleClientError(body: {
+  message?: unknown;
+  stack?: unknown;
+  url?: unknown;
+  context?: unknown;
+}): OpResult {
+  const clamp = (v: unknown, n: number): string | undefined =>
+    typeof v === "string" && v.length > 0 ? v.slice(0, n) : undefined;
+  const entry = {
+    kind: "client-error",
+    message: clamp(body.message, 500) ?? "(no message)",
+    stack: clamp(body.stack, 4000),
+    url: clamp(body.url, 300),
+    context: clamp(body.context, 200),
+  };
+  console.warn(`client-error ${JSON.stringify(entry)}`);
+  return ok({ ok: true });
+}

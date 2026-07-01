@@ -8,6 +8,7 @@
  */
 import {
   handleAct,
+  handleClientError,
   handleCreate,
   handleHealth,
   handleJoin,
@@ -115,6 +116,7 @@ export function makeRouter(
       const r = await handleHealth(store, provider);
       return reply(r.status, r.body);
     }
+    if (op === "clientError") return reply(200, handleClientError(body).body);
 
     if (op === "create") {
       // Cheap per-instance first line, then the durable shared caps (per-IP/hour
