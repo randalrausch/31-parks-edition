@@ -4,9 +4,15 @@ import react from "@vitejs/plugin-react";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
-const pkg = JSON.parse(
-  readFileSync(new URL("./package.json", import.meta.url), "utf8"),
+// Human semver comes from the shared version module (src/game/version.ts) — the
+// same source both backends read, kept in step by the release workflow — so the
+// frontend never reports a different release than the server.
+const versionSrc = readFileSync(
+  new URL("./src/game/version.ts", import.meta.url),
+  "utf8",
 );
+const appSemver =
+  versionSrc.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1] ?? "0.0.0";
 let gitSha = "dev";
 try {
   // execFileSync (no shell) with a fixed arg list — no injection surface.
@@ -28,7 +34,7 @@ try {
 } catch {
   build = process.env.GITHUB_RUN_NUMBER || "";
 }
-const appVersion = build ? `${pkg.version}+${build}` : pkg.version;
+const appVersion = build ? `${appSemver}+${build}` : appSemver;
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -41,6 +47,6 @@ export default defineConfig({
   // Vitest: pure game logic runs in Node; UI integration is tested separately.
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "scripts/**/*.test.mjs"],
   },
 });

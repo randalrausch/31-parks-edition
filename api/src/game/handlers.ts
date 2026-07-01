@@ -18,6 +18,8 @@ import {
   advanceAuthority,
   redactState,
   buildCreateSetup,
+  APP_VERSION,
+  PROTOCOL_VERSION,
   type GameState,
   type GameAction,
   type CreateConfigInput,
@@ -25,8 +27,8 @@ import {
 import { makeCode, newToken } from "./ids.js";
 import type { GameRecord, GameStore, SecretRecord } from "./store.js";
 
-/** Bump with releases; surfaced by the in-app About dialog via the `version` op. */
-export const FN_VERSION = "0.2.0";
+// Version (shown in About via the `version` op) comes from the shared version
+// module, so both backends and the frontend always report the same release.
 const PROVIDER = "Azure";
 const TTL_MS = 14 * 24 * 60 * 60 * 1000; // games expire 14 days after last activity
 
@@ -245,5 +247,10 @@ export async function handleState(
 /* ─────────────────────────── version ────────────────────────── */
 
 export function handleVersion(): OpResult {
-  return ok({ ok: true, version: FN_VERSION, provider: PROVIDER });
+  return ok({
+    ok: true,
+    version: APP_VERSION,
+    provider: PROVIDER,
+    protocol: PROTOCOL_VERSION,
+  });
 }

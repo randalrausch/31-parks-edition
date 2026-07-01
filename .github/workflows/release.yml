@@ -1,0 +1,85 @@
+name: Release
+
+# Automated versioning + changelog from Conventional Commits.
+#
+# On every push to main, this reads the commits since the last tag and:
+#   - feat: → minor, fix:/perf: → patch, `!`/BREAKING CHANGE → major
+#     (a breaking change while pre-1.0 bumps the minor, never jumps to 1.0.0)
+#   - only chore/docs/etc. → no release (nothing happens)
+#   - commits it can't classify with no releasing signal → opens an issue asking
+#     a human to decide, instead of guessing
+#
+# A release updates src/game/version.ts (the single version source both backends
+# and the frontend read), regenerates the edge bundle, prepends CHANGELOG.md,
+# commits `chore(release): vX.Y.Z [skip ci]`, tags it, and publishes a GitHub
+# Release. The bot's push uses GITHUB_TOKEN, which does not re-trigger workflows.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # Don't act on the bot's own release commit.
+    if: ${{ !startsWith(github.event.head_commit.message, 'chore(release):') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Decide release from Conventional Commits
+        id: decide
+        run: node scripts/release.mjs
+
+      - name: Regenerate edge bundle for the new version
+        if: ${{ steps.decide.outputs.status == 'released' }}
+        run: npm run build:edge
+
+      - name: Commit, tag, and publish the release
+        if: ${{ steps.decide.outputs.status == 'released' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore(release): ${{ steps.decide.outputs.tag }} [skip ci]"
+          git tag "${{ steps.decide.outputs.tag }}"
+          git push origin HEAD:main --follow-tags
+          gh release create "${{ steps.decide.outputs.tag }}" \
+            --title "${{ steps.decide.outputs.tag }}" \
+            --notes-file .release-notes.md
+
+      - name: Ask a human when the bump is ambiguous
+        if: ${{ steps.decide.outputs.status == 'needs-input' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Avoid piling up duplicate issues if several such pushes land.
+          existing=$(gh issue list --state open \
+            --search 'in:title "Release: version bump needs a decision"' \
+            --json number --jq 'length')
+          if [ "$existing" = "0" ]; then
+            gh issue create \
+              --title "Release: version bump needs a decision" \
+              --body-file .release-ambiguous.md
+          else
+            echo "An open release-decision issue already exists; skipping."
+          fi

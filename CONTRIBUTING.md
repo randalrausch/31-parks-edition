@@ -47,10 +47,34 @@ supabase functions deploy game
 
 ## Commit & PR
 
-- Write clear, present‑tense commit messages describing the change and its
-  rationale.
+- Write [**Conventional Commit**](https://www.conventionalcommits.org/) messages
+  — the release automation reads them (see below). Use `feat:` for a feature,
+  `fix:` for a bug fix, `perf:` for a performance fix, and add `!` (or a
+  `BREAKING CHANGE:` footer) for a breaking change; `chore/docs/refactor/test/ci`
+  for everything else. This repo squash‑merges, so the **PR title** becomes the
+  commit — make it a Conventional Commit too.
 - One logical change per PR where practical; include test updates.
 - Describe what you changed and how you verified it.
+
+## Versioning & releases
+
+Versions are automated — you don't hand‑edit them. The single source is
+`src/game/version.ts` (`APP_VERSION` + `PROTOCOL_VERSION`), read by the frontend
+and both backends. On every push to `main`, `.github/workflows/release.yml`:
+
+- bumps the version from the Conventional Commits since the last tag
+  (`feat` → minor, `fix`/`perf` → patch, breaking → major; a breaking change
+  while pre‑1.0 bumps the minor, so you never hit `1.0.0` by accident),
+- prepends `CHANGELOG.md`, tags `vX.Y.Z`, and publishes a GitHub Release.
+
+If it can't tell what bump your commits imply, it opens an issue asking you to
+decide rather than guessing. Preview locally with `node scripts/release.mjs --dry`.
+
+`PROTOCOL_VERSION` is the exception: bump it **by hand** in `version.ts` only when
+you change the client↔server wire contract incompatibly (op surface, redacted
+state shape, seat‑token semantics). A client on a different protocol than the live
+backend is asked to refresh. Bumping it (or any `src/game/` change) needs
+`npm run build:edge` re‑run and committed.
 
 ## Reporting bugs / requesting features
 

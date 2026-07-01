@@ -55,3 +55,7 @@ supabase/.branches/
 
 # Superpowers-generated planning docs (kept local, not tracked)
 /docs/superpowers/plans/
+
+# Transient files written by scripts/release.mjs
+.release-notes.md
+.release-ambiguous.md

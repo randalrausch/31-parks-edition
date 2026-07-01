@@ -9,6 +9,7 @@ import Modal from "./Modal";
 import {
   multiplayerEnabled,
   fetchBackendInfo,
+  backendCompatible,
   type BackendInfo,
 } from "../game/multiplayerConfig";
 import "./About.css";
@@ -67,6 +68,10 @@ export default function About({
           ? "Unreachable"
           : `${backend.info.provider} · v${backend.info.version}`;
 
+  // A live backend on a different wire protocol means this tab is out of date.
+  const outOfDate =
+    backend.kind === "live" && !backendCompatible(backend.info);
+
   return (
     <Modal open={open} onClose={onClose} labelledBy="about-title">
       <div className="about">
@@ -86,7 +91,15 @@ export default function About({
           </div>
           <div className="about__row">
             <dt>Backend</dt>
-            <dd>{backendText}</dd>
+            <dd>
+              {backendText}
+              {outOfDate && (
+                <>
+                  {" "}
+                  · <strong>update available — refresh to play online</strong>
+                </>
+              )}
+            </dd>
           </div>
           <div className="about__row">
             <dt>Hosting</dt>
