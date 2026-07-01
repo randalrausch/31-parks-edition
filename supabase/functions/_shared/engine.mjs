@@ -658,6 +658,14 @@ function handleVersion(provider) {
     protocol: PROTOCOL_VERSION
   });
 }
+async function handleHealth(store, provider) {
+  try {
+    await store.getByCode("__health__");
+    return ok({ ok: true, healthy: true, provider, protocol: PROTOCOL_VERSION });
+  } catch {
+    return { status: 503, body: { ok: true, healthy: false, provider } };
+  }
+}
 
 // src/game/store.ts
 var StateTooLargeError = class extends Error {
@@ -720,6 +728,10 @@ function makeRouter(store, opts = {}) {
     }
     const op = String(body?.op ?? "");
     if (op === "version") return reply(200, handleVersion(provider).body);
+    if (op === "health") {
+      const r = await handleHealth(store, provider);
+      return reply(r.status, r.body);
+    }
     if (op === "create") {
       if (limited(`create:${req.ip}`, 15, 6e5))
         return reply(429, {

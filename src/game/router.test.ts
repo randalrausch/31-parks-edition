@@ -33,6 +33,14 @@ describe("router", () => {
     expect((res.body as { provider: string }).provider).toBe("Azure");
   });
 
+  it("routes health through a datastore round-trip (200 healthy)", async () => {
+    const route = makeRouter(makeMemoryStore(), { provider: "Supabase" });
+    const res = await route(post({ op: "health" }));
+    expect(res.status).toBe(200);
+    expect((res.body as { healthy: boolean; provider: string }).healthy).toBe(true);
+    expect((res.body as { provider: string }).provider).toBe("Supabase");
+  });
+
   it("reflects the request origin when ALLOWED_ORIGIN lists several", async () => {
     const route = makeRouter(makeMemoryStore(), {
       allowedOrigin: "https://a.app, https://b.app",
