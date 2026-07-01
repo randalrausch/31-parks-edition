@@ -35,7 +35,7 @@ import {
 } from "./BoardParts";
 import {
   bestSuit,
-  scoreHand,
+  bestHandScore,
   isAlive,
   roundNo,
   type GameState,
@@ -82,7 +82,9 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
   const canDraw = !cur.isAI && s.phase === "drawing";
   const discarding = s.phase === "discarding";
   const counting = bestSuit(cur.hand);
-  const handScore = scoreHand(cur.hand, s.options);
+  // Best score for a legal 3-card hand — during the discard phase the hand holds
+  // 4 cards, so show the best achievable after dropping one, not the 4-card total.
+  const handScore = bestHandScore(cur.hand, s.options);
 
   return (
     <section className="board-fold">

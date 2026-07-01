@@ -29,7 +29,7 @@ import {
 } from "./BoardParts";
 import {
   bestSuit,
-  scoreHand,
+  bestHandScore,
   isAlive,
   roundNo,
   type GameState,
@@ -125,7 +125,9 @@ export default function OnlineGameBoard({
   const canDraw = myTurn && s.phase === "drawing";
   const discarding = myTurn && s.phase === "discarding";
   const counting = me ? bestSuit(me.hand) : null;
-  const handScore = me ? scoreHand(me.hand, s.options) : 0;
+  // Best legal 3-card score (mid-draw the hand holds 4 cards; show the best after
+  // dropping one, not the illegal 4-card total).
+  const handScore = me ? bestHandScore(me.hand, s.options) : 0;
 
   // The feed normally shows the last few moves; when the host's "Full Action
   // History" house rule is on, players may expand it to the whole deal. We still
