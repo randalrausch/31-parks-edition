@@ -67,6 +67,9 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
+      - name: Lint
+        run: npm run lint
+
       - name: Unit + fuzz tests
         run: npm test
 

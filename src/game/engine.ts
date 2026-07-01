@@ -236,6 +236,16 @@ export function bestSuit(hand: CardModel[]): Suit | null {
 export function isAlive(p: GamePlayer): boolean {
   return p.tokens > 0 || p.grace;
 }
+
+/**
+ * The round (lap of the table) within the current deal, 1-based. Shared by both
+ * boards so the "Round N" readout can't drift between the solo and online views.
+ */
+export function roundNo(s: GameState): number {
+  return s.dealPlayers > 0
+    ? Math.max(1, Math.ceil(s.turnInDeal / s.dealPlayers))
+    : 1;
+}
 export function isEliminated(p: GamePlayer): boolean {
   return !isAlive(p);
 }

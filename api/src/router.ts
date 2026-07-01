@@ -12,7 +12,7 @@ import {
   handleVersion,
   type OpResult,
 } from "./game/handlers.js";
-import type { GameStore } from "./game/store.js";
+import { StateTooLargeError, type GameStore } from "./game/store.js";
 import type { RateLimiter } from "./game/rateLimit.js";
 
 export interface RawRequest {
@@ -124,7 +124,19 @@ export function makeRouter(
     try {
       const { status, body: out } = await fn(store, body);
       return reply(status, out);
-    } catch {
+    } catch (e) {
+      // A state that outgrew the Table Storage cap is a specific, actionable
+      // failure — surface it clearly instead of a silent generic 500 so it
+      // isn't invisible in logs and the client gets a meaningful message.
+      if (e instanceof StateTooLargeError) {
+        console.error(`game op=${op} state-too-large: ${e.message}`);
+        return reply(507, {
+          error: "This game has grown too large to continue. Please start a new one.",
+        });
+      }
+      // Log the real cause server-side (App Insights captures console.error);
+      // the client only ever sees a generic message.
+      console.error(`game op=${op} failed:`, (e as Error)?.stack ?? e);
       return reply(500, {
         error: "Something went wrong on our end. Please try again.",
       });

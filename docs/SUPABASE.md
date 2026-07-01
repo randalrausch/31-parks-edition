@@ -87,6 +87,25 @@ Or apply `supabase/schema.sql` by hand in the dashboard SQL editor instead of
 - Clients receive a **redacted** view (`redactState`) — never another player's
   cards. Realtime only carries a public lobby row (no card data) used as a
   "something changed, refetch" ping.
+- Every write goes through the `commit_game` RPC, which bumps the version **and**
+  saves the new state in one Postgres transaction — so a concurrent submit gets
+  a clean conflict and the two rows can never half-commit.
+
+## Optional function config (env / secrets)
+
+The `game` function reads a few optional settings (set them as Supabase function
+secrets — `supabase secrets set NAME=value` — or leave them unset for the
+defaults):
+
+| Var | Default | Effect |
+|-----|---------|--------|
+| `ALLOWED_ORIGIN` | `*` | Comma-separated origin allow-list for CORS (mirrors the Azure backend). Set it to your site's origin(s) to stop other sites calling the function. |
+| `MAX_GAMES_PER_DAY` | `500` | Hard global cap on games created per day (durable, cross-instance). |
+| `MAX_GAMES_PER_IP_PER_HOUR` | `20` | Per-IP games/hour cap. |
+
+The two caps are enforced by a durable Postgres counter (`rate_counters` +
+`incr_if_below`), so they hold across the ephemeral edge instances — not just
+per-instance. Both are applied by the same migration as `commit_game`.
 
 ## Updating the function later
 

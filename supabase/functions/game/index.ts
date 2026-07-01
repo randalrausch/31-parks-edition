@@ -21,6 +21,7 @@ import {
   applyPlayerAction,
   advanceAuthority,
   redactState,
+  buildCreateSetup,
 } from "../_shared/engine.mjs";
 
 // @ts-expect-error — Deno global
@@ -30,26 +31,42 @@ const admin = createClient(
   env("SUPABASE_SERVICE_ROLE_KEY"),
 );
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS, "Content-Type": "application/json" },
-  });
-const err = (msg: string, status = 400) => json({ error: msg }, status);
+/**
+ * CORS origin allow-list, kept in parity with the Azure router. ALLOWED_ORIGIN
+ * may be a comma-separated list (the site host plus any custom domains). A
+ * single Access-Control-Allow-Origin can name only one origin, so reflect the
+ * request's Origin when it's in the list ("Vary: Origin" keeps that cacheable);
+ * "*" allows all, and an unlisted origin falls back to the first entry
+ * (effectively denied). Defaults to "*" so an unconfigured project still works.
+ */
+const ALLOWED_ORIGINS = (env("ALLOWED_ORIGIN") ?? "*")
+  .split(",")
+  .map((o: string) => o.trim())
+  .filter(Boolean);
+function corsFor(reqOrigin: string | null): Record<string, string> {
+  const origin = ALLOWED_ORIGINS.includes("*")
+    ? "*"
+    : reqOrigin && ALLOWED_ORIGINS.includes(reqOrigin)
+      ? reqOrigin
+      : (ALLOWED_ORIGINS[0] ?? "*");
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    Vary: "Origin",
+  };
+}
 
-/** Bump with releases (the deployed function's version, shown in About). */
-const FN_VERSION = "0.1.0";
+/** Bump with releases (the deployed function's version, shown in About). Kept
+ * in step with the Azure backend's FN_VERSION so both providers report the same
+ * release. */
+const FN_VERSION = "0.2.0";
 
 /**
  * Best-effort, per-instance rate limiting. Edge instances are ephemeral and not
- * shared, so this is a first line against accidental floods / simple abuse, not
- * a hard guarantee (a persistent limiter would need a DB table). Fixed window.
+ * shared, so this is only a cheap first line against accidental floods; the
+ * durable per-IP/day caps below (a DB counter) are what actually bound cost.
  */
 const hits = new Map<string, { n: number; reset: number }>();
 function rateLimited(key: string, max: number, windowMs: number): boolean {
@@ -70,12 +87,55 @@ const clientIp = (req: Request) =>
   "unknown";
 
 /**
+ * Durable, cross-instance create caps backed by a Postgres counter (the
+ * `incr_if_below` RPC), mirroring the Azure Table limiter. Two ceilings: a
+ * global games/day hard cap and a per-IP games/hour cap. Fail-open on any DB
+ * error — a transient hiccup must never lock players out.
+ */
+const MAX_GAMES_PER_DAY = Number(env("MAX_GAMES_PER_DAY")) || 500;
+const MAX_GAMES_PER_IP_PER_HOUR = Number(env("MAX_GAMES_PER_IP_PER_HOUR")) || 20;
+const safeKey = (s: string) => s.replace(/[^A-Za-z0-9.:_-]/g, "_").slice(0, 200);
+async function incrIfBelow(
+  bucket: string,
+  windowKey: string,
+  limit: number,
+): Promise<boolean> {
+  try {
+    const { data, error } = await admin.rpc("incr_if_below", {
+      p_bucket: bucket,
+      p_window: windowKey,
+      p_limit: limit,
+    });
+    if (error) {
+      logEvent("ratelimit.error", { message: error.message });
+      return true; // fail open
+    }
+    return data === true;
+  } catch (e) {
+    logEvent("ratelimit.error", { message: (e as Error).message });
+    return true; // fail open
+  }
+}
+async function allowCreate(ip: string): Promise<boolean> {
+  const now = new Date().toISOString();
+  const day = now.slice(0, 10); // YYYY-MM-DD
+  const hour = now.slice(0, 13); // YYYY-MM-DDTHH
+  if (!(await incrIfBelow("global", `d:${day}`, MAX_GAMES_PER_DAY)))
+    return false;
+  return incrIfBelow("ip", `${safeKey(ip)}:${hour}`, MAX_GAMES_PER_IP_PER_HOUR);
+}
+
+/**
  * Opportunistically delete abandoned games so the database doesn't fill up on a
  * free tier. Runs on a small fraction of creates (no cron needed); failures are
- * ignored. Cascades to game_secrets via the FK.
+ * ignored. Cascades to game_secrets via the FK. The 14-day window matches the
+ * Azure backend's TTL so an async game "waits patiently" for the same duration
+ * on either provider.
  */
 async function sweepOldGames(): Promise<void> {
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const cutoff = new Date(
+    Date.now() - 14 * 24 * 60 * 60 * 1000,
+  ).toISOString();
   const { error } = await admin.from("games").delete().lt("updated_at", cutoff);
   if (error) logEvent("sweep.error", { message: error.message });
   else logEvent("sweep.ok", {});
@@ -95,20 +155,6 @@ function logEvent(event: string, data: Record<string, unknown> = {}): void {
   } catch {
     console.log(`game ${event}`);
   }
-}
-
-/**
- * Log a rejection and return the (user-safe) error response in one step, so
- * every client-visible failure also leaves a clear server log line.
- */
-function fail(
-  event: string,
-  message: string,
-  status: number,
-  data: Record<string, unknown> = {},
-): Response {
-  logEvent(event, { ...data, status, message });
-  return err(message, status);
 }
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 32 chars, no I/O/0/1
@@ -145,41 +191,58 @@ async function loadById(id: string) {
     .maybeSingle();
   return game && secret ? { game, secret } : null;
 }
-async function saveSecret(id: string, state: unknown, seatTokens: unknown) {
-  const { error } = await admin
-    .from("game_secrets")
-    .update({ state, seat_tokens: seatTokens })
-    .eq("game_id", id);
-  if (error) throw new Error(`saveSecret: ${error.message}`);
-}
+
 /**
- * Optimistic-concurrency version bump. Updates `games` ONLY if its version is
- * still `expectedVersion`, atomically setting it to expectedVersion + 1. Returns
- * false when another writer moved first (the caller should report a conflict and
- * let the client refetch). This is the lock that serializes concurrent writers —
- * always call it BEFORE saveSecret so a loser never overwrites shared state.
+ * Atomic optimistic-concurrency commit. The `commit_game` RPC runs in a single
+ * Postgres transaction: it bumps `games.version` ONLY if it still equals
+ * `expectedVersion`, and — in the same transaction — writes the new secret
+ * state/tokens. Returns false when another writer moved first (client refetches
+ * and retries). This replaces the old two-call casBump()+saveSecret() sequence,
+ * which could leave `games` bumped while `game_secrets` stayed stale if the
+ * second write failed (a torn write). null patch fields keep their column value.
  */
-async function casBump(
+async function commitGame(
   id: string,
   expectedVersion: number,
-  patch: Record<string, unknown>,
+  patch: {
+    status?: string;
+    seats?: unknown;
+    state?: unknown;
+    seatTokens?: unknown;
+  },
 ): Promise<boolean> {
-  const { data, error } = await admin
-    .from("games")
-    .update({
-      ...patch,
-      version: expectedVersion + 1,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id)
-    .eq("version", expectedVersion)
-    .select("id");
-  if (error) throw new Error(`casBump: ${error.message}`);
-  return (data?.length ?? 0) > 0;
+  const { data, error } = await admin.rpc("commit_game", {
+    p_id: id,
+    p_expected_version: expectedVersion,
+    p_status: patch.status ?? null,
+    p_seats: patch.seats ?? null,
+    p_state: patch.state ?? null,
+    p_seat_tokens: patch.seatTokens ?? null,
+  });
+  if (error) throw new Error(`commitGame: ${error.message}`);
+  // The RPC returns the new version, or -1 on a version conflict.
+  return typeof data === "number" && data >= 0;
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  const cors = corsFor(req.headers.get("origin"));
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...cors, "Content-Type": "application/json" },
+    });
+  const err = (msg: string, status = 400) => json({ error: msg }, status);
+  const fail = (
+    event: string,
+    message: string,
+    status: number,
+    data: Record<string, unknown> = {},
+  ): Response => {
+    logEvent(event, { ...data, status, message });
+    return err(message, status);
+  };
+
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return err("POST only", 405);
 
   // Lightweight health/version probe (used by the in-app About dialog).
@@ -202,125 +265,38 @@ Deno.serve(async (req: Request) => {
   // state/version are high-volume / trivial; don't log them as requests.
   if (op !== "state" && op !== "version") logEvent("request", { op });
 
-  // Creating games is the costliest op — limit it more tightly per IP.
-  if (op === "create" && rateLimited(`create:${ip}`, 15, 600_000))
-    return fail(
-      "rate-limited",
-      "You're creating games too quickly — try again in a few minutes.",
-      429,
-      { ip },
-    );
+  // Creating games is the costliest op — a cheap per-instance first line, then
+  // the durable shared caps (per-IP/hour + global/day) that actually bound cost.
+  if (op === "create") {
+    if (rateLimited(`create:${ip}`, 15, 600_000))
+      return fail(
+        "rate-limited",
+        "You're creating games too quickly — try again in a few minutes.",
+        429,
+        { ip },
+      );
+    if (!(await allowCreate(ip)))
+      return fail(
+        "rate-limited",
+        "Too many games are being created right now — please try again later.",
+        429,
+        { ip },
+      );
+  }
 
   try {
     /* ── create ── */
     if (op === "create") {
-      const config = body.config as {
-        creatorName: string;
-        humans: number;
-        ai: {
-          name: string;
-          avatarKey: string;
-          traits?: unknown;
-          emoji?: string;
-          image?: string;
-        }[];
-        options: unknown;
-      };
-      const humans = Math.max(1, Math.min(8, config.humans | 0));
-      // 31 seats at most 8 players; cap AI to the remaining seats and clamp all
-      // client-supplied strings so a malicious caller can't balloon the state.
-      const clampName = (s: unknown, fallback: string) =>
-        (typeof s === "string" ? s.trim().slice(0, 40) : "") || fallback;
-      const clampKey = (s: unknown, fallback: string) =>
-        typeof s === "string" && /^[a-z0-9-]{1,32}$/.test(s) ? s : fallback;
-      const clampImage = (s: unknown) =>
-        typeof s === "string" && s.length <= 512 ? s : undefined;
-      const TRAIT_KEYS = [
-        "bluff",
-        "memory",
-        "patience",
-        "aggression",
-        "risk",
-      ] as const;
-      const clampTraits = (t: unknown) => {
-        if (!t || typeof t !== "object") return undefined;
-        const src = t as Record<string, unknown>;
-        const out: Record<string, number> = {};
-        for (const k of TRAIT_KEYS) {
-          const v = Number(src[k]);
-          out[k] = Number.isFinite(v)
-            ? Math.max(1, Math.min(5, Math.round(v)))
-            : 3;
-        }
-        return out;
-      };
-      const BOOL_OPTS = [
-        "threeOfAKind",
-        "grace",
-        "knockPenalty",
-        "sound",
-        "fullHistory",
-      ] as const;
-      const sanitizeOptions = (o: unknown) => {
-        const src = (o && typeof o === "object" ? o : {}) as Record<
-          string,
-          unknown
-        >;
-        const out: Record<string, boolean> = {};
-        for (const k of BOOL_OPTS) out[k] = src[k] === true;
-        // The action feed shows by default; only an explicit `false` hides it.
-        out.showLog = src.showLog !== false;
-        return out;
-      };
-      const ai = (Array.isArray(config.ai) ? config.ai : []).slice(
-        0,
-        Math.max(0, 8 - humans),
+      // Shared, pure sanitization — the SAME builder the Azure backend uses, so
+      // seat/option handling can never drift between the two authorities.
+      const { players, seats, options, humans, aiCount } = buildCreateSetup(
+        (body.config ?? {}) as Parameters<typeof buildCreateSetup>[0],
       );
-      const players: Record<string, unknown>[] = [];
-      const seats: Record<string, unknown>[] = [];
-      for (let i = 0; i < humans; i++) {
-        const isCreator = i === 0;
-        const name = isCreator
-          ? clampName(config.creatorName, "Player 1")
-          : `Player ${i + 1}`;
-        players.push({ id: `p${i}`, name, isAI: false, avatarKey: "ranger" });
-        seats.push({
-          idx: i,
-          name: isCreator ? name : null,
-          avatar: "ranger",
-          isAI: false,
-          filled: isCreator,
-        });
-      }
-      ai.forEach((c, j) => {
-        const idx = humans + j;
-        const aiName = clampName(c.name, `Bot ${j + 1}`);
-        const avatar = clampKey(c.avatarKey, "ranger");
-        const emoji =
-          typeof c.emoji === "string" ? c.emoji.slice(0, 8) : undefined;
-        players.push({
-          id: `p${idx}`,
-          name: aiName,
-          isAI: true,
-          avatarKey: avatar,
-          traits: clampTraits(c.traits),
-          emoji,
-          image: clampImage(c.image),
-        });
-        seats.push({
-          idx,
-          name: aiName,
-          avatar,
-          emoji,
-          isAI: true,
-          filled: true,
-        });
-      });
 
       // Occasionally sweep abandoned games so the DB doesn't grow unbounded.
       if (Math.random() < 0.05) await sweepOldGames();
 
-      const state = createGameState(players, sanitizeOptions(config.options));
+      const state = createGameState(players, options);
       const code = makeCode();
       const creatorToken = token();
       const { data: game, error } = await admin
@@ -339,7 +315,7 @@ Deno.serve(async (req: Request) => {
         gameId: game.id,
         code,
         humans,
-        ai: ai.length,
+        ai: aiCount,
       });
       return json({
         gameId: game.id,
@@ -398,15 +374,16 @@ Deno.serve(async (req: Request) => {
       const seatTokens = loaded.secret.seat_tokens;
       const t = token();
       seatTokens[t] = idx;
-      // Claim the version first so two players can't take the same seat.
-      if (!(await casBump(game.id, game.version, { seats })))
+      // One atomic commit: claim the version AND write the new seats/state/tokens
+      // together, so two players can't take the same seat and the two rows can
+      // never half-commit.
+      if (!(await commitGame(game.id, game.version, { seats, state, seatTokens })))
         return fail(
           "join.conflict",
           "The game just changed — please try again.",
           409,
           { gameId: game.id },
         );
-      await saveSecret(game.id, state, seatTokens);
       logEvent("join", { gameId: game.id, seat: idx, tookAI });
       return json({ gameId: game.id, seatIndex: idx, seatToken: t });
     }
@@ -440,9 +417,11 @@ Deno.serve(async (req: Request) => {
       }
       const dealt = advanceAuthority(applyAction(state, { type: "deal" }));
       if (
-        !(await casBump(loaded.game.id, loaded.game.version, {
+        !(await commitGame(loaded.game.id, loaded.game.version, {
           seats,
           status: "playing",
+          state: dealt,
+          seatTokens: loaded.secret.seat_tokens,
         }))
       )
         return fail(
@@ -451,7 +430,6 @@ Deno.serve(async (req: Request) => {
           409,
           { gameId: loaded.game.id },
         );
-      await saveSecret(loaded.game.id, dealt, loaded.secret.seat_tokens);
       logEvent("start", { gameId: loaded.game.id, phase: dealt.phase });
       return json({ ok: true });
     }
@@ -489,10 +467,12 @@ Deno.serve(async (req: Request) => {
         });
         return json({ ok: false, reason: "not-applied" });
       }
-      // Claim the version first; a concurrent/double submit gets a clean 409.
+      // One atomic commit claims the version AND writes the new state; a
+      // concurrent/double submit gets a clean 409.
       if (
-        !(await casBump(loaded.game.id, loaded.game.version, {
+        !(await commitGame(loaded.game.id, loaded.game.version, {
           status: next.phase === "gameOver" ? "over" : "playing",
+          state: next,
         }))
       ) {
         logEvent("act.conflict", {
@@ -505,7 +485,6 @@ Deno.serve(async (req: Request) => {
         // conflict as recoverable (silently resyncs) by matching that word.
         return err("The game just changed — please retry.", 409);
       }
-      await saveSecret(loaded.game.id, next, loaded.secret.seat_tokens);
       logEvent("act.ok", {
         gameId: loaded.game.id,
         seat: idx,

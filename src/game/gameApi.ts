@@ -6,6 +6,24 @@
 import type { GameAction, NewGamePlayer } from "./actions";
 import type { GameOptions, GameState } from "./engine";
 
+/**
+ * A backend request failure carrying the HTTP status, so callers can react to
+ * kinds of failure structurally instead of matching words in the message. In
+ * particular `conflict` (HTTP 409) means the authority already moved on — a
+ * concurrent/duplicate submit — which the transport treats as recoverable
+ * (silently resync) rather than surfacing to the player.
+ */
+export class BackendError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+    readonly conflict = false,
+  ) {
+    super(message);
+    this.name = "BackendError";
+  }
+}
+
 /** Public seat info shown in the lobby (no card data). */
 export interface SeatInfo {
   idx: number;

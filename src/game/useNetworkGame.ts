@@ -85,11 +85,20 @@ export function useNetworkGame(
       elog("net", "connect failed", e);
       setError((e as Error)?.message || "Couldn't connect to the game.");
     });
-    // Resync immediately when the browser regains connectivity.
+    // Resync immediately when the browser regains connectivity, and when a
+    // backgrounded tab (mobile especially, where the poll is heavily throttled)
+    // becomes visible again — otherwise a returning player can sit on stale
+    // state until the next slow poll ticks.
     const onOnline = () => void t.refresh().catch(() => {});
+    const onVisible = () => {
+      if (document.visibilityState === "visible")
+        void t.refresh().catch(() => {});
+    };
     window.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onVisible);
       unsub();
       unsubStatus();
       t.destroy();

@@ -13,12 +13,12 @@ import ParkScene from "./ParkScene";
 import ParkPicker from "./ParkPicker";
 import DealEndOverlay from "./DealEndOverlay";
 import GameOverOverlay from "./GameOverOverlay";
-import LogFeed from "./LogFeed";
 import {
   Opponent,
   BoardBadge,
   BoardWordmark,
   BoardToolbar,
+  BoardLog,
   ToolButton,
   LeaveIcon,
   Piles,
@@ -27,7 +27,13 @@ import {
   HandHud,
   ActionBar,
 } from "./BoardParts";
-import { bestSuit, scoreHand, isAlive, type GameState } from "../game/engine";
+import {
+  bestSuit,
+  scoreHand,
+  isAlive,
+  roundNo,
+  type GameState,
+} from "../game/engine";
 import type { NetworkGameApi } from "../game/useNetworkGame";
 import { useTurnReplay } from "./useTurnReplay";
 import "./GameBoard.css";
@@ -120,10 +126,6 @@ export default function OnlineGameBoard({
   const discarding = myTurn && s.phase === "discarding";
   const counting = me ? bestSuit(me.hand) : null;
   const handScore = me ? scoreHand(me.hand, s.options) : 0;
-  const roundNo =
-    s.dealPlayers > 0
-      ? Math.max(1, Math.ceil(s.turnInDeal / s.dealPlayers))
-      : 1;
 
   // The feed normally shows the last few moves; when the host's "Full Action
   // History" house rule is on, players may expand it to the whole deal. We still
@@ -159,59 +161,29 @@ export default function OnlineGameBoard({
         {/* The action feed is a shared, host-controlled setting — seeing it is
             an advantage, so when the host (seat 0) hides it nobody sees it.
             Only the host gets the toggle; everyone else just follows it. */}
-        {s.options.showLog !== false
-          ? s.log.length > 0 && (
-              <div className="board__log">
-                <div className="board__log-head">
-                  <span className="board__log-title">At the Table</span>
-                  {viewer === 0 && (
-                    <button
-                      type="button"
-                      className="board__log-toggle"
-                      onClick={() =>
-                        game.act({ type: "setShowLog", value: false })
-                      }
-                      aria-label="Hide the action log for everyone"
-                    >
-                      Hide
-                    </button>
-                  )}
-                </div>
-                <LogFeed
-                  entries={visibleLog}
-                  limit={logShowingAll ? undefined : RECENT_LOG}
-                  newestFirst
-                />
-                {logExpandable && (
-                  <button
-                    type="button"
-                    className="board__log-more"
-                    onClick={() => setShowAllLog((v) => !v)}
-                    aria-expanded={logShowingAll}
-                  >
-                    {logShowingAll
-                      ? "Show recent only"
-                      : `Show full deal history (${visibleLog.length})`}
-                  </button>
-                )}
-              </div>
-            )
-          : viewer === 0 && (
-              <button
-                type="button"
-                className="board__log-show"
-                onClick={() => game.act({ type: "setShowLog", value: true })}
-              >
-                Show log
-              </button>
-            )}
+        <BoardLog
+          entries={visibleLog}
+          recentLimit={RECENT_LOG}
+          visible={s.options.showLog !== false}
+          canToggle={viewer === 0}
+          onToggle={() =>
+            game.act({
+              type: "setShowLog",
+              value: s.options.showLog === false,
+            })
+          }
+          hideLabel="Hide the action log for everyone"
+          expandable={logExpandable}
+          showingAll={logShowingAll}
+          onToggleExpand={() => setShowAllLog((v) => !v)}
+        />
 
         <BoardBadge />
         <BoardWordmark />
 
         <BoardToolbar
           dealNum={s.dealNum}
-          roundNo={roundNo}
+          roundNo={roundNo(s)}
           aliveCount={aliveCount}
           onSwitchPark={() => setParksOpen(true)}
           onHelp={() => setHelpOpen(true)}
@@ -239,7 +211,11 @@ export default function OnlineGameBoard({
           canDraw={canDraw}
           onDrawDeck={() => game.act({ type: "drawDeck" })}
           onTakeDiscard={() => game.act({ type: "takeDiscard" })}
-          status={<div className="board__status">{turnLabel}</div>}
+          status={
+            <div className="board__status" role="status" aria-live="polite">
+              {turnLabel}
+            </div>
+          }
         />
 
         {/* You — always at the bottom */}

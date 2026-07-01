@@ -444,10 +444,88 @@ function redactState(state, viewerId) {
     )
   };
 }
+
+// src/game/config.ts
+var TRAIT_KEYS = ["bluff", "memory", "patience", "aggression", "risk"];
+var BOOL_OPTS = [
+  "threeOfAKind",
+  "grace",
+  "knockPenalty",
+  "sound",
+  "fullHistory"
+];
+var clampName = (s, fallback) => (typeof s === "string" ? s.trim().slice(0, 40) : "") || fallback;
+var clampKey = (s, fallback) => typeof s === "string" && /^[a-z0-9-]{1,32}$/.test(s) ? s : fallback;
+var clampImage = (s) => typeof s === "string" && s.length <= 512 ? s : void 0;
+function clampTraits(t) {
+  if (!t || typeof t !== "object") return void 0;
+  const src = t;
+  const out = {};
+  for (const k of TRAIT_KEYS) {
+    const v = Number(src[k]);
+    out[k] = Number.isFinite(v) ? Math.max(1, Math.min(5, Math.round(v))) : 3;
+  }
+  return out;
+}
+function sanitizeOptions(o) {
+  const src = o && typeof o === "object" ? o : {};
+  const out = {};
+  for (const k of BOOL_OPTS) out[k] = src[k] === true;
+  out.showLog = src.showLog !== false;
+  return out;
+}
+function buildCreateSetup(config) {
+  const humans = Math.max(1, Math.min(8, Number(config.humans) | 0));
+  const ai = (Array.isArray(config.ai) ? config.ai : []).slice(
+    0,
+    Math.max(0, 8 - humans)
+  );
+  const players = [];
+  const seats = [];
+  for (let i = 0; i < humans; i++) {
+    const isCreator = i === 0;
+    const name = isCreator ? clampName(config.creatorName, "Player 1") : `Player ${i + 1}`;
+    players.push({ id: `p${i}`, name, isAI: false, avatarKey: "ranger" });
+    seats.push({
+      idx: i,
+      name: isCreator ? name : null,
+      avatar: "ranger",
+      isAI: false,
+      filled: isCreator
+    });
+  }
+  ai.forEach((c, j) => {
+    const idx = humans + j;
+    const aiName = clampName(c.name, `Bot ${j + 1}`);
+    const avatar = clampKey(c.avatarKey, "ranger");
+    const emoji = typeof c.emoji === "string" ? c.emoji.slice(0, 8) : void 0;
+    players.push({
+      id: `p${idx}`,
+      name: aiName,
+      isAI: true,
+      avatarKey: avatar,
+      traits: clampTraits(c.traits),
+      emoji,
+      image: clampImage(c.image)
+    });
+    seats.push({ idx, name: aiName, avatar, emoji, isAI: true, filled: true });
+  });
+  return {
+    players,
+    seats,
+    options: sanitizeOptions(config.options),
+    humans,
+    aiCount: ai.length
+  };
+}
 export {
   advanceAuthority,
   applyAction,
   applyPlayerAction,
+  buildCreateSetup,
+  clampKey,
+  clampName,
   createGameState,
-  redactState
+  redactState,
+  sanitizeOptions
 };
