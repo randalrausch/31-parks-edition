@@ -15,9 +15,28 @@ export const supabase: SupabaseClient | null = supabaseEnabled
     })
   : null;
 
+// Abort a request that never settles (e.g. a half-open connection on a mobile
+// network handoff). Without this, one stuck invoke would leave NetworkTransport's
+// `fetching` guard set forever, silently killing its safety-net poll.
+const REQUEST_TIMEOUT_MS = 10_000;
+
 export function makeGameApi(client: SupabaseClient): GameApi {
   async function call<T>(body: Record<string, unknown>): Promise<T> {
-    const { data, error } = await client.functions.invoke("game", { body });
+    const invoke = () =>
+      client.functions.invoke("game", {
+        body,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+    let res: Awaited<ReturnType<typeof invoke>>;
+    try {
+      res = await invoke();
+    } catch {
+      // A timeout/abort or transport failure rejects here (rather than
+      // returning `error`); surface a clear message so the transport flips to
+      // "reconnecting" and re-arms its poll instead of hanging.
+      throw new Error("Couldn't reach the game server. Check your connection.");
+    }
+    const { data, error } = res;
     if (error) {
       // supabase-js wraps any non-2xx as a FunctionsHttpError whose generic
       // message is "Edge Function returned a non-2xx status code". Our real

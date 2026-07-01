@@ -34,17 +34,16 @@ drop policy if exists "games are readable by anyone" on public.games;
 create policy "games are readable by anyone"
   on public.games for select using (true);
 
--- PRIVACY NOTE: because the SELECT above is open, an anon client with the
--- public key can enumerate open lobbies and their join `code`s. Codes are
--- unguessable CSPRNG values, so this only matters if you treat a code as a
--- private invite. No card data is ever here (it lives in game_secrets, which
--- anon cannot touch at all). OPTIONAL HARDENING — hide the code from REST
--- enumeration while keeping Realtime working (the client never reads `code`
--- from the table; it comes from the create/join Edge Function responses).
--- Apply, then verify online sync still works:
---   revoke select on public.games from anon, authenticated;
---   grant  select (id, status, version, seats, created_at, updated_at)
---     on public.games to anon, authenticated;
+-- PRIVACY: keep the row-level SELECT open (Realtime needs it) but hide the join
+-- `code` column from anon REST enumeration via column-level privileges, so a
+-- public-key client can't scrape open lobbies' invite codes. The client never
+-- reads `code` from the table (it comes from the create/join Edge Function
+-- responses); the Edge Function uses the service-role key, which bypasses these
+-- grants. No card data is ever here (it lives in game_secrets, fully denied).
+-- (Shipped as migration 20260701120000_restrict_lobby_code_select.sql.)
+revoke select on public.games from anon, authenticated;
+grant select (id, status, version, seats, created_at, updated_at)
+  on public.games to anon, authenticated;
 
 -- No anon write policies on games, and NO policies at all on game_secrets, so
 -- anon is fully denied there. The Edge Function uses the service-role key,

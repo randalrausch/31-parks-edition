@@ -175,6 +175,22 @@ async function loadById(id: string) {
 }
 
 /**
+ * Cap on the serialized game state, mirroring the Azure backend's Table Storage
+ * limit so a game behaves identically on either provider: a state that outgrows
+ * this fails cleanly with a 507 rather than growing a jsonb row (and Postgres
+ * CPU/IO on every write) without bound. The main growth vector is `scoreHistory`
+ * over a very long game; every mutating op commits through `commitGame`, so one
+ * guard here covers act/start/join.
+ */
+const MAX_STATE_BYTES = 60_000;
+class StateTooLargeError extends Error {
+  constructor(size: number) {
+    super(`state ${size} bytes exceeds ${MAX_STATE_BYTES}`);
+    this.name = "StateTooLargeError";
+  }
+}
+
+/**
  * Atomic optimistic-concurrency commit. The `commit_game` RPC runs in a single
  * Postgres transaction: it bumps `games.version` ONLY if it still equals
  * `expectedVersion`, and — in the same transaction — writes the new secret
@@ -193,6 +209,10 @@ async function commitGame(
     seatTokens?: unknown;
   },
 ): Promise<boolean> {
+  if (patch.state != null) {
+    const size = JSON.stringify(patch.state).length;
+    if (size > MAX_STATE_BYTES) throw new StateTooLargeError(size);
+  }
   const { data, error } = await admin.rpc("commit_game", {
     p_id: id,
     p_expected_version: expectedVersion,
@@ -482,6 +502,16 @@ Deno.serve(async (req: Request) => {
 
     return fail("unknown-op", "Unsupported request.", 400, { op });
   } catch (e) {
+    // A state that outgrew the size cap is a specific, actionable failure —
+    // surface it as a 507 with a clear message, matching the Azure backend,
+    // instead of a silent generic 500.
+    if (e instanceof StateTooLargeError)
+      return fail(
+        "state-too-large",
+        "This game has grown too large to continue. Please start a new one.",
+        507,
+        { op },
+      );
     // Log the real cause (with stack) server-side; never leak internals to the
     // client — they get a clear, generic message.
     logEvent("error", {
