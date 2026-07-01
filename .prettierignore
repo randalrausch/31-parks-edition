@@ -1,5 +1,6 @@
 # Generated / vendored — never hand-format these.
 dist
+coverage
 supabase/functions/_shared/engine.mjs
 package-lock.json
 api/package-lock.json
