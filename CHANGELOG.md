@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.4.0 — 2026-07-01
+
+### Features
+
+- report client-side crashes off-device (#38)
+- add a health probe op (#37)
+
+### Fixes
+
+- P0 security & reliability hardening (#34)
+
 ## v0.3.0 — 2026-07-01
 
 ### Features
