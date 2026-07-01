@@ -6,6 +6,7 @@
  */
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { elog } from "../game/debug";
+import { activeBackend } from "../game/backend";
 import "./ErrorBoundary.css";
 
 interface State {
@@ -22,6 +23,18 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, St
   componentDidCatch(error: Error, info: ErrorInfo): void {
     elog("ui", "render crashed", error);
     if (info?.componentStack) console.error(info.componentStack);
+    // Best-effort off-device report so a production crash isn't invisible. Only
+    // when an online backend is configured; solo/pass-and-play stays local.
+    try {
+      activeBackend?.reportError?.({
+        message: error.message,
+        stack: error.stack,
+        url: typeof location !== "undefined" ? location.href : undefined,
+        context: "render-boundary",
+      });
+    } catch {
+      /* the reporter must never worsen the crash */
+    }
   }
 
   render() {

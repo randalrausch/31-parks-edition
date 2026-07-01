@@ -666,6 +666,18 @@ async function handleHealth(store, provider) {
     return { status: 503, body: { ok: true, healthy: false, provider } };
   }
 }
+function handleClientError(body) {
+  const clamp = (v, n) => typeof v === "string" && v.length > 0 ? v.slice(0, n) : void 0;
+  const entry = {
+    kind: "client-error",
+    message: clamp(body.message, 500) ?? "(no message)",
+    stack: clamp(body.stack, 4e3),
+    url: clamp(body.url, 300),
+    context: clamp(body.context, 200)
+  };
+  console.warn(`client-error ${JSON.stringify(entry)}`);
+  return ok({ ok: true });
+}
 
 // src/game/store.ts
 var StateTooLargeError = class extends Error {
@@ -732,6 +744,7 @@ function makeRouter(store, opts = {}) {
       const r = await handleHealth(store, provider);
       return reply(r.status, r.body);
     }
+    if (op === "clientError") return reply(200, handleClientError(body).body);
     if (op === "create") {
       if (limited(`create:${req.ip}`, 15, 6e5))
         return reply(429, {

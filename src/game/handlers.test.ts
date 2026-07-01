@@ -3,7 +3,7 @@
  * These lock the wire shapes the client depends on and the authority rules
  * (host-only start, no-op detection, hidden-info redaction).
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { makeMemoryStore } from "./memoryStore";
 import {
   handleCreate,
@@ -13,6 +13,7 @@ import {
   handleState,
   handleVersion,
   handleHealth,
+  handleClientError,
 } from "./handlers";
 import { HIDDEN_CARD } from "./authority";
 import type { GameStore } from "./store";
@@ -202,5 +203,25 @@ describe("handlers", () => {
     const res = await handleHealth(broken, "Supabase");
     expect(res.status).toBe(503);
     expect((res.body as { healthy: boolean }).healthy).toBe(false);
+  });
+
+  it("clientError clamps the untrusted payload, logs it, and returns ok", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const res = handleClientError({
+        message: "x".repeat(9999),
+        stack: "boom",
+        url: "https://example.test/",
+        context: "render-boundary",
+      });
+      expect(res.status).toBe(200);
+      expect((res.body as { ok: boolean }).ok).toBe(true);
+      const line = warn.mock.calls[0][0] as string;
+      expect(line.startsWith("client-error ")).toBe(true);
+      const logged = JSON.parse(line.replace(/^client-error /, "")) as { message: string };
+      expect(logged.message.length).toBe(500); // clamped
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

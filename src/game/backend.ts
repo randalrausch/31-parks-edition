@@ -17,6 +17,14 @@ import type { GameApi } from "./gameApi";
 import { azureBackend } from "./azureClient";
 import { supabaseBackend } from "./supabaseClient";
 
+/** A bounded, best-effort report of a client-side error, sent off-device. */
+export interface ClientErrorReport {
+  message: string;
+  stack?: string;
+  url?: string;
+  context?: string;
+}
+
 export interface GameBackend {
   /** Provider name shown in the About dialog (e.g. "Supabase"). */
   readonly name: string;
@@ -28,6 +36,11 @@ export interface GameBackend {
    * indicator. A push-less provider can ignore both and rely on polling.
    */
   subscribe(gameId: string, onChange: () => void, onStatus?: (live: boolean) => void): () => void;
+  /**
+   * Fire-and-forget report of a client error to the backend's logs. Best-effort:
+   * never throws, never blocks. Optional — a provider may omit it.
+   */
+  reportError?(report: ClientErrorReport): void;
 }
 
 /**
