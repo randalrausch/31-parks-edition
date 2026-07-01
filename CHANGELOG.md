@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.4.1 — 2026-07-01
+
+### Fixes
+
+- cap act writes per seat token (#41)
+
 ## v0.4.0 — 2026-07-01
 
 ### Features
