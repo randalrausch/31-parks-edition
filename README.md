@@ -110,11 +110,14 @@ authoritative and enforces hidden hands either way.
 | **Static hosting** | |
 | `npm run netlify:deploy` | Build and upload `dist/` to Netlify |
 
-**Automated deploys (GitHub Actions):** the existing **Netlify + Supabase**
-pipeline runs on push to `main` (see [docs/DEPLOY.md](docs/DEPLOY.md)). The
-**Azure** workflow (`.github/workflows/azure.yml`) is **opt-in** — set the repo
-variable `DEPLOY_AZURE=true` to enable it (full setup in
-[docs/AZURE.md](docs/AZURE.md)). They don't interfere with each other.
+**Automated deploys (GitHub Actions):** on push to `main`, the **Netlify +
+Supabase** pipeline deploys by default (see [docs/DEPLOY.md](docs/DEPLOY.md)).
+Setting the repo variable `DEPLOY_AZURE=true` **switches the deploy target to
+Azure**: it activates the Azure workflow (`.github/workflows/azure.yml`) and — so
+the two never both ship the frontend — turns off the Netlify/Supabase *deploy*
+steps in `ci.yml`. They're mutually exclusive **deploy** targets, but the
+build-and-test quality gate still runs on every push for **both** back ends, so
+parity can't silently rot. Full Azure setup in [docs/AZURE.md](docs/AZURE.md).
 
 ## Project structure
 
