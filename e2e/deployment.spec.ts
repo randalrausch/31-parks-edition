@@ -50,7 +50,7 @@ test("plays a solo turn on the live site", async ({ page }) => {
 
   const hand = page.locator(".board__hand .card");
   await expect(hand).toHaveCount(3, { timeout: NET });
-  await page.getByRole("button", { name: /^draw from deck$/i }).click();
+  await page.locator("button.btn--draw", { hasText: /draw/i }).click();
   await expect(hand).toHaveCount(4);
   await hand.first().click();
   await page.getByRole("button", { name: /discard selected/i }).click();
@@ -116,7 +116,7 @@ test("online: two browsers create, join, start, and take a turn on the live back
     const actor = host; // seat 0 (host) leads the first turn
     const hand = actor.locator(".board__hand .card");
     await expect(hand).toHaveCount(3, { timeout: NET });
-    const draw = actor.getByRole("button", { name: /^draw from deck$/i });
+    const draw = actor.locator("button.btn--draw", { hasText: /draw/i });
     if (await draw.isEnabled().catch(() => false)) {
       await draw.click();
       await expect(hand).toHaveCount(4, { timeout: NET });
