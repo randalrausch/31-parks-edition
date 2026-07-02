@@ -16,7 +16,7 @@ import DealEndOverlay from "./DealEndOverlay";
 import GameOverOverlay from "./GameOverOverlay";
 import Avatar from "./Avatar";
 import {
-  Opponent,
+  OpponentRow,
   BoardBadge,
   BoardWordmark,
   BoardToolbar,
@@ -24,10 +24,7 @@ import {
   ToolButton,
   NewGameIcon,
   Piles,
-  PlayerHead,
-  HandFan,
-  HandHud,
-  ActionBar,
+  TurnControl,
   BoardFrame,
   SwitchParkModal,
 } from "./BoardParts";
@@ -127,11 +124,7 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
         }
       />
 
-      <div className="board__opponents">
-        {opponents.map(({ p, i }) => (
-          <Opponent key={p.id} player={p} isKnocker={s.knocker === i} />
-        ))}
-      </div>
+      <OpponentRow opponents={opponents} knocker={s.knocker} />
 
       <Piles
         deckCount={s.deck.length}
@@ -163,21 +156,17 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
           </div>
         ) : (
           <>
-            <PlayerHead player={cur} turnText={discarding ? " · discard a card" : "'s turn"} />
-            <HandFan
-              hand={cur.hand}
-              interactive={discarding}
+            <TurnControl
+              player={cur}
+              turnText={discarding ? " · discard a card" : "'s turn"}
+              discarding={discarding}
               counting={counting}
               selected={s.selected}
-              onSelect={game.selectCard}
-            />
-            <HandHud score={handScore} />
-            <ActionBar
-              discarding={discarding}
+              handScore={handScore}
               canDraw={canDraw}
               hasDiscard={!!topDiscard}
               canKnock={canDraw && s.knocker === null}
-              discardSelected={s.selected !== null}
+              onSelect={game.selectCard}
               onDrawDeck={game.drawDeck}
               onTakeDiscard={game.drawDiscard}
               onKnock={game.knock}
