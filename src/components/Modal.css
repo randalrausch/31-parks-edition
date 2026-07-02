@@ -51,8 +51,7 @@
   width: min(300px, 85vw);
   max-height: 100%;
   border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
-  padding: calc(24px + var(--safe-t)) 18px calc(20px + var(--safe-b))
-    calc(18px + var(--safe-l));
+  padding: calc(24px + var(--safe-t)) 18px calc(20px + var(--safe-b)) calc(18px + var(--safe-l));
   overflow-y: auto;
   animation: drawer-in 0.24s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
