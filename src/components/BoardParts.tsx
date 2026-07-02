@@ -6,7 +6,7 @@
  * (in-process reducer vs. server snapshots) and how actions are dispatched, so
  * these parts take plain data + callbacks and stay presentation-only.
  */
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Card from "./Card";
 import CardBack from "./CardBack";
 import Avatar from "./Avatar";
@@ -54,51 +54,40 @@ export function SwitchParkModal({ open, onClose }: { open: boolean; onClose: () 
 }
 
 /**
- * The "At the Table" action feed, shared by both boards so the panel shell can't
- * drift between them. The boards differ only in how visibility is controlled
- * (solo: a remembered local toggle; online: a host-gated, shared setting) and
- * whether the whole-deal history can be expanded — all passed in as props.
+ * The inner "At the Table" content — heading (with optional Hide toggle), the
+ * feed itself, and the optional full-deal-history expander. Shared by the desktop
+ * docked panel and the mobile drawer so the two presentations can never drift.
+ * `heading` lets the drawer supply its own title styling.
  */
-export function BoardLog({
+function LogPanelBody({
   entries,
   recentLimit,
-  visible,
   canToggle,
   onToggle,
-  hideLabel = "Hide the action log",
-  expandable = false,
-  showingAll = false,
+  hideLabel,
+  expandable,
+  showingAll,
   onToggleExpand,
-  hideWhenEmpty = false,
+  titleId,
 }: {
   entries: LogEntry[];
-  /** How many recent moves to show when not expanded. */
   recentLimit: number;
-  /** Whether the feed is currently shown. */
-  visible: boolean;
-  /** Whether this viewer may show/hide the feed. */
   canToggle: boolean;
   onToggle: () => void;
-  hideLabel?: string;
-  /** Whether a "show full deal history" affordance is offered. */
-  expandable?: boolean;
-  showingAll?: boolean;
+  hideLabel: string;
+  expandable: boolean;
+  showingAll: boolean;
   onToggleExpand?: () => void;
-  /** Solo: render nothing at all until there's something to show. */
-  hideWhenEmpty?: boolean;
+  /** When the feed labels a dialog (the mobile drawer), the title carries the id
+   * the dialog's aria-labelledby points at. */
+  titleId?: string;
 }) {
-  if (hideWhenEmpty && entries.length === 0) return null;
-  if (!visible)
-    return canToggle ? (
-      <button type="button" className="board__log-show" onClick={onToggle}>
-        Show log
-      </button>
-    ) : null;
-  if (entries.length === 0) return null;
   return (
-    <div className="board__log">
+    <>
       <div className="board__log-head">
-        <span className="board__log-title">At the Table</span>
+        <span className="board__log-title" id={titleId}>
+          At the Table
+        </span>
         {canToggle && (
           <button
             type="button"
@@ -121,7 +110,120 @@ export function BoardLog({
           {showingAll ? "Show recent only" : `Show full deal history (${entries.length})`}
         </button>
       )}
-    </div>
+    </>
+  );
+}
+
+/**
+ * The "At the Table" action feed, shared by both boards so the panel shell can't
+ * drift between them. The boards differ only in how visibility is controlled
+ * (solo: a remembered local toggle; online: a host-gated, shared setting) and
+ * whether the whole-deal history can be expanded — all passed in as props.
+ *
+ * Two presentations, one content: a docked side panel on wide screens, and a
+ * tap-to-open left drawer on small screens (where the dock has nowhere to live).
+ * `available` gates the small-screen launcher — seeing the feed is a competitive
+ * advantage, so online passes the host's shared setting here (host-hidden = no
+ * launcher for anyone), while solo passes `true` (it's your own game, always
+ * peekable) independent of the dock's remembered show/hide preference.
+ */
+export function BoardLog({
+  entries,
+  recentLimit,
+  visible,
+  canToggle,
+  onToggle,
+  hideLabel = "Hide the action log",
+  expandable = false,
+  showingAll = false,
+  onToggleExpand,
+  hideWhenEmpty = false,
+  available = true,
+}: {
+  entries: LogEntry[];
+  /** How many recent moves to show when not expanded. */
+  recentLimit: number;
+  /** Whether the docked feed is currently shown (desktop presentation). */
+  visible: boolean;
+  /** Whether this viewer may show/hide the feed. */
+  canToggle: boolean;
+  onToggle: () => void;
+  hideLabel?: string;
+  /** Whether a "show full deal history" affordance is offered. */
+  expandable?: boolean;
+  showingAll?: boolean;
+  onToggleExpand?: () => void;
+  /** Solo: render nothing at all until there's something to show. */
+  hideWhenEmpty?: boolean;
+  /** Whether this viewer is permitted to see the feed at all — drives the
+   * small-screen launcher (solo: always; online: the host's shared setting). */
+  available?: boolean;
+}) {
+  // Small-screen drawer state: an ephemeral, on-demand overlay (no persistence —
+  // it isn't a dock preference, just "show me the feed right now").
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  if (hideWhenEmpty && entries.length === 0) return null;
+
+  const body = (titleId?: string) => (
+    <LogPanelBody
+      entries={entries}
+      recentLimit={recentLimit}
+      canToggle={canToggle}
+      onToggle={onToggle}
+      hideLabel={hideLabel}
+      expandable={expandable}
+      showingAll={showingAll}
+      onToggleExpand={onToggleExpand}
+      titleId={titleId}
+    />
+  );
+
+  return (
+    <>
+      {/* Desktop: the docked side panel (or the "Show log" pill when hidden).
+          Both are display:none on small screens — the pill launcher below takes
+          over there. */}
+      {visible ? (
+        entries.length > 0 && <div className="board__log">{body()}</div>
+      ) : canToggle ? (
+        <button type="button" className="board__log-show" onClick={onToggle}>
+          Show log
+        </button>
+      ) : null}
+
+      {/* Small screens: a floating pill at the table's left edge. When the feed
+          is available it opens the same content as a left drawer; gated by
+          `available` so the online host's hide setting still hides it from
+          everyone. When it's hidden, only a viewer who may toggle (the host) sees
+          a "Show log" pill to bring it back — otherwise the host would be stuck
+          with no way to re-enable it on a phone. */}
+      {available
+        ? entries.length > 0 && (
+            <button
+              type="button"
+              className="board__log-pill"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Open the action log"
+            >
+              Log
+            </button>
+          )
+        : canToggle && (
+            <button type="button" className="board__log-pill" onClick={onToggle}>
+              Show log
+            </button>
+          )}
+
+      <Modal
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        labelledBy="log-drawer-title"
+        variant="modal__panel--drawer"
+      >
+        {body("log-drawer-title")}
+      </Modal>
+    </>
   );
 }
 
@@ -307,6 +409,47 @@ export function BoardToolbar({
   );
 }
 
+/**
+ * The board's top bar as one in-flow row, shared by both boards. Composing the
+ * park badge, game wordmark, and toolbar into a single flex row (rather than
+ * three independently-positioned islands) is what keeps them from overlapping on
+ * narrow screens — the row reserves its own height and lays the three groups out
+ * left / center / right. The background stays transparent and each group keeps
+ * its own translucent chip so the park scene still shows through. On small
+ * screens the wordmark and the deal/round meta drop away (see GameBoard.css),
+ * leaving just the badge and the tool buttons.
+ */
+export function BoardHeader({
+  dealNum,
+  roundNo,
+  aliveCount,
+  onSwitchPark,
+  onHelp,
+  trailing,
+}: {
+  dealNum: number;
+  roundNo: number;
+  aliveCount: number;
+  onSwitchPark: () => void;
+  onHelp: () => void;
+  trailing?: ReactNode;
+}) {
+  return (
+    <header className="board__header">
+      <BoardBadge />
+      <BoardWordmark />
+      <BoardToolbar
+        dealNum={dealNum}
+        roundNo={roundNo}
+        aliveCount={aliveCount}
+        onSwitchPark={onSwitchPark}
+        onHelp={onHelp}
+        trailing={trailing}
+      />
+    </header>
+  );
+}
+
 /** Center deck + discard piles. `status` is the line shown beneath them. */
 export function Piles({
   deckCount,
@@ -472,7 +615,7 @@ export function ActionBar({
       ) : (
         <>
           <button className="btn btn--draw" type="button" onClick={onDrawDeck} disabled={!canDraw}>
-            Draw Deck
+            Draw <span className="btn__mini">from</span> Deck
           </button>
           <button
             className="btn btn--draw"

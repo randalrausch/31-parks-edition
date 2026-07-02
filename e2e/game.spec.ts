@@ -24,7 +24,9 @@ test("plays a solo turn: deal, draw, discard", async ({ page }) => {
 
   // Draw from the deck → four cards, then discard one. The turn then passes to
   // an AI (its "thinking" view appears), which confirms the discard registered.
-  await page.getByRole("button", { name: /^draw deck$/i }).click();
+  // Scope to the action-bar button (the deck pile shares the "Draw from deck"
+  // accessible name), disambiguated from "Take Discard" by its text.
+  await page.locator("button.btn--draw", { hasText: /draw/i }).click();
   await expect(hand).toHaveCount(4);
   await hand.first().click();
   await page.getByRole("button", { name: /discard selected/i }).click();

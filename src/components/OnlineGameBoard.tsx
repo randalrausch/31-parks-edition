@@ -11,9 +11,7 @@ import DealEndOverlay from "./DealEndOverlay";
 import GameOverOverlay from "./GameOverOverlay";
 import {
   OpponentRow,
-  BoardBadge,
-  BoardWordmark,
-  BoardToolbar,
+  BoardHeader,
   BoardLog,
   ToolButton,
   LeaveIcon,
@@ -183,12 +181,12 @@ export default function OnlineGameBoard({
         expandable={logExpandable}
         showingAll={logShowingAll}
         onToggleExpand={() => setShowAllLog((v) => !v)}
+        // Small-screen launcher follows the host's shared setting: if the host
+        // hid the log, no one — phone or laptop — gets a way to open it.
+        available={s.options.showLog !== false}
       />
 
-      <BoardBadge />
-      <BoardWordmark />
-
-      <BoardToolbar
+      <BoardHeader
         dealNum={s.dealNum}
         roundNo={roundNo(s)}
         aliveCount={aliveCount}
