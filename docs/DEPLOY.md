@@ -126,13 +126,15 @@ backend instead, see [AZURE.md](AZURE.md).
 
 - **Every push and PR:** type-check, tests, the edge-bundle sync check, and a
   production build (the quality gate).
-- **Push to `main` only:** it then deploys — **backend first** (only when
-  `supabase/**` changed), then the frontend, then a smoke check.
+- **Push to `main` only:** it then deploys the targets you've opted into —
+  **Supabase backend first** (`DEPLOY_SUPABASE`, only when `supabase/**` changed),
+  then the **Netlify frontend** (`DEPLOY_NETLIFY`), then a smoke check.
 
-> **Deploying to Azure instead of Netlify/Supabase?** Set the repo Variable
-> `DEPLOY_AZURE=true`. That activates `.github/workflows/azure.yml` and disables
-> the Netlify/Supabase deploy steps here in one move (the tests still run). See
-> [AZURE.md](AZURE.md) for the full Azure setup.
+> **Deploy targets are independent opt-ins.** Each is a repo Variable you set to
+> `true`: `DEPLOY_SUPABASE` (backend) and `DEPLOY_NETLIFY` (frontend) here, plus
+> `DEPLOY_AZURE` for the Azure stack (`.github/workflows/azure.yml`). Enable any
+> combination — the Supabase/Netlify stack, Azure, both at once, or none (with no
+> flags set, nothing deploys). The tests run either way. See [AZURE.md](AZURE.md).
 
 Two deliberate free-tier choices live in that workflow:
 
@@ -159,10 +161,16 @@ Two deliberate free-tier choices live in that workflow:
    | `VITE_SUPABASE_URL` | `https://<ref>.supabase.co` (baked into the web build) |
    | `VITE_SUPABASE_KEY` | Supabase → Project Settings → API → **publishable/anon** key |
 
-   Optionally add a **Variable** (not a secret) `SITE_URL` =
-   `https://your-site.netlify.app` to enable the post-deploy smoke check.
+   Then, under **Variables**, turn the deploys on — they're opt-in:
 
-3. Push to `main`. CI builds and deploys; subsequent pushes auto-deploy.
+   | Variable | Set to | Enables |
+   |----------|--------|---------|
+   | `DEPLOY_SUPABASE` | `true` | Supabase backend deploy (migrations + `game` fn) |
+   | `DEPLOY_NETLIFY` | `true` | Netlify frontend deploy |
+   | `NETLIFY_SITE_URL` *(optional)* | `https://your-site.netlify.app` | post-deploy smoke check (falls back to the shared `SITE_URL`) |
+
+3. Push to `main`. CI deploys whatever you enabled; subsequent pushes auto-deploy.
+   (Leave both `DEPLOY_*` flags unset and CI just runs the tests — deploys nowhere.)
 
 > **Supabase free-tier caveat:** a free project is **paused after 7 days of
 > inactivity**. If your online demo stops working, un-pause it from the Supabase

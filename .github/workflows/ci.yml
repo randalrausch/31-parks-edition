@@ -18,11 +18,15 @@ name: CI/CD
 # Optional repo Variable: SITE_URL (e.g. https://your-site.netlify.app) enables
 # the post-deploy smoke check.
 #
-# Switching to Azure? Set the repo Variable DEPLOY_AZURE=true. That activates
-# .github/workflows/azure.yml (deploys the Function App + Static Web App) AND
-# disables the Netlify/Supabase deploy steps below — so the two pipelines never
-# both ship the frontend. The tests/quality gate here keep running regardless,
-# including on PRs. See docs/AZURE.md.
+# Deploy targets are independent, positive opt-ins — set none, one, or several:
+#   DEPLOY_SUPABASE=true  → deploy the Supabase backend (migrations + game fn) here
+#   DEPLOY_NETLIFY=true   → deploy the prebuilt frontend to Netlify here
+#   DEPLOY_AZURE=true     → deploy the Azure Function App + Static Web App
+#                           (in .github/workflows/azure.yml)
+# They no longer exclude each other: e.g. DEPLOY_SUPABASE+DEPLOY_NETLIFY ships the
+# Supabase/Netlify stack, DEPLOY_AZURE ships Azure, both sets ship both stacks
+# side by side, and setting nothing deploys nowhere. The tests/quality gate below
+# runs on every push and PR regardless of any flag. See docs/DEPLOY.md & AZURE.md.
 
 on:
   push:
@@ -110,13 +114,13 @@ jobs:
       # "Run workflow" (workflow_dispatch) forces a backend deploy regardless,
       # so the function can be redeployed without a fake supabase/** commit.
       - name: Install Supabase CLI
-        if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_AZURE != 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && steps.changes.outputs.backend == 'true')) }}
+        if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_SUPABASE == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && steps.changes.outputs.backend == 'true')) }}
         uses: supabase/setup-cli@df56b21da46c98abb12a9804e4fb1f657773e333 # v2
         with:
           version: latest
 
       - name: Deploy Supabase backend (migrations + game function)
-        if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_AZURE != 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && steps.changes.outputs.backend == 'true')) }}
+        if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_SUPABASE == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && steps.changes.outputs.backend == 'true')) }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -127,7 +131,7 @@ jobs:
           supabase functions deploy game
 
       - name: Deploy site to Netlify (prebuilt — no Netlify build minutes)
-        if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_AZURE != 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_NETLIFY == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
@@ -135,11 +139,15 @@ jobs:
 
       # ---- Verify the live site serves exactly what we built ----
       - name: Smoke check (live bundle matches build)
-        if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_AZURE != 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.SITE_URL != '' }}
+        if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_NETLIFY == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (vars.NETLIFY_SITE_URL || vars.SITE_URL) != '' }}
+        env:
+          # Prefer a Netlify-specific URL so this stays correct when Azure also
+          # deploys (its smoke uses AZURE_SITE_URL); fall back to the shared SITE_URL.
+          SITE_URL: ${{ vars.NETLIFY_SITE_URL || vars.SITE_URL }}
         run: |
           BUILT=$(grep -o 'assets/index-[^"]*\.js' dist/index.html | head -1)
           for i in 1 2 3 4 5; do
-            LIVE=$(curl -s "${{ vars.SITE_URL }}/?cb=$i" -H 'Cache-Control: no-cache' | grep -o 'assets/index-[^"]*\.js' | head -1)
+            LIVE=$(curl -s "$SITE_URL/?cb=$i" -H 'Cache-Control: no-cache' | grep -o 'assets/index-[^"]*\.js' | head -1)
             [ "$BUILT" = "$LIVE" ] && break
             sleep 5
           done

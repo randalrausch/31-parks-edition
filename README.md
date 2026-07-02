@@ -112,14 +112,15 @@ authoritative and enforces hidden hands either way.
 | **Static hosting** | |
 | `npm run netlify:deploy` | Build and upload `dist/` to Netlify |
 
-**Automated deploys (GitHub Actions):** on push to `main`, the **Netlify +
-Supabase** pipeline deploys by default (see [docs/DEPLOY.md](docs/DEPLOY.md)).
-Setting the repo variable `DEPLOY_AZURE=true` **switches the deploy target to
-Azure**: it activates the Azure workflow (`.github/workflows/azure.yml`) and — so
-the two never both ship the frontend — turns off the Netlify/Supabase *deploy*
-steps in `ci.yml`. They're mutually exclusive **deploy** targets, but the
-build-and-test quality gate still runs on every push for **both** back ends, so
-parity can't silently rot. Full Azure setup in [docs/AZURE.md](docs/AZURE.md).
+**Automated deploys (GitHub Actions):** on push to `main`, each deploy target is
+an **independent, opt-in** repo variable — set any combination:
+`DEPLOY_SUPABASE=true` (Supabase backend) and `DEPLOY_NETLIFY=true` (Netlify
+frontend) ship that stack, while `DEPLOY_AZURE=true` ships the Azure Function App
++ Static Web App (`.github/workflows/azure.yml`). Enable one stack, both side by
+side, or none — with no flags set, nothing deploys. The build-and-test quality
+gate still runs on every push for **both** back ends regardless, so parity can't
+silently rot. See [docs/DEPLOY.md](docs/DEPLOY.md) and
+[docs/AZURE.md](docs/AZURE.md).
 
 **Testing the deployment (play the real thing):** `npm run test:e2e:deploy`
 drives a real browser against a *live* URL and actually plays the game — it
