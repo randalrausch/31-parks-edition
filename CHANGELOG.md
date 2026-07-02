@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.1 — 2026-07-02
+
+### Fixes
+
+- stop online turn replay from looping and locking out the player (#52)
+
 ## v0.7.0 — 2026-07-02
 
 ### Features
