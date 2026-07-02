@@ -1,9 +1,12 @@
 name: Deploy (Azure)
 
-# OPTIONAL Azure deploy — additive to the Netlify/Supabase pipeline in ci.yml,
-# which is unchanged. This workflow no-ops unless you opt in by setting the repo
-# Variable DEPLOY_AZURE = "true" (Settings → Secrets and variables → Actions →
-# Variables). See docs/AZURE.md for the full setup.
+# OPTIONAL Azure deploy. Enable it by setting the repo Variable DEPLOY_AZURE =
+# "true" (Settings → Secrets and variables → Actions → Variables); it no-ops
+# otherwise. DEPLOY_AZURE=true is a single switch: it activates this workflow AND
+# turns off the Netlify/Supabase DEPLOY steps in ci.yml, so the two never both
+# ship the frontend (they're mutually exclusive deploy targets). ci.yml's
+# build-and-test quality gate still runs on every push for both back ends, so
+# parity is preserved. See docs/AZURE.md for the full setup.
 #
 # Required when enabled:
 #   Variables: DEPLOY_AZURE=true, VITE_API_BASE (your Function App URL + /api),
