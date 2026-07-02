@@ -49,6 +49,13 @@ export function makeRouter(
     provider?: string;
     /** CORS Access-Control-Allow-Headers. supabase-js needs the fuller set. */
     allowedHeaders?: string;
+    /**
+     * Structured observability sink. Called once per request with the op, HTTP
+     * status, and latency (ms). Each backend wires it to its own log — App
+     * Insights (Azure) / function logs (Supabase) — so production golden signals
+     * (request + error rate, latency per op) are queryable. Best-effort only.
+     */
+    onEvent?: (event: string, data: Record<string, unknown>) => void;
   } = {},
 ) {
   // ALLOWED_ORIGIN may be a comma-separated list (e.g. the Static Web App default
@@ -77,6 +84,12 @@ export function makeRouter(
     Vary: "Origin",
   });
 
+  const onEvent = opts.onEvent;
+  // Log the mutating ops always; skip successful high-frequency reads (state
+  // polls, version/health probes) to keep log volume + cost sane. Failures
+  // (4xx/5xx) are logged for every op regardless.
+  const LOGGED_OPS = new Set(["create", "join", "start", "act"]);
+
   const hits = new Map<string, { n: number; reset: number }>();
   const limited = (key: string, max: number, windowMs: number): boolean => {
     const now = Date.now();
@@ -91,12 +104,14 @@ export function makeRouter(
   };
 
   return async function route(req: RawRequest): Promise<RawResponse> {
+    const t0 = Date.now();
+    let op = "";
     const corsHeaders = cors(req.origin);
-    const reply = (status: number, body: unknown): RawResponse => ({
-      status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      body,
-    });
+    const reply = (status: number, body: unknown): RawResponse => {
+      if (onEvent && (LOGGED_OPS.has(op) || status >= 400))
+        onEvent("request", { op, status, ms: Date.now() - t0 });
+      return { status, headers: { ...corsHeaders, "Content-Type": "application/json" }, body };
+    };
     if (req.method === "OPTIONS") return { status: 204, headers: corsHeaders };
     if (req.method !== "POST") return reply(405, { error: "POST only." });
 
@@ -110,7 +125,7 @@ export function makeRouter(
       return reply(400, { error: "We couldn't read that request." });
     }
 
-    const op = String(body?.op ?? "");
+    op = String(body?.op ?? "");
     if (op === "version") return reply(200, handleVersion(provider).body);
     if (op === "health") {
       const r = await handleHealth(store, provider);

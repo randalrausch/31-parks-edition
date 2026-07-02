@@ -23,7 +23,13 @@ import { initTelemetry } from "./telemetry.js";
 initTelemetry();
 
 const store = makeTableStore();
-const route = makeRouter(store, { rateLimiter: makeTableRateLimiter() });
+const route = makeRouter(store, {
+  rateLimiter: makeTableRateLimiter(),
+  // App Insights auto-collects console output (see telemetry.ts), so this
+  // structured line becomes a queryable trace: request + error rate and latency
+  // per op. Best-effort; never on the failure path.
+  onEvent: (event, data) => console.log(JSON.stringify({ event, ...data })),
+});
 
 const clientIp = (req: HttpRequest): string =>
   req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
