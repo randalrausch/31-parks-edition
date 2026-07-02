@@ -25,7 +25,15 @@
   --board-card-unit: clamp(54px, 7.6vmin, 104px);
   --card-unit: var(--board-card-unit);
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  /* header · opponents · table · your hand. The header is a real grid row (not
+     floating chrome) so it reserves its own height and can never overlap the
+     badge/meta/opponents the way three independent absolute islands did. */
+  grid-template-rows: auto auto 1fr auto;
+  /* Clamp the single column to the board's width (minmax(0,…), not the default
+     auto) so a wide row's min-content can't blow the grid out past the frame —
+     otherwise the in-flow header's right-edge tools would be clipped by the
+     border. Overflowing content is clipped, not expanded. */
+  grid-template-columns: minmax(0, 1fr);
 }
 .board__scene {
   position: absolute;
@@ -83,12 +91,27 @@
   font-size: 1.15rem;
 }
 
-/* ── Chrome ── */
-.board__badge {
-  position: absolute;
-  top: 12px;
-  left: 14px;
+/* ── Chrome ──
+   The top bar is one in-flow grid row (left badge · center wordmark · right
+   meta+tools). The row's background is transparent and each group keeps its own
+   translucent chip, so the park scene still shows through between them. */
+.board__header {
+  grid-row: 1;
   z-index: 6;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px 0;
+}
+.board__badge {
+  justify-self: start;
+  /* Cap the badge to its grid track and clip: without max-width an auto-sized
+     start-justified item takes its full content width and (grid tracks don't
+     clip) a long park name like "Theodore Roosevelt" slides under the tools. */
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -107,12 +130,16 @@
   display: flex;
   flex-direction: column;
   line-height: 1;
+  min-width: 0;
 }
 .board__park {
   font-family: var(--font-display);
   font-size: 1.3rem;
   letter-spacing: 0.05em;
   color: var(--cream);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .board__desig {
   font-family: var(--font-label);
@@ -120,12 +147,12 @@
   letter-spacing: 0.2em;
   font-size: 0.55rem;
   color: var(--gold-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .board__topright {
-  position: absolute;
-  top: 12px;
-  right: 14px;
-  z-index: 6;
+  justify-self: end;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -175,14 +202,14 @@
 
 /* ── Opponents row (adapts to any count) ── */
 .board__opponents {
-  grid-row: 1;
+  grid-row: 2;
   z-index: 4;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   align-items: flex-start;
   gap: 12px 18px;
-  padding: 54px 12px 4px;
+  padding: 10px 12px 4px;
 }
 .opp {
   display: flex;
@@ -270,7 +297,7 @@
 
 /* ── Center piles ── */
 .board__center {
-  grid-row: 2;
+  grid-row: 3;
   z-index: 3;
   display: grid;
   place-items: center;
@@ -385,7 +412,7 @@
 
 /* ── Current player ── */
 .board__current {
-  grid-row: 3;
+  grid-row: 4;
   z-index: 4;
   display: flex;
   flex-direction: column;
@@ -485,6 +512,16 @@
   .btn:not(:disabled):hover {
     filter: brightness(1.08);
   }
+}
+/* "from" in "Draw from Deck" — a small connective word set well below the two
+   emphasized words, so the button reads primarily as "Draw … Deck". */
+.btn__mini {
+  font-size: 0.5em;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+  vertical-align: 0.12em;
+  margin: 0 0.1em;
 }
 .btn--draw {
   background: linear-gradient(
@@ -617,13 +654,51 @@
   color: var(--cream);
   border-color: var(--gold);
 }
-/* The feed competes for space on small screens — hide it there; the
-   pass-the-device cover still shows the full report. */
+/* Small-screen log launcher: a floating pill tucked at the table's left edge.
+   Hidden on wide screens (the docked panel is used there); shown below the dock
+   breakpoint, where it opens the feed as a left drawer. */
+.board__log-pill {
+  display: none;
+  position: absolute;
+  left: calc(8px + var(--safe-l));
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  border: 1px solid var(--chrome-line);
+  border-radius: 999px;
+  background: rgba(8, 18, 12, 0.72);
+  backdrop-filter: blur(2px);
+  color: var(--cream);
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.6rem;
+  padding: 8px 11px;
+  cursor: pointer;
+}
+.board__log-pill:hover {
+  color: var(--gold-bright);
+  border-color: var(--gold);
+}
+/* The docked feed competes for space on small screens — hide the dock there and
+   surface the pill launcher + drawer instead, so phone players keep the same
+   information laptop players get. The pass-the-device cover still shows the full
+   report as well. */
 @media (max-width: 920px) {
   .board__log,
   .board__log-show {
     display: none;
   }
+  .board__log-pill {
+    display: inline-block;
+  }
+}
+/* ── Log drawer (small-screen overlay) ── */
+.modal__panel--drawer .board__log-title {
+  font-size: 0.82rem;
+}
+.modal__panel--drawer .logfeed__line {
+  font-size: 0.9rem;
 }
 
 .board__modal-title {
@@ -641,8 +716,21 @@
     border-width: 2px;
     --board-card-unit: clamp(46px, 13.5vmin, 82px);
   }
+  /* Small screens: the top bar carries only the park badge + tool buttons. The
+     Deal·Round meta drops away so the corners never crowd — whose-turn and deck
+     count still read mid-table. (The "31" wordmark is hidden in its own section
+     below, whose base rule would otherwise re-show it here.) */
+  .board__round {
+    display: none;
+  }
+  .board__header {
+    /* Wordmark is display:none here, so only badge + tools remain — two columns,
+       with the badge taking all the leftover room (and truncating within it). */
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 10px 12px 0;
+  }
   .board__opponents {
-    padding-top: 48px;
+    padding-top: 6px;
     gap: 8px 12px;
   }
   .opp__name {
@@ -696,11 +784,7 @@
 
 /* ── Game wordmark (top-center): always shows which game this is ── */
 .board__wordmark {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 5;
+  justify-self: center;
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -711,7 +795,7 @@
   backdrop-filter: blur(2px);
   pointer-events: none;
   white-space: nowrap;
-  max-width: 40%;
+  max-width: 100%;
   overflow: hidden;
 }
 .board__wordmark-31 {
@@ -731,6 +815,13 @@
 @media (max-width: 720px) {
   /* Keep just the "31" mark on narrow boards so it never crowds the corners. */
   .board__wordmark-sub {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  /* Phones: drop the wordmark entirely — the top bar is badge + tools only.
+     Defined here (after the base rule) so it isn't overridden by source order. */
+  .board__wordmark {
     display: none;
   }
 }

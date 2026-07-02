@@ -39,6 +39,35 @@
   }
 }
 
+/* Left-drawer variant — a side sheet anchored to the screen edge (used by the
+   small-screen action log). It escapes the modal's centering grid and slides in
+   from the left; the shared backdrop still dims the table and tap-away/Escape
+   still close it. */
+.modal__panel--drawer {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: min(300px, 85vw);
+  max-height: 100%;
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  padding: calc(24px + var(--safe-t)) 18px calc(20px + var(--safe-b))
+    calc(18px + var(--safe-l));
+  overflow-y: auto;
+  animation: drawer-in 0.24s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@keyframes drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal__panel--drawer {
+    animation: none;
+  }
+}
+
 .modal__close {
   position: absolute;
   top: 12px;

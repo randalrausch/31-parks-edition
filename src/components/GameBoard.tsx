@@ -17,9 +17,7 @@ import GameOverOverlay from "./GameOverOverlay";
 import Avatar from "./Avatar";
 import {
   OpponentRow,
-  BoardBadge,
-  BoardWordmark,
-  BoardToolbar,
+  BoardHeader,
   BoardLog,
   ToolButton,
   NewGameIcon,
@@ -108,10 +106,7 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
         hideWhenEmpty
       />
 
-      <BoardBadge />
-      <BoardWordmark />
-
-      <BoardToolbar
+      <BoardHeader
         dealNum={s.dealNum}
         roundNo={roundNo(s)}
         aliveCount={aliveCount}
