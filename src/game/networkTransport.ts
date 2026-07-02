@@ -102,8 +102,16 @@ export class NetworkTransport {
         const changed = snap.version !== this.lastVersion;
         this.lastVersion = snap.version;
         this.snap = snap;
-        this.emit();
-        if (changed) dlog("net", `snapshot v${snap.version}`, snap.state.phase);
+        // Only notify subscribers on a real version change. A same-version fetch
+        // (every safety-net poll, and the Realtime ping for our own write) carries
+        // identical redacted state, so re-emitting it just churns React — and it
+        // restarts the opponent-turn replay animation (useTurnReplay keys off the
+        // snapshot object), which for a table with several opponents can outlast
+        // the 4s poll and loop forever, locking the viewer out of their next turn.
+        if (changed) {
+          this.emit();
+          dlog("net", `snapshot v${snap.version}`, snap.state.phase);
+        }
       }
       this.setLink(true); // a successful fetch means we're synced
     } catch (e) {
