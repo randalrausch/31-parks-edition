@@ -490,3 +490,91 @@ export function ActionBar({
     </div>
   );
 }
+
+/**
+ * The local player's turn control as one unit — head, fanned hand, best-suit HUD,
+ * and the action buttons — shared by both boards. The boards differ only in how
+ * state and callbacks are sourced (solo reducer vs. server snapshots) and pass
+ * those in; `discardSelected` is derived from `selected`. Each board keeps its
+ * own mode-specific wrapper (solo's AI-thinking / "Waiting…", online's
+ * spectating branch) around this shared core.
+ */
+export function TurnControl({
+  player,
+  turnText,
+  discarding,
+  counting,
+  selected,
+  handScore,
+  canDraw,
+  hasDiscard,
+  canKnock,
+  onSelect,
+  onDrawDeck,
+  onTakeDiscard,
+  onKnock,
+  onConfirmDiscard,
+}: {
+  player: GamePlayer;
+  turnText: string;
+  discarding: boolean;
+  counting: Suit | null;
+  selected: number | null;
+  handScore: number;
+  canDraw: boolean;
+  hasDiscard: boolean;
+  canKnock: boolean;
+  onSelect: (i: number) => void;
+  onDrawDeck: () => void;
+  onTakeDiscard: () => void;
+  onKnock: () => void;
+  onConfirmDiscard: () => void;
+}) {
+  return (
+    <>
+      <PlayerHead player={player} turnText={turnText} />
+      <HandFan
+        hand={player.hand}
+        interactive={discarding}
+        counting={counting}
+        selected={selected}
+        onSelect={onSelect}
+      />
+      <HandHud score={handScore} />
+      <ActionBar
+        discarding={discarding}
+        canDraw={canDraw}
+        hasDiscard={hasDiscard}
+        canKnock={canKnock}
+        discardSelected={selected !== null}
+        onDrawDeck={onDrawDeck}
+        onTakeDiscard={onTakeDiscard}
+        onKnock={onKnock}
+        onConfirmDiscard={onConfirmDiscard}
+      />
+    </>
+  );
+}
+
+/**
+ * The row of face-down opponents, shared by both boards. `activeSeat` (online)
+ * highlights the seat whose turn it is; solo omits it (its current player is
+ * shown in the TurnControl instead, so no opponent is ever "active").
+ */
+export function OpponentRow({
+  opponents,
+  knocker,
+  activeSeat,
+}: {
+  opponents: { p: GamePlayer; i: number }[];
+  knocker: number | null;
+  activeSeat?: number | null;
+}) {
+  return (
+    <div className="board__opponents">
+      {opponents.map(({ p, i }) => (
+        <Opponent key={p.id} player={p} isKnocker={knocker === i} isCurrent={activeSeat === i} />
+      ))}
+    </div>
+  );
+}

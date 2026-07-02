@@ -10,7 +10,7 @@ import HelpPanel from "./HelpPanel";
 import DealEndOverlay from "./DealEndOverlay";
 import GameOverOverlay from "./GameOverOverlay";
 import {
-  Opponent,
+  OpponentRow,
   BoardBadge,
   BoardWordmark,
   BoardToolbar,
@@ -19,9 +19,7 @@ import {
   LeaveIcon,
   Piles,
   PlayerHead,
-  HandFan,
-  HandHud,
-  ActionBar,
+  TurnControl,
   BoardFrame,
   SwitchParkModal,
 } from "./BoardParts";
@@ -203,16 +201,7 @@ export default function OnlineGameBoard({
         }
       />
 
-      <div className="board__opponents">
-        {opponents.map(({ p, i }) => (
-          <Opponent
-            key={p.id}
-            player={p}
-            isKnocker={s.knocker === i}
-            isCurrent={activeSeat === i}
-          />
-        ))}
-      </div>
+      <OpponentRow opponents={opponents} knocker={s.knocker} activeSeat={activeSeat} />
 
       <Piles
         deckCount={s.deck.length}
@@ -231,32 +220,26 @@ export default function OnlineGameBoard({
       <div className="board__current">
         {me &&
           (isAlive(me) || s.phase === "gameOver" ? (
-            <>
-              <PlayerHead player={me} turnText=" (You)" />
-              <HandFan
-                hand={me.hand}
-                interactive={discarding}
-                counting={counting}
-                selected={selected}
-                onSelect={(i) => discarding && setSelected(selected === i ? null : i)}
-              />
-              <HandHud score={handScore} />
-              <ActionBar
-                discarding={discarding}
-                canDraw={canDraw}
-                hasDiscard={!!topDiscard}
-                canKnock={canDraw && s.knocker === null}
-                discardSelected={selected !== null}
-                onDrawDeck={() => game.act({ type: "drawDeck" })}
-                onTakeDiscard={() => game.act({ type: "takeDiscard" })}
-                onKnock={() => game.act({ type: "knock" })}
-                onConfirmDiscard={() => {
-                  if (selected === null) return;
-                  game.act({ type: "discard", cardId: me.hand[selected].id });
-                  setSelected(null);
-                }}
-              />
-            </>
+            <TurnControl
+              player={me}
+              turnText=" (You)"
+              discarding={discarding}
+              counting={counting}
+              selected={selected}
+              handScore={handScore}
+              canDraw={canDraw}
+              hasDiscard={!!topDiscard}
+              canKnock={canDraw && s.knocker === null}
+              onSelect={(i) => discarding && setSelected(selected === i ? null : i)}
+              onDrawDeck={() => game.act({ type: "drawDeck" })}
+              onTakeDiscard={() => game.act({ type: "takeDiscard" })}
+              onKnock={() => game.act({ type: "knock" })}
+              onConfirmDiscard={() => {
+                if (selected === null) return;
+                game.act({ type: "discard", cardId: me.hand[selected].id });
+                setSelected(null);
+              }}
+            />
           ) : (
             // Eliminated but the game's still going — make "you're spectating"
             // explicit instead of an empty hand + dead buttons.
