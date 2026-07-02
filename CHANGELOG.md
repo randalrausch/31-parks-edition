@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.0 — 2026-07-02
+
+### Features
+
+- responsive board header and phone-accessible action log (#49)
+
 ## v0.6.0 — 2026-07-02
 
 ### Features
