@@ -113,6 +113,28 @@ describe("online multiplayer (NetworkTransport over the shared handlers)", () =>
     }
   });
 
+  it("does not re-emit a snapshot when a refresh brings no version change", async () => {
+    // The safety-net poll and the Realtime ping for our own write both re-fetch
+    // state that hasn't changed. Re-emitting it churns React and, on the online
+    // board, restarts the opponent-turn replay animation every tick — which for
+    // a busy table loops forever and locks the viewer out of their next turn.
+    const { backend, host, gameId } = await activeGame();
+    const t = new NetworkTransport(backend, gameId, host.seatToken);
+    try {
+      let emits = 0;
+      t.subscribe(() => emits++);
+      await t.connect(); // one real snapshot
+      expect(emits).toBe(1);
+
+      // Extra refreshes with no intervening state change must stay silent.
+      await t.refresh();
+      await t.refresh();
+      expect(emits).toBe(1);
+    } finally {
+      t.destroy();
+    }
+  });
+
   it("applies the current player's move, converges both clients, and ignores out-of-turn moves", async () => {
     const { backend, host, guest, gameId } = await activeGame();
     const hostT = new NetworkTransport(backend, gameId, host.seatToken);
