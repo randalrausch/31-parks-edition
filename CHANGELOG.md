@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.5.0 — 2026-07-02
+
+### Features
+
+- structured per-request observability via a shared router onEvent hook (#44)
+
 ## v0.4.1 — 2026-07-01
 
 ### Fixes

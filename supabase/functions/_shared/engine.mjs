@@ -429,7 +429,7 @@ function redactState(state, viewerId) {
 }
 
 // src/game/version.ts
-var APP_VERSION = "0.4.1";
+var APP_VERSION = "0.5.0";
 var PROTOCOL_VERSION = 1;
 
 // src/game/config.ts
