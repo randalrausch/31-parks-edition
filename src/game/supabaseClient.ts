@@ -4,7 +4,7 @@
  * VITE_SUPABASE_KEY are set (and Azure isn't). The provider-neutral types live
  * in gameApi.ts; the env probe lives in multiplayerConfig.ts.
  */
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient, type RealtimeChannel } from "@supabase/supabase-js";
 import { BackendError, type GameApi } from "./gameApi";
 import type { GameBackend } from "./backend";
 import { supabaseEnabled, supabaseKey, supabaseUrl } from "./multiplayerConfig";
@@ -75,33 +75,67 @@ export function makeGameApi(client: SupabaseClient): GameApi {
 export const gameApi: GameApi | null = supabase ? makeGameApi(supabase) : null;
 
 /**
- * Subscribe to a game's public row changes via Supabase Realtime. Maps the
- * channel status to the link-health callback for the reconnecting indicator.
+ * Subscribe to a game's public row changes via Supabase Realtime, with automatic
+ * resubscribe-with-backoff. Maps the channel status to the link-health callback
+ * (drives the "reconnecting" indicator). On CHANNEL_ERROR / TIMED_OUT / CLOSED the
+ * dead channel is torn down and a fresh one created after a capped, jittered
+ * delay — so a dropped channel recovers instead of silently leaving the client on
+ * the poll-only safety net. Callbacks from a channel we've superseded are ignored,
+ * so the teardown can't trigger a reconnect loop.
  */
-function subscribeToGame(
+export function subscribeToGame(
   client: SupabaseClient,
   gameId: string,
   onChange: () => void,
   onStatus?: (live: boolean) => void,
 ): () => void {
-  const channel = client
-    .channel(`game:${gameId}:${Math.random().toString(36).slice(2, 8)}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "UPDATE",
-        schema: "public",
-        table: "games",
-        filter: `id=eq.${gameId}`,
-      },
-      () => onChange(),
-    )
-    .subscribe((status) => {
-      if (status === "SUBSCRIBED") onStatus?.(true);
-      else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED")
+  let channel: RealtimeChannel | null = null;
+  let disposed = false;
+  let attempt = 0;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const connect = (): void => {
+    if (disposed) return;
+    const ch = client
+      .channel(`game:${gameId}:${Math.random().toString(36).slice(2, 8)}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "games", filter: `id=eq.${gameId}` },
+        () => onChange(),
+      );
+    channel = ch; // set BEFORE subscribe so the guard never drops our own callback
+    ch.subscribe((status) => {
+      if (disposed || ch !== channel) return; // ignore a channel we've moved on from
+      if (status === "SUBSCRIBED") {
+        attempt = 0;
+        onStatus?.(true);
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
         onStatus?.(false);
+        reconnect();
+      }
     });
-  return () => void client.removeChannel(channel);
+  };
+
+  const reconnect = (): void => {
+    if (disposed || retryTimer) return;
+    const dead = channel;
+    channel = null;
+    if (dead) void client.removeChannel(dead);
+    // Capped exponential backoff with jitter so a flapping connection can't spin.
+    const delay = Math.min(30_000, 1_000 * 2 ** attempt) + Math.random() * 400;
+    attempt += 1;
+    retryTimer = setTimeout(() => {
+      retryTimer = null;
+      connect();
+    }, delay);
+  };
+
+  connect();
+  return () => {
+    disposed = true;
+    if (retryTimer) clearTimeout(retryTimer);
+    if (channel) void client.removeChannel(channel);
+  };
 }
 
 /** Supabase implementation of the swappable backend seam (see backend.ts). */

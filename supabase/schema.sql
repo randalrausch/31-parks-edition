@@ -95,9 +95,10 @@ $$;
 
 -- ── Durable, cross-instance rate-limit counter (for the `create` op) ──
 create table if not exists public.rate_counters (
-  bucket     text    not null,
-  window_key text    not null,
-  count      integer not null default 0,
+  bucket     text        not null,
+  window_key text        not null,
+  count      integer     not null default 0,
+  created_at timestamptz not null default now(), -- first-seen; the reaper ages by this
   primary key (bucket, window_key)
 );
 alter table public.rate_counters enable row level security;
@@ -125,3 +126,21 @@ begin
   return v_count is not null;
 end;
 $$;
+
+-- ── Deterministic reaping (pg_cron) ──
+-- A daily job reaps abandoned games (14 days idle; cascades to game_secrets) and
+-- stale rate counters, so the DB stays bounded on a fixed cadence regardless of
+-- traffic. This replaces an opportunistic sweep the Edge Function used to run.
+-- (pg_cron may need enabling in Database → Extensions; verify with
+--  `select * from cron.job;`.)
+create extension if not exists pg_cron;
+do $$
+begin
+  perform cron.unschedule('reap-31-parks');
+exception
+  when others then null;
+end $$;
+select cron.schedule('reap-31-parks', '17 3 * * *', $$
+  delete from public.games where updated_at < now() - interval '14 days';
+  delete from public.rate_counters where created_at < now() - interval '2 days';
+$$);
