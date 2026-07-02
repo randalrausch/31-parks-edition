@@ -48,11 +48,10 @@ const clientIp = (req: Request): string =>
 
 // @ts-expect-error — Deno global
 Deno.serve(async (req: Request): Promise<Response> => {
-  // Opportunistically reap abandoned games on a small fraction of requests so the
-  // DB stays bounded without a cron (fire-and-forget; failures ignored). A
-  // pg_cron reaper is the cleaner long-term fix.
-  if (Math.random() < 0.02) void store.deleteExpired(new Date().toISOString()).catch(() => {});
-
+  // Abandoned games + stale rate counters are reaped by a pg_cron job (see
+  // supabase/migrations/20260702000000_pg_cron_reaper.sql) rather than
+  // opportunistically here, so the hot path stays clean and reaping happens on a
+  // fixed cadence even when traffic stops.
   const res = await route({
     method: req.method,
     ip: clientIp(req),
