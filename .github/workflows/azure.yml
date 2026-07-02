@@ -2,9 +2,9 @@ name: Deploy (Azure)
 
 # OPTIONAL Azure deploy. Enable it by setting the repo Variable DEPLOY_AZURE =
 # "true" (Settings → Secrets and variables → Actions → Variables); it no-ops
-# otherwise. DEPLOY_AZURE=true is a single switch: it activates this workflow AND
-# turns off the Netlify/Supabase DEPLOY steps in ci.yml, so the two never both
-# ship the frontend (they're mutually exclusive deploy targets). ci.yml's
+# otherwise. This flag is INDEPENDENT of the Supabase/Netlify deploy flags in
+# ci.yml (DEPLOY_SUPABASE / DEPLOY_NETLIFY) — enable any combination: Azure only,
+# the Supabase/Netlify stack only, both stacks side by side, or none. ci.yml's
 # build-and-test quality gate still runs on every push for both back ends, so
 # parity is preserved. See docs/AZURE.md for the full setup.
 #
@@ -12,6 +12,8 @@ name: Deploy (Azure)
 #   Variables: DEPLOY_AZURE=true, VITE_API_BASE (your Function App URL + /api),
 #              AZURE_FUNCTIONAPP_NAME
 #   Secrets:   AZURE_STATIC_WEB_APPS_API_TOKEN, AZURE_FUNCTIONAPP_PUBLISH_PROFILE
+#   Optional:  AZURE_SITE_URL (the live SWA URL; enables the post-deploy smoke —
+#              falls back to the shared SITE_URL variable)
 
 on:
   push:
@@ -82,10 +84,12 @@ jobs:
       # This is the end-to-end proof the deploy works, not just that files landed.
       # Skipped if SITE_URL isn't set; retries absorb CDN propagation lag.
       - name: Install Chrome for Playwright
-        if: ${{ vars.SITE_URL != '' }}
+        if: ${{ (vars.AZURE_SITE_URL || vars.SITE_URL) != '' }}
         run: npx playwright install --with-deps chrome
       - name: Play the live deployment (Playwright)
-        if: ${{ vars.SITE_URL != '' }}
+        if: ${{ (vars.AZURE_SITE_URL || vars.SITE_URL) != '' }}
         run: npm run test:e2e:deploy
         env:
-          E2E_BASE_URL: ${{ vars.SITE_URL }}
+          # Azure-specific URL so this stays correct when Netlify also deploys
+          # (its smoke uses NETLIFY_SITE_URL); fall back to the shared SITE_URL.
+          E2E_BASE_URL: ${{ vars.AZURE_SITE_URL || vars.SITE_URL }}

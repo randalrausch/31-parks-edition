@@ -227,19 +227,19 @@ The trick is that the azd output names don't all match the GitHub names:
 | Variable | `DEPLOY_AZURE` | type `true` |
 | Variable | `VITE_API_BASE` | azd output **`VITE_API_BASE`** (copy verbatim; it's `https://<func-app>.azurewebsites.net/api`) |
 | Variable | `AZURE_FUNCTIONAPP_NAME` | azd output **`FUNCTION_APP_NAME`** ⚠️ (name differs) |
+| Variable | `AZURE_SITE_URL` *(optional)* | your live SWA URL — enables the post-deploy smoke (falls back to the shared `SITE_URL`) |
 | Secret | `AZURE_STATIC_WEB_APPS_API_TOKEN` | `az staticwebapp secrets list --name <STATIC_WEB_APP_NAME> --query properties.apiKey -o tsv` (or Portal → SWA → **Manage deployment token**) |
 | Secret | `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` | `az functionapp deployment list-publishing-profiles --name <FUNCTION_APP_NAME> -g <RESOURCE_GROUP> --xml` (or Portal → Function App → **Get publish profile**) |
 
 On push to `main` it builds web + api, deploys the Function App first, then the
 prebuilt static site.
 
-> **`DEPLOY_AZURE=true` is a single switch.** Setting it both *activates* this
-> Azure workflow and *disables* the Netlify + Supabase deploy steps in
-> `ci.yml`, so the two pipelines never both ship the frontend. The `ci.yml`
-> tests/quality gate keep running on every push and PR regardless. To switch
-> back, set `DEPLOY_AZURE` to `false` (or delete the Variable). The Netlify and
-> Supabase **secrets** can be left in place — they're simply unused while Azure
-> is active.
+> **`DEPLOY_AZURE` is independent of the Supabase/Netlify flags.** Setting it to
+> `true` activates this Azure workflow; it no longer touches `ci.yml`'s
+> `DEPLOY_SUPABASE` / `DEPLOY_NETLIFY` deploy steps — so you can run Azure only,
+> the Supabase/Netlify stack only, both stacks side by side, or none. The
+> `ci.yml` tests/quality gate keep running on every push and PR regardless. To
+> stop Azure deploys, set `DEPLOY_AZURE` to `false` (or delete the Variable).
 
 ## Cost protection (so an attack or bug can't run up a bill)
 
