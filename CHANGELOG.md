@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.0 — 2026-07-02
+
+### Features
+
+- harden Supabase reliability — pg_cron reaper + Realtime resubscribe (#46)
+
 ## v0.5.0 — 2026-07-02
 
 ### Features
