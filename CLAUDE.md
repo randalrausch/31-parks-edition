@@ -1,5 +1,11 @@
 # Project guide for Claude
 
+## Authoring conventions
+
+- **Never** add "Generated with Claude Code" (or any equivalent AI-attribution
+  line/badge) to commit messages, PR titles/bodies, code comments, or any other
+  artifact. No exceptions.
+
 ## Architecture: one rules engine, two front ends, two back ends
 
 The game **rules live in one place** — `src/game/` (`engine.ts`, `actions.ts`,
