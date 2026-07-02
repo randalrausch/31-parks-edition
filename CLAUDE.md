@@ -69,6 +69,44 @@ no migration needed for a new option.
 - `npm run test` (full vitest suite)
 - `npm run build` (production build)
 
+The `/precommit` command runs all of the above plus an edge-bundle sync check in
+one step.
+
+## Testing layers
+
+- **Unit / fuzz** — `npm test` (Vitest). Co-located `*.test.ts`. This is where
+  rules-engine, redaction, store-adapter, and reconnect logic are pinned.
+- **E2E (local build)** — `npm run test:e2e` (Playwright). Builds and serves the
+  production bundle, then plays a real browser through solo flows and dialogs.
+  Specs live in `e2e/` (ignored by tsc/vitest).
+- **Deployment smoke (live site)** — `npm run test:e2e:deploy` with
+  `E2E_BASE_URL=<url>`. Drives a real browser against a *deployed* site and
+  actually plays it: boots + version, a solo turn, and a two-browser online round
+  (create → join → start → act) against the live backend, proving per-seat
+  redaction end to end. Runs automatically post-deploy in `azure.yml` against the
+  `SITE_URL` repo variable, and on demand via `/deploy-smoke <url>`. Requires
+  network egress to the target host (a locked-down sandbox may block it — run from
+  CI or a dev machine).
+
+## Claude Code assets (`.claude/`)
+
+This repo ships a Claude Code config so sessions start productive and encode its
+specific workflows and risks:
+- **`settings.json`** — a safe allow-list for the read/build/test commands (fewer
+  prompts) and a `SessionStart` hook (`hooks/ensure-deps.sh`) that installs
+  dependencies when missing, so a fresh web-session container can run the gates
+  immediately.
+- **Agents** (`agents/`) — `security-reviewer`, `sre-reviewer`, and
+  `parity-auditor` encode this project's three review lenses. The parity auditor
+  targets the signature hazard: drift between the two boards or the two backend
+  adapters.
+- **Commands** (`commands/`) — `/precommit`, `/edge-sync`, `/add-option`,
+  `/deploy-smoke`, `/parity-check` turn the recurring workflows below into one
+  step each.
+
+When you add a durable workflow or guardrail, prefer extending these over
+re-explaining it in chat.
+
 ## Versioning & releases
 
 **One version source:** `src/game/version.ts` exports `APP_VERSION` (human

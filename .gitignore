@@ -37,15 +37,17 @@ coverage
 # Azure Functions local settings (may hold secrets)
 api/local.settings.json
 
-# Local Claude Code settings (machine-specific permissions)
+# Claude Code: track the SHARED config (settings.json, agents/, commands/,
+# hooks/) as part of the project, but ignore machine-specific and runtime state.
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/*.local.json
 
 # Supabase CLI local state
 supabase/.temp/
 supabase/.branches/
 
 # Local dev tooling (not part of the project)
-.claude/
 .mcp.json
 
 # Playwright E2E artifacts
