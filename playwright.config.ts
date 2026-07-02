@@ -11,6 +11,9 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./e2e",
+  // deployment.spec.ts targets a live URL (see playwright.deploy.config.ts); keep
+  // it out of the default local-preview run.
+  testIgnore: "**/deployment.spec.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

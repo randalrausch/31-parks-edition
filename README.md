@@ -95,6 +95,8 @@ authoritative and enforces hidden hands either way.
 | `npm run build` | Type-check and build a static bundle to `dist/` |
 | `npm run preview` | Serve the production build locally |
 | `npm test` | Run the unit + fuzz test suite (Vitest) |
+| `npm run test:e2e` | Real-browser E2E against a local production build (Playwright) |
+| `npm run test:e2e:deploy` | Play a **live deployed** site end-to-end (`E2E_BASE_URL=…`) |
 | `npm run typecheck` | Type-check only |
 | **Azure backend** | |
 | `npm run api:install` / `api:build` / `api:test` | Install / bundle / test the Functions app (`api/`) |
@@ -118,6 +120,23 @@ the two never both ship the frontend — turns off the Netlify/Supabase *deploy*
 steps in `ci.yml`. They're mutually exclusive **deploy** targets, but the
 build-and-test quality gate still runs on every push for **both** back ends, so
 parity can't silently rot. Full Azure setup in [docs/AZURE.md](docs/AZURE.md).
+
+**Testing the deployment (play the real thing):** `npm run test:e2e:deploy`
+drives a real browser against a *live* URL and actually plays the game — it
+boots, plays a solo turn, and runs a **two-browser online round** (host creates a
+room, a second browser joins by code, the host starts, and a turn is taken)
+against the deployed backend, verifying create/join/start/act and per-seat hand
+redaction end to end. Point it at any deployment:
+
+```sh
+E2E_BASE_URL=https://play31.fun npm run test:e2e:deploy
+```
+
+The Azure deploy workflow runs this automatically after each deploy against the
+`SITE_URL` repo variable, so a broken deploy fails loudly instead of silently
+serving a dead site. (To run it from a sandboxed CI/agent, the environment's
+egress policy must allow the target host; where it doesn't, run it from CI or a
+developer machine.)
 
 ## Project structure
 

@@ -43,7 +43,8 @@
     "supabase:setup": "./scripts/setup-supabase.sh",
     "supabase:push": "npx --yes supabase db push",
     "supabase:deploy": "npm run build:edge && npx --yes supabase functions deploy game",
-    "netlify:deploy": "npm run build && npx --yes netlify-cli deploy --prod --dir=dist"
+    "netlify:deploy": "npm run build && npx --yes netlify-cli deploy --prod --dir=dist",
+    "test:e2e:deploy": "playwright test --config=playwright.deploy.config.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",
