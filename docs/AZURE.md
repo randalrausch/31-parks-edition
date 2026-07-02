@@ -227,7 +227,7 @@ The trick is that the azd output names don't all match the GitHub names:
 | Variable | `DEPLOY_AZURE` | type `true` |
 | Variable | `VITE_API_BASE` | azd output **`VITE_API_BASE`** (copy verbatim; it's `https://<func-app>.azurewebsites.net/api`) |
 | Variable | `AZURE_FUNCTIONAPP_NAME` | azd output **`FUNCTION_APP_NAME`** ⚠️ (name differs) |
-| Variable | `AZURE_SITE_URL` *(optional)* | your live SWA URL — enables the post-deploy smoke (falls back to the shared `SITE_URL`) |
+| Variable | `AZURE_SITE_URL` *(optional)* | your live SWA URL — enables the post-deploy smoke |
 | Secret | `AZURE_STATIC_WEB_APPS_API_TOKEN` | `az staticwebapp secrets list --name <STATIC_WEB_APP_NAME> --query properties.apiKey -o tsv` (or Portal → SWA → **Manage deployment token**) |
 | Secret | `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` | `az functionapp deployment list-publishing-profiles --name <FUNCTION_APP_NAME> -g <RESOURCE_GROUP> --xml` (or Portal → Function App → **Get publish profile**) |
 

@@ -134,7 +134,7 @@ E2E_BASE_URL=https://play31.fun npm run test:e2e:deploy
 ```
 
 The Azure deploy workflow runs this automatically after each deploy against the
-`SITE_URL` repo variable, so a broken deploy fails loudly instead of silently
+`AZURE_SITE_URL` repo variable, so a broken deploy fails loudly instead of silently
 serving a dead site. (To run it from a sandboxed CI/agent, the environment's
 egress policy must allow the target host; where it doesn't, run it from CI or a
 developer machine.)

@@ -84,7 +84,7 @@ one step.
   actually plays it: boots + version, a solo turn, and a two-browser online round
   (create → join → start → act) against the live backend, proving per-seat
   redaction end to end. Runs automatically post-deploy in `azure.yml` against the
-  `SITE_URL` repo variable, and on demand via `/deploy-smoke <url>`. Requires
+  `AZURE_SITE_URL` repo variable, and on demand via `/deploy-smoke <url>`. Requires
   network egress to the target host (a locked-down sandbox may block it — run from
   CI or a dev machine).
 

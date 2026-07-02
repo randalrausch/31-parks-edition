@@ -12,8 +12,7 @@ name: Deploy (Azure)
 #   Variables: DEPLOY_AZURE=true, VITE_API_BASE (your Function App URL + /api),
 #              AZURE_FUNCTIONAPP_NAME
 #   Secrets:   AZURE_STATIC_WEB_APPS_API_TOKEN, AZURE_FUNCTIONAPP_PUBLISH_PROFILE
-#   Optional:  AZURE_SITE_URL (the live SWA URL; enables the post-deploy smoke —
-#              falls back to the shared SITE_URL variable)
+#   Optional:  AZURE_SITE_URL (the live SWA URL; enables the post-deploy smoke)
 
 on:
   push:
@@ -78,18 +77,19 @@ jobs:
           skip_app_build: true
 
       # ---- Post-deploy smoke: actually PLAY the live site ----
-      # Drives a real browser against the deployed URL (SITE_URL): boots, plays a
-      # solo turn, and runs a two-browser online game against the just-deployed
-      # Azure backend (create → join → start → act, verifying per-seat redaction).
-      # This is the end-to-end proof the deploy works, not just that files landed.
-      # Skipped if SITE_URL isn't set; retries absorb CDN propagation lag.
+      # Drives a real browser against the deployed URL (AZURE_SITE_URL): boots,
+      # plays a solo turn, and runs a two-browser online game against the
+      # just-deployed Azure backend (create → join → start → act, verifying
+      # per-seat redaction). This is the end-to-end proof the deploy works, not
+      # just that files landed. Skipped if AZURE_SITE_URL isn't set; retries
+      # absorb CDN propagation lag.
       - name: Install Chrome for Playwright
-        if: ${{ (vars.AZURE_SITE_URL || vars.SITE_URL) != '' }}
+        if: ${{ vars.AZURE_SITE_URL != '' }}
         run: npx playwright install --with-deps chrome
       - name: Play the live deployment (Playwright)
-        if: ${{ (vars.AZURE_SITE_URL || vars.SITE_URL) != '' }}
+        if: ${{ vars.AZURE_SITE_URL != '' }}
         run: npm run test:e2e:deploy
         env:
-          # Azure-specific URL so this stays correct when Netlify also deploys
-          # (its smoke uses NETLIFY_SITE_URL); fall back to the shared SITE_URL.
-          E2E_BASE_URL: ${{ vars.AZURE_SITE_URL || vars.SITE_URL }}
+          # Azure-specific URL so this can't collide with the Netlify smoke's
+          # NETLIFY_SITE_URL when both stacks deploy from the same push.
+          E2E_BASE_URL: ${{ vars.AZURE_SITE_URL }}

@@ -167,7 +167,7 @@ Two deliberate free-tier choices live in that workflow:
    |----------|--------|---------|
    | `DEPLOY_SUPABASE` | `true` | Supabase backend deploy (migrations + `game` fn) |
    | `DEPLOY_NETLIFY` | `true` | Netlify frontend deploy |
-   | `NETLIFY_SITE_URL` *(optional)* | `https://your-site.netlify.app` | post-deploy smoke check (falls back to the shared `SITE_URL`) |
+   | `NETLIFY_SITE_URL` *(optional)* | `https://your-site.netlify.app` | post-deploy smoke check for the Netlify site |
 
 3. Push to `main`. CI deploys whatever you enabled; subsequent pushes auto-deploy.
    (Leave both `DEPLOY_*` flags unset and CI just runs the tests — deploys nowhere.)
