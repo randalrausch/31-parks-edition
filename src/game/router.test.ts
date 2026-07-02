@@ -141,4 +141,28 @@ describe("router", () => {
     // A different seat token has its own budget — not collateral-damaged.
     expect((await act("tok-B")).status).not.toBe(429);
   });
+
+  it("emits an observability event per mutating op and per failure, skipping healthy reads", async () => {
+    const events: { event: string; data: Record<string, unknown> }[] = [];
+    const route = makeRouter(makeMemoryStore(), {
+      onEvent: (event, data) => events.push({ event, data }),
+    });
+
+    // A successful create (a mutating op) is logged with op/status/latency.
+    await route(
+      post({ op: "create", config: { creatorName: "R", humans: 2, ai: [], options: {} } }),
+    );
+    expect(events).toHaveLength(1);
+    expect(events[0].event).toBe("request");
+    expect(events[0].data).toMatchObject({ op: "create", status: 200 });
+    expect(typeof events[0].data.ms).toBe("number");
+
+    // A healthy read probe is NOT logged (kept out of the volume/cost path).
+    await route(post({ op: "version" }));
+    expect(events).toHaveLength(1);
+
+    // A failure IS logged even for a non-mutating op.
+    await route(post({ op: "nope" }));
+    expect(events[events.length - 1].data).toMatchObject({ op: "nope", status: 400 });
+  });
 });

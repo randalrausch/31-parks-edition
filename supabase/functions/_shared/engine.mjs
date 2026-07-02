@@ -707,6 +707,8 @@ function makeRouter(store, opts = {}) {
     "Access-Control-Max-Age": "86400",
     Vary: "Origin"
   });
+  const onEvent = opts.onEvent;
+  const LOGGED_OPS = /* @__PURE__ */ new Set(["create", "join", "start", "act"]);
   const hits = /* @__PURE__ */ new Map();
   const limited = (key, max, windowMs) => {
     const now = Date.now();
@@ -722,12 +724,14 @@ function makeRouter(store, opts = {}) {
     return e.n > max;
   };
   return async function route(req) {
+    const t0 = Date.now();
+    let op = "";
     const corsHeaders = cors(req.origin);
-    const reply = (status, body2) => ({
-      status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      body: body2
-    });
+    const reply = (status, body2) => {
+      if (onEvent && (LOGGED_OPS.has(op) || status >= 400))
+        onEvent("request", { op, status, ms: Date.now() - t0 });
+      return { status, headers: { ...corsHeaders, "Content-Type": "application/json" }, body: body2 };
+    };
     if (req.method === "OPTIONS") return { status: 204, headers: corsHeaders };
     if (req.method !== "POST") return reply(405, { error: "POST only." });
     if (limited(req.ip, 90, 6e4))
@@ -738,7 +742,7 @@ function makeRouter(store, opts = {}) {
     } catch {
       return reply(400, { error: "We couldn't read that request." });
     }
-    const op = String(body?.op ?? "");
+    op = String(body?.op ?? "");
     if (op === "version") return reply(200, handleVersion(provider).body);
     if (op === "health") {
       const r = await handleHealth(store, provider);

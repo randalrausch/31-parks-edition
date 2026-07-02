@@ -36,6 +36,9 @@ const route = makeRouter(store, {
   // must allow them (the Azure fetch client only needs content-type).
   allowedHeaders: "authorization, x-client-info, apikey, content-type",
   rateLimiter: makeSupabaseRateLimiter(admin, MAX_GAMES_PER_DAY, MAX_GAMES_PER_IP_PER_HOUR),
+  // Supabase captures function stdout in its logs, so this structured line is a
+  // queryable request/error/latency trail (Dashboard → Edge Functions → Logs).
+  onEvent: (event, data) => console.log(JSON.stringify({ event, ...data })),
 });
 
 const clientIp = (req: Request): string =>
