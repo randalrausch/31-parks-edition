@@ -76,6 +76,30 @@ jobs:
           output_location: ""
           skip_app_build: true
 
+      # ---- Warm up the just-redeployed Function App ----
+      # A Consumption-plan Function App can take a few seconds to finish syncing
+      # triggers / cold-start right after a zip-deploy; the smoke test's first
+      # "create room" call is the first real hit it takes. Poll the health op
+      # (POST {op:health} — round-trips through Table Storage, so a 200 here means
+      # it's actually ready, not just that the host process exists) until it's up,
+      # so a cold-start blip can't masquerade as a broken deploy.
+      - name: Wait for the Function App to warm up
+        if: ${{ vars.VITE_API_BASE != '' }}
+        run: |
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$VITE_API_BASE/game" \
+              -H 'Content-Type: application/json' -d '{"op":"health"}' || true)
+            if [ "$code" = "200" ]; then
+              echo "Function App healthy after $i attempt(s)."
+              exit 0
+            fi
+            echo "Attempt $i: got HTTP ${code:-<none>}, retrying…"
+            sleep 3
+          done
+          echo "::warning::Function App didn't report healthy in time; proceeding anyway — the smoke test's own retries may still absorb it."
+        env:
+          VITE_API_BASE: ${{ vars.VITE_API_BASE }}
+
       # ---- Post-deploy smoke: actually PLAY the live site ----
       # Drives a real browser against the deployed URL (AZURE_SITE_URL): boots,
       # plays a solo turn, and runs a two-browser online game against the
