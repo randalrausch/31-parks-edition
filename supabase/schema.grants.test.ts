@@ -27,8 +27,7 @@ const migrationsSql = readdirSync(migrationsDir)
 /** Names of SECURITY DEFINER functions in the `public` schema within `sql`. */
 function definerFunctions(sql: string): string[] {
   const names: string[] = [];
-  const re =
-    /create\s+(?:or\s+replace\s+)?function\s+(public\.\w+)\s*\([^)]*\)([\s\S]*?)\$\$;/gi;
+  const re = /create\s+(?:or\s+replace\s+)?function\s+(public\.\w+)\s*\([^)]*\)([\s\S]*?)\$\$;/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(sql)) !== null) {
     const [, name, body] = m;
@@ -67,9 +66,7 @@ describe("Supabase RPC EXECUTE grants", () => {
     // The `supabase db push` path applies migrations, not schema.sql, so the
     // revoke must be present there as well (for both known definer functions).
     for (const fn of ["public.commit_game", "public.incr_if_below"]) {
-      expect(revokesFromAnon(migrationsSql, fn), `${fn} revoke missing from migrations`).toBe(
-        true,
-      );
+      expect(revokesFromAnon(migrationsSql, fn), `${fn} revoke missing from migrations`).toBe(true);
     }
   });
 });

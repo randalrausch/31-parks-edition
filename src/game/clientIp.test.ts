@@ -43,9 +43,9 @@ describe("clientIp", () => {
   });
 
   it("strips the port from [IPv6]:port and leaves bare IPv6 intact", () => {
-    expect(clientIp(headers({ "cf-connecting-ip": "[2001:db8::1]:443" }), ["cf-connecting-ip"])).toBe(
-      "2001:db8::1",
-    );
+    expect(
+      clientIp(headers({ "cf-connecting-ip": "[2001:db8::1]:443" }), ["cf-connecting-ip"]),
+    ).toBe("2001:db8::1");
     expect(clientIp(headers({ "x-forwarded-for": "2001:db8::1" }))).toBe("2001:db8::1");
   });
 

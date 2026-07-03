@@ -86,7 +86,7 @@ online for friends who aren't in the room.
 Requires Node 20+.
 
 ```bash
-git clone git@github.com:randalrausch/31-parks-edition.git
+git clone https://github.com/randalrausch/31-parks-edition.git
 cd 31-parks-edition
 npm install
 npm run dev          # http://localhost:5173

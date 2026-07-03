@@ -90,11 +90,7 @@ export function makeSupabaseStore(admin: SupabaseClient): GameStore {
     },
 
     async getGame(gameId) {
-      const { data, error } = await admin
-        .from("games")
-        .select("*")
-        .eq("id", gameId)
-        .maybeSingle();
+      const { data, error } = await admin.from("games").select("*").eq("id", gameId).maybeSingle();
       if (error) throw new Error(`getGame: ${error.message}`);
       if (!data) return null;
       const rec = toRecord(data);

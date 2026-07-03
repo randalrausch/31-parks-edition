@@ -6,9 +6,13 @@ features, docs, and especially **new park themes** (see
 
 ## Getting started
 
+Requires **Node 20+** (see `.nvmrc`; `nvm use` picks it up).
+
 ```bash
+git clone https://github.com/randalrausch/31-parks-edition.git
+cd 31-parks-edition
 npm install
-npm run dev        # solo play works with no further setup
+npm run dev        # solo play works with no further setup → http://localhost:5173
 ```
 
 Multiplayer is optional; set it up only if you're working on online features
@@ -24,15 +28,24 @@ npm run typecheck    # tsc, no errors
 npm run lint         # ESLint, no errors
 npm test             # unit + fuzz suite, all green
 npm run build        # production build succeeds
+npm run test:e2e     # real-browser Playwright suite (CI runs this on every PR)
 ```
 
-If you changed shared game logic in `src/game/` and use the Supabase backend,
-also re‑bundle the Edge Function engine and redeploy:
+> `npm run test:e2e` drives your locally-installed Google Chrome
+> (`playwright.config.ts` uses the `chrome` channel). If you don't have it,
+> install it once with `npx playwright install chrome`.
+
+**If you changed anything under `src/game/`**, re‑bundle the shared Edge Function
+engine and commit the regenerated bundle — **CI rejects a stale bundle**, so this
+is required regardless of which backend (if any) you run:
 
 ```bash
 npm run build:edge
-supabase functions deploy game
+git diff --exit-code supabase/functions/_shared/engine.mjs  # must be clean after committing
 ```
+
+Deploying the function (`supabase functions deploy game`) is a separate,
+optional step you only need when running your own backend.
 
 ## Project conventions
 
