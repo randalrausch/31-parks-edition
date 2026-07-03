@@ -142,3 +142,17 @@ describe("TableGameStore (Azurite)", () => {
     expect(await store.getGame(live.rec.gameId)).not.toBeNull();
   });
 });
+
+// The shared cross-adapter contract (create/collision/CAS), run against the real
+// Table Storage adapter under Azurite. Registered only when a connection is
+// configured; if it's set but the emulator is down, these fail (matching the
+// honesty gate above) rather than silently skipping. Same suite runs against
+// MemoryGameStore in src/game/storeContract.test.ts, so a drift between adapters
+// surfaces as a failing test.
+if (CONN) {
+  const { makeTableStore } = await import("./tableStore.js");
+  const { runStoreContract } = await import("../../../src/game/storeContract");
+  describe("GameStore contract — TableGameStore (Azurite)", () => {
+    runStoreContract(() => makeTableStore());
+  });
+}
