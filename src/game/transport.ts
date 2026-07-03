@@ -54,6 +54,12 @@ export class LocalTransport implements Transport {
     this.emit();
   }
 
+  /** Resume from a previously persisted state (no deal). */
+  load(state: GameState) {
+    this.state = state;
+    this.emit();
+  }
+
   dispatch(action: GameAction) {
     if (!this.state) return;
     this.state = applyAction(this.state, action);

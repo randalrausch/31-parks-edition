@@ -48,9 +48,16 @@ function Shell() {
       });
       return;
     }
-    // Resume a saved online session after a page refresh.
+    // Resume a saved online session after a page refresh; an online session
+    // takes precedence over a solo save so exiting online lands on the home
+    // screen, not an old solo game.
     const saved = loadSession();
-    if (saved) setIntent({ type: "resume", session: saved });
+    if (saved) {
+      setIntent({ type: "resume", session: saved });
+      return;
+    }
+    // Otherwise resume an in-progress solo/pass-and-play game if one was saved.
+    game.resumeSolo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
