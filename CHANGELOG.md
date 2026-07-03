@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.3 — 2026-07-03
+
+### Fixes
+
+- scale action log's recent-moves window to player count (#57)
+
 ## v0.7.2 — 2026-07-03
 
 ### Fixes
