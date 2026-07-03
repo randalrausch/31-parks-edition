@@ -28,8 +28,10 @@ const env = (k: string) => Deno.env.get(k);
 const admin = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"));
 
 // Durable create caps (per-IP/hour + global/day), configurable via env. The
-// shared router applies its own cheap per-instance first line on top.
-const MAX_GAMES_PER_DAY = Number(env("MAX_GAMES_PER_DAY")) || 500;
+// shared router applies its own cheap per-instance first line on top. The
+// global/day default is a comfortable multiple of one IP's daily max
+// (20*24=480) so one source can't nearly exhaust it — matching the Azure default.
+const MAX_GAMES_PER_DAY = Number(env("MAX_GAMES_PER_DAY")) || 2000;
 const MAX_GAMES_PER_IP_PER_HOUR = Number(env("MAX_GAMES_PER_IP_PER_HOUR")) || 20;
 
 const store = makeSupabaseStore(admin);
