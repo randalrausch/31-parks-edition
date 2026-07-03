@@ -29,6 +29,18 @@ async function azuriteReachable(): Promise<boolean> {
 let up = false;
 beforeAll(async () => {
   up = await azuriteReachable();
+  // Honesty gate: if a connection string is configured (CI sets TABLES_CONNECTION)
+  // but the emulator can't be reached, FAIL rather than silently skip — otherwise
+  // the entire Azure CAS/atomicity guarantee could rot undetected behind a green
+  // build. Only a completely unset TABLES_CONNECTION (plain local unit runs)
+  // legitimately skips.
+  if (CONN && !up) {
+    throw new Error(
+      "TABLES_CONNECTION is set but Azurite is unreachable. The Table Storage " +
+        "CAS suite must run when a connection is configured (CI). Start Azurite " +
+        "(`npx azurite`) or unset TABLES_CONNECTION for a plain unit run.",
+    );
+  }
   if (!up) console.warn("Azurite not reachable — skipping TableGameStore suite.");
 });
 

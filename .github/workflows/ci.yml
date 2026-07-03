@@ -95,11 +95,24 @@ jobs:
           VITE_SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_KEY }}
 
       # Azure Functions backend (api/) — type-checked, unit-tested, and bundled on
-      # every push/PR. Table Storage integration tests self-skip without Azurite.
+      # every push/PR. The Table Storage CAS/atomicity suite runs against Azurite
+      # here (TABLES_CONNECTION is set), so the "no lost updates" guarantee is
+      # actually verified — the suite FAILS if Azurite is unreachable rather than
+      # skipping silently.
       - name: API quality gate
+        env:
+          # Well-known Azurite dev account; local emulator only, never a real key.
+          TABLES_CONNECTION: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;"
         run: |
           npm run api:install
           npm run api:typecheck
+          # Start Azurite's Table service (installed as an api devDependency) and
+          # wait for its endpoint to accept connections before running the suite.
+          ./api/node_modules/.bin/azurite-table --silent --location "$RUNNER_TEMP/azurite" &
+          for i in $(seq 1 30); do
+            (exec 3<>/dev/tcp/127.0.0.1/10002) 2>/dev/null && { exec 3>&-; break; }
+            sleep 1
+          done
           npm run api:test
           npm run api:build
 
