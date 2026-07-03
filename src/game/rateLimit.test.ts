@@ -35,4 +35,16 @@ describe("rate limiter (memory)", () => {
     }
     expect(ok).toBe(5); // global cap is 5/day regardless of source
   });
+
+  it("an over-per-IP attempt does not consume the shared global budget", async () => {
+    // global=3, per-IP=1. One noisy IP hammers create; only its first attempt
+    // should count against global — the rejected ones must not starve others.
+    const rl = makeMemoryRateLimiter(3, 1);
+    expect(await rl.allowCreate("9.9.9.9", T)).toBe(true); // 1 global used
+    for (let i = 0; i < 10; i++) await rl.allowCreate("9.9.9.9", T); // all rejected (per-IP=1)
+    // Two more distinct IPs should still fit under the global cap of 3.
+    expect(await rl.allowCreate("2.2.2.2", T)).toBe(true);
+    expect(await rl.allowCreate("3.3.3.3", T)).toBe(true);
+    expect(await rl.allowCreate("4.4.4.4", T)).toBe(false); // now global (3) is exhausted
+  });
 });

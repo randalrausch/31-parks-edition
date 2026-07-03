@@ -791,8 +791,8 @@ function makeLimiter(counter, maxPerDay, maxPerIpHour) {
     async allowCreate(ip, nowIso2) {
       const day = nowIso2.slice(0, 10);
       const hour = nowIso2.slice(0, 13);
-      if (!await counter.incrIfBelow("global", `d:${day}`, maxPerDay)) return false;
-      return counter.incrIfBelow("ip", `${safe(ip)}:${hour}`, maxPerIpHour);
+      if (!await counter.incrIfBelow("ip", `${safe(ip)}:${hour}`, maxPerIpHour)) return false;
+      return counter.incrIfBelow("global", `d:${day}`, maxPerDay);
     }
   };
 }

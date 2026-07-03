@@ -101,7 +101,7 @@ Edit the literals and re-run `azd provision`:
 |-----------|---------|--------------|
 | `maxFunctionInstances` | `5` | Hard cap on Function scale-out (bounds peak cost). |
 | `logAnalyticsDailyQuotaGb` | `1` | Daily telemetry ingestion cap in GB (`-1` = unlimited). |
-| `maxGamesPerDay` | `500` | Global hard ceiling on games created per day. |
+| `maxGamesPerDay` | `2000` | Global hard ceiling on games created per day. |
 | `maxGamesPerIpPerHour` | `20` | Per-IP create cap per hour. |
 
 `environmentName`, `location`, `resourceGroupName`, and `customDomain` are
@@ -252,7 +252,7 @@ or a traffic spike can't drive cost. Several layers, all configurable in
 | Layer | Control | Bounds |
 |-------|---------|--------|
 | **Scale-out cap** | `maxFunctionInstances` (default 5) | Even under a flood the Function can't fan out to hundreds of instances — caps the *rate* of spend. |
-| **Global daily ceiling** | `maxGamesPerDay` (default 500) | A hard cap on total games created/day, enforced by a durable Table-Storage counter shared across instances. No distributed spam can exceed it. |
+| **Global daily ceiling** | `maxGamesPerDay` (default 2000) | A hard cap on total games created/day, enforced by a durable Table-Storage counter shared across instances. No distributed spam can exceed it. |
 | **Per-IP cap** | `maxGamesPerIpPerHour` (default 20) | Stops a single source flooding `create`. |
 | **Per-instance limiter** | built-in | Cheap first line (no storage round-trip) on every request. |
 | **Telemetry cap** | `logAnalyticsDailyQuotaGb` (default 1) | App Insights/Log Analytics ingestion can't run up cost. |

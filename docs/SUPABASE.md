@@ -100,7 +100,7 @@ defaults):
 | Var | Default | Effect |
 |-----|---------|--------|
 | `ALLOWED_ORIGIN` | `*` | Comma-separated origin allow-list for CORS (mirrors the Azure backend). Set it to your site's origin(s) to stop other sites calling the function. |
-| `MAX_GAMES_PER_DAY` | `500` | Hard global cap on games created per day (durable, cross-instance). |
+| `MAX_GAMES_PER_DAY` | `2000` | Hard global cap on games created per day (durable, cross-instance). |
 | `MAX_GAMES_PER_IP_PER_HOUR` | `20` | Per-IP games/hour cap. |
 
 The two caps are enforced by a durable Postgres counter (`rate_counters` +

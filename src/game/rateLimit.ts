@@ -39,8 +39,13 @@ export function makeLimiter(
     async allowCreate(ip, nowIso) {
       const day = nowIso.slice(0, 10); // YYYY-MM-DD
       const hour = nowIso.slice(0, 13); // YYYY-MM-DDTHH
-      if (!(await counter.incrIfBelow("global", `d:${day}`, maxPerDay))) return false;
-      return counter.incrIfBelow("ip", `${safe(ip)}:${hour}`, maxPerIpHour);
+      // Charge the PER-IP bucket first. If we charged global first, an attacker
+      // over their own per-IP cap would still burn a global slot on every
+      // rejected attempt — letting one source drain the shared day budget and
+      // deny `create` to everyone. Charging per-IP first means an over-limit IP
+      // never touches the global counter.
+      if (!(await counter.incrIfBelow("ip", `${safe(ip)}:${hour}`, maxPerIpHour))) return false;
+      return counter.incrIfBelow("global", `d:${day}`, maxPerDay);
     },
   };
 }

@@ -18,7 +18,7 @@ import { makeTableStore } from "./game/tableStore.js";
 import { makeRouter } from "../../src/game/router";
 import { sweep } from "../../src/game/cleanup";
 import { clientIp } from "../../src/game/clientIp";
-import { makeTableRateLimiter } from "./game/rateLimit.js";
+import { makeTableRateLimiter, reapRateCounters } from "./game/rateLimit.js";
 import { initTelemetry } from "./telemetry.js";
 
 initTelemetry();
@@ -60,6 +60,10 @@ app.timer("cleanup", {
   schedule: "0 0 3 * * *", // 03:00 UTC daily
   handler: async (_t: Timer, ctx: InvocationContext): Promise<void> => {
     const removed = await sweep(store, new Date().toISOString());
-    ctx.log(`cleanup: removed ${removed} expired game(s)`);
+    // Also reap rate-counter rows older than 2 days (the game reaper never
+    // touches the Rate table; without this it leaks one row per IP-hour).
+    const rateCutoff = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+    const rateRows = await reapRateCounters(rateCutoff);
+    ctx.log(`cleanup: removed ${removed} expired game(s), ${rateRows} stale rate row(s)`);
   },
 });
