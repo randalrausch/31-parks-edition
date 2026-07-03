@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Play the game
+    url: https://play31.fun
+    about: Try it in your browser first — no install needed.
+  - name: Questions & ideas (Discussions)
+    url: https://github.com/randalrausch/31-parks-edition/discussions
+    about: For open-ended questions, playtesting feedback, or ideas that aren't a specific bug or feature request.
+  - name: Report a security vulnerability
+    url: https://github.com/randalrausch/31-parks-edition/security/advisories/new
+    about: Please report security issues privately, not as a public issue (see SECURITY.md).
