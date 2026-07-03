@@ -10,7 +10,7 @@ No installs, no accounts, no ads — clone it and you're playing in under a
 minute.
 
 <p align="center">
-  <img src="docs/images/board-mid-hand.jpg" alt="A hand mid-round at Yellowstone: three cards on the felt, a discard pile in front of a geyser backdrop, and three AI opponents seated around the table." width="820">
+  <img src="docs/images/board-glacier.jpg" alt="A hand mid-round at Glacier National Park: three cards on the felt in front of a mountain-lake backdrop, with a discard pile and three AI opponents seated around the table." width="820">
 </p>
 
 ## Play in one sentence
@@ -50,10 +50,13 @@ randomly.
 
 ## What it looks like
 
+Three national parks are playable today, each with its own scene, palette,
+and card backs — pick one on the home screen or let it surprise you.
+
 <p align="center">
-  <img src="docs/images/home-welcome.jpg" alt="The home screen: the 31 National Parks Edition crest over a one-paragraph rules summary, with player and AI-opponent counts to configure." width="700">
-  &nbsp;
-  <img src="docs/images/deal-reveal.jpg" alt="A deal in progress at Yellowstone right after a knock, with a live action log on the left showing recent draws and discards." width="700">
+  <img src="docs/images/home-welcome.jpg" alt="The home screen: the 31 National Parks Edition crest over a one-paragraph rules summary, with player and AI-opponent counts to configure." width="440">
+  <img src="docs/images/board-yellowstone.jpg" alt="A hand mid-round at Yellowstone National Park, an Old Faithful eruption behind the deck and discard pile." width="440">
+  <img src="docs/images/board-roosevelt.jpg" alt="The moment after a knock at Theodore Roosevelt National Park, with a live action log on the left showing recent draws and discards." width="440">
 </p>
 
 ## Features
