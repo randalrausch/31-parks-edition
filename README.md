@@ -200,6 +200,8 @@ docs/              Architecture, theming, backend, and deployment guides
   (Edge Function + Postgres) with a one-command helper script.
 - [docs/DEPLOY.md](docs/DEPLOY.md) — deploy the static build to any host.
 - [CONTRIBUTING.md](CONTRIBUTING.md) — dev workflow, tests, and conventions.
+- [ROADMAP.md](ROADMAP.md) — where the project is headed (and easy first tasks).
+- [SUPPORT.md](SUPPORT.md) — where to get help or report a problem.
 
 ### Scripts
 

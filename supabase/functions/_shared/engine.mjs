@@ -426,7 +426,7 @@ function settledOrSame(state, next) {
   return JSON.stringify(next) === JSON.stringify(state) ? state : next;
 }
 function redactState(state, viewerId) {
-  const revealAll = state.phase === "dealEnd" || state.phase === "gameOver";
+  const revealAll = viewerId !== null && (state.phase === "dealEnd" || state.phase === "gameOver");
   return {
     ...state,
     deck: state.deck.map(() => HIDDEN_CARD),

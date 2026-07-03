@@ -47,6 +47,23 @@ git diff --exit-code supabase/functions/_shared/engine.mjs  # must be clean afte
 Deploying the function (`supabase functions deploy game`) is a separate,
 optional step you only need when running your own backend.
 
+## Your first contribution
+
+New here? The friendliest ways in:
+
+- **Add a national park** — mostly art + a palette + one registry entry, no code
+  required for the easy path. Start with [docs/THEMES.md](docs/THEMES.md) and the
+  [New theme issue form](https://github.com/randalrausch/31-parks-edition/issues/new?template=new_theme.yml).
+- **Contribute art** — opponent portraits, park scenes, card backs (see the
+  READMEs in `src/assets/`).
+- **Add or tune an AI opponent** — one entry in `src/game/aiCharacters.ts`.
+- **Pick up a labeled issue** — browse
+  [`good first issue`](https://github.com/randalrausch/31-parks-edition/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+  and [`help wanted`](https://github.com/randalrausch/31-parks-edition/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
+
+See the [ROADMAP](ROADMAP.md) for where things are headed. Comment on an issue to
+claim it, and don't hesitate to open a draft PR early for feedback.
+
 ## Project conventions
 
 - **Keep the game core pure.** `src/game/engine.ts`, `actions.ts`, and

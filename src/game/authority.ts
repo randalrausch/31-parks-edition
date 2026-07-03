@@ -125,11 +125,15 @@ function settledOrSame(state: GameState, next: GameState): GameState {
  * Produce the view a given player is allowed to see: their own hand is real;
  * everyone else's hand and the deck are replaced with hidden placeholders (the
  * counts are preserved so fans/badges still render). At deal end and game over
- * every hand is revealed. Pass `null` for a spectator (sees no hands until
- * reveal). The discard pile, tokens, turn, log, and results are always public.
+ * every hand is revealed to the SEATED players (the showdown). A `null`
+ * spectator — an anon caller with no valid seat token — never sees any hand,
+ * even at reveal, so a game isn't public just because its id is guessable. The
+ * discard pile, tokens, turn, log, and results are always public.
  */
 export function redactState(state: GameState, viewerId: string | null): GameState {
-  const revealAll = state.phase === "dealEnd" || state.phase === "gameOver";
+  // Only reveal the showdown to a seated viewer; a tokenless spectator stays in
+  // the dark. (A seated player always has a non-null viewerId.)
+  const revealAll = viewerId !== null && (state.phase === "dealEnd" || state.phase === "gameOver");
   return {
     ...state,
     deck: state.deck.map(() => HIDDEN_CARD),

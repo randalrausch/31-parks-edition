@@ -14,8 +14,11 @@ threats we design against, and how:
 
 - **Cheating / seeing hidden cards.** All authoritative state lives server-side;
   the wire only ever carries a per-seat *redacted* view (`redactState`). A
-  property/fuzz test (`src/game/redactFuzz.test.ts`) asserts no seat (and no
-  spectator) ever receives another player's cards or the deck.
+  property/fuzz test (`src/game/redactFuzz.test.ts`) asserts no seat ever receives
+  another player's cards or the deck. The end-of-deal showdown is revealed only to
+  **seated** players; a tokenless caller (no valid seat token) never sees another
+  player's hand even at reveal, so a game isn't exposed just because its id is
+  guessable.
 - **Seat hijacking.** Each seat is bound to an unguessable per-seat **token**
   (UUID v4) issued on create/join and stored only in the secret record. Actions
   are authorized by token, not by client-supplied seat index.
