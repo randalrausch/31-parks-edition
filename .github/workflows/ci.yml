@@ -169,3 +169,19 @@ jobs:
           if [ "$BUILT" != "$LIVE" ]; then
             echo "::warning::Live bundle ($LIVE) does not match build ($BUILT) — likely CDN propagation lag; re-check in a minute."
           fi
+
+      # ---- Post-deploy smoke: actually PLAY the live Netlify/Supabase stack ----
+      # The hash check above only proves the right files landed. This drives a
+      # real browser against the deployed URL and plays it — boot + solo turn +
+      # a two-browser online round (create → join → start → act) against the live
+      # Supabase backend, proving per-seat redaction end to end. Runs only when
+      # BOTH the frontend and its Supabase backend are being deployed (the online
+      # round needs a live backend); retries absorb CDN propagation lag.
+      - name: Install Chrome for Playwright
+        if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_NETLIFY == 'true' && vars.DEPLOY_SUPABASE == 'true' && vars.NETLIFY_SITE_URL != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        run: npx playwright install --with-deps chrome
+      - name: Play the live Netlify deployment (Playwright)
+        if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_NETLIFY == 'true' && vars.DEPLOY_SUPABASE == 'true' && vars.NETLIFY_SITE_URL != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        env:
+          E2E_BASE_URL: ${{ vars.NETLIFY_SITE_URL }}
+        run: npm run test:e2e:deploy

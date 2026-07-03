@@ -199,3 +199,36 @@ npm run azure:deploy      # build the api + azd deploy
 
 If automated deploys are set up (above), pushing to `main` does this for you. See
 [SUPABASE.md](SUPABASE.md) or [AZURE.md](AZURE.md).
+
+## Rolling back a bad deploy
+
+**Roll forward, don't roll back.** The safest fix is almost always a new commit
+to `main` that reverts the change, letting the normal pipeline redeploy:
+
+```bash
+git revert <bad-sha>   # or revert the merge commit with -m 1
+git push origin main   # CI redeploys the reverted state
+```
+
+Things to know before you revert:
+
+- **Database migrations do not auto-roll-back.** `supabase db push` and the Azure
+  schema are forward-only. Reverting the app code does **not** undo a migration —
+  write a new migration to reverse it if needed. Prefer additive, backward-
+  compatible migrations so a code revert is always safe on its own.
+- **Never roll back across a `PROTOCOL_VERSION` bump.** Once the backend has
+  served a higher protocol, connected clients have been told to refresh to it.
+  Reverting the backend below that protocol would tell freshly-refreshed clients
+  they're *ahead* of the server, with no clean recovery. If a release that bumped
+  the protocol is bad, **roll forward** with a fix at the same-or-higher protocol.
+- **Redeploy a specific past version** by dispatching the deploy workflow against
+  an older ref: in Actions → the deploy workflow → *Run workflow* → pick the tag
+  or branch. Both deploy jobs are guarded to only run on `main`, so use a
+  short-lived branch off the good commit if you need to ship a non-`main` ref.
+- **Frontend vs backend.** They deploy independently and the backend goes first,
+  so a bad *frontend* can be reverted alone (the API is unaffected). A bad
+  *backend* revert must respect the migration/protocol rules above.
+
+The post-deploy smoke (both stacks now play a real two-browser online round
+against the live backend) is your signal that a deploy — or a rollback — actually
+works, not just that files landed.
