@@ -87,7 +87,7 @@ describe("router", () => {
       }),
     );
     expect(res.status).toBe(200);
-    expect((res.body as { code: string }).code).toMatch(/^[A-HJ-NP-Z2-9]{5}$/);
+    expect((res.body as { code: string }).code).toMatch(/^[A-HJ-NP-Z2-9]{6}$/);
   });
 
   it("enforces the durable rate limiter on create (global/per-IP cap)", async () => {

@@ -52,6 +52,7 @@ describe("Supabase RPC EXECUTE grants", () => {
     // vacuously passing and must be fixed.
     expect(definerFunctions(schemaSql).sort()).toEqual([
       "public.commit_game",
+      "public.create_game",
       "public.incr_if_below",
     ]);
   });
@@ -65,7 +66,7 @@ describe("Supabase RPC EXECUTE grants", () => {
   it("revokes EXECUTE from anon via the migration path too", () => {
     // The `supabase db push` path applies migrations, not schema.sql, so the
     // revoke must be present there as well (for both known definer functions).
-    for (const fn of ["public.commit_game", "public.incr_if_below"]) {
+    for (const fn of ["public.commit_game", "public.create_game", "public.incr_if_below"]) {
       expect(revokesFromAnon(migrationsSql, fn), `${fn} revoke missing from migrations`).toBe(true);
     }
   });

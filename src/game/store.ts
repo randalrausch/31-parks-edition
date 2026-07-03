@@ -63,3 +63,16 @@ export class StateTooLargeError extends Error {
     this.name = "StateTooLargeError";
   }
 }
+
+/**
+ * Thrown by createGame when the join code already belongs to another game, so
+ * the caller (handleCreate) can regenerate the code and retry rather than
+ * silently clobbering a live lobby. Both store adapters raise it on a code
+ * collision, keeping behavior identical across backends.
+ */
+export class CodeCollisionError extends Error {
+  constructor(code: string) {
+    super(`Join code already in use: ${code}`);
+    this.name = "CodeCollisionError";
+  }
+}

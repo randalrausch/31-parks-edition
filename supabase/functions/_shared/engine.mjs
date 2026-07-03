@@ -499,14 +499,29 @@ function buildCreateSetup(config) {
 
 // src/game/ids.ts
 var CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+var CODE_LENGTH = 6;
 function makeCode() {
-  const bytes = new Uint8Array(5);
+  const bytes = new Uint8Array(CODE_LENGTH);
   crypto.getRandomValues(bytes);
   let c = "";
-  for (let i = 0; i < 5; i++) c += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
+  for (let i = 0; i < CODE_LENGTH; i++) c += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
   return c;
 }
 var newToken = () => crypto.randomUUID();
+
+// src/game/store.ts
+var StateTooLargeError = class extends Error {
+  constructor(bytes) {
+    super(`Game state too large to persist: ${bytes} bytes`);
+    this.name = "StateTooLargeError";
+  }
+};
+var CodeCollisionError = class extends Error {
+  constructor(code) {
+    super(`Join code already in use: ${code}`);
+    this.name = "CodeCollisionError";
+  }
+};
 
 // src/game/handlers.ts
 var TTL_MS = 14 * 24 * 60 * 60 * 1e3;
@@ -530,23 +545,31 @@ function bumped(rec, patch) {
 async function handleCreate(store, body) {
   const { players, seats, options } = buildCreateSetup(body.config ?? {});
   const state = createGameState(players, options);
-  const code = makeCode();
   const creatorToken = newToken();
   const gameId = crypto.randomUUID();
   const now = nowIso();
-  const rec = {
-    gameId,
-    code,
-    status: "lobby",
-    version: 0,
-    seats,
-    createdAt: now,
-    updatedAt: now,
-    expiresAt: expiry()
-  };
   const secret = { state, seatTokens: { [creatorToken]: 0 } };
-  await store.createGame(rec, secret);
-  return ok({ gameId, code, seatIndex: 0, seatToken: creatorToken });
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = makeCode();
+    const rec = {
+      gameId,
+      code,
+      status: "lobby",
+      version: 0,
+      seats,
+      createdAt: now,
+      updatedAt: now,
+      expiresAt: expiry()
+    };
+    try {
+      await store.createGame(rec, secret);
+      return ok({ gameId, code, seatIndex: 0, seatToken: creatorToken });
+    } catch (e) {
+      if (e instanceof CodeCollisionError) continue;
+      throw e;
+    }
+  }
+  return fail(503, "Couldn't allocate a unique game code \u2014 please try again.");
 }
 async function handleJoin(store, body) {
   const code = typeof body.code === "string" ? body.code : "";
@@ -678,14 +701,6 @@ function handleClientError(body) {
   console.warn(`client-error ${JSON.stringify(entry)}`);
   return ok({ ok: true });
 }
-
-// src/game/store.ts
-var StateTooLargeError = class extends Error {
-  constructor(bytes) {
-    super(`Game state too large to persist: ${bytes} bytes`);
-    this.name = "StateTooLargeError";
-  }
-};
 
 // src/game/router.ts
 var OPS = {
@@ -822,20 +837,16 @@ function makeSupabaseStore(admin) {
   return {
     async createGame(rec, secret) {
       guardSize(secret.state);
-      const { error: gErr } = await admin.from("games").insert({
-        id: rec.gameId,
-        code: rec.code,
-        status: rec.status,
-        version: 0,
-        seats: rec.seats
+      const { data, error } = await admin.rpc("create_game", {
+        p_id: rec.gameId,
+        p_code: rec.code,
+        p_status: rec.status,
+        p_seats: rec.seats,
+        p_state: secret.state,
+        p_seat_tokens: secret.seatTokens
       });
-      if (gErr) throw new Error(`createGame(games): ${gErr.message}`);
-      const { error: sErr } = await admin.from("game_secrets").insert({
-        game_id: rec.gameId,
-        state: secret.state,
-        seat_tokens: secret.seatTokens
-      });
-      if (sErr) throw new Error(`createGame(secret): ${sErr.message}`);
+      if (error) throw new Error(`createGame(create_game): ${error.message}`);
+      if (data === false) throw new CodeCollisionError(rec.code);
     },
     // Reads MUST distinguish "row absent" from "DB error". With maybeSingle(),
     // a missing row is { data: null, error: null }; a transient failure is

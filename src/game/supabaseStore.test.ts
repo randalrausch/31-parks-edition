@@ -95,6 +95,24 @@ function makeFake() {
   const client = {
     from: (table: string) => new Builder(table, control),
     rpc: (fn: string, args: Record<string, unknown>) => {
+      if (fn === "create_game") {
+        const id = args.p_id as string;
+        const code = args.p_code as string;
+        // unique_violation on either the id or the code → false (caller retries).
+        const codeTaken = [...games.values()].some((g) => g.code === code);
+        if (games.has(id) || codeTaken) return Promise.resolve({ data: false, error: null });
+        games.set(id, {
+          id,
+          code,
+          status: args.p_status,
+          version: 0,
+          seats: args.p_seats,
+          created_at: "2026-06-28T00:00:00.000Z",
+          updated_at: "2026-06-28T00:00:00.000Z",
+        });
+        secrets.set(id, { game_id: id, state: args.p_state, seat_tokens: args.p_seat_tokens });
+        return Promise.resolve({ data: true, error: null });
+      }
       if (fn === "commit_game") {
         const g = games.get(args.p_id as string);
         if (!g || g.version !== args.p_expected_version)

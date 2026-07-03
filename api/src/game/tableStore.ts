@@ -19,6 +19,7 @@ import {
 } from "@azure/data-tables";
 import { DefaultAzureCredential } from "@azure/identity";
 import {
+  CodeCollisionError,
   StateTooLargeError,
   type GameRecord,
   type GameStore,
@@ -127,18 +128,36 @@ export function makeTableStore(): GameStore {
   return {
     async createGame(rec, secret) {
       await ready;
-      await codes.upsertEntity<CodeRow>(
-        {
-          partitionKey: rec.code.toUpperCase(),
-          rowKey: rec.code.toUpperCase(),
+      const key = rec.code.toUpperCase();
+      // Claim the code with createEntity (NOT upsert): a 409 means the code is
+      // already taken, so raise CodeCollisionError instead of silently
+      // re-pointing a live lobby's invite code at this new game. Claiming the
+      // code first means a collision leaves no orphaned game rows behind.
+      try {
+        await codes.createEntity<CodeRow>({
+          partitionKey: key,
+          rowKey: key,
           gameId: rec.gameId,
-        },
-        "Replace",
-      );
-      await games.submitTransaction([
-        ["create", toGameRow(rec)],
-        ["create", toSecretRow(rec.gameId, secret)],
-      ]);
+        });
+      } catch (e) {
+        if (is(e, 409)) throw new CodeCollisionError(rec.code);
+        throw e;
+      }
+      try {
+        await games.submitTransaction([
+          ["create", toGameRow(rec)],
+          ["create", toSecretRow(rec.gameId, secret)],
+        ]);
+      } catch (e) {
+        // The game batch failed after the code was claimed — best-effort release
+        // the code so it isn't squatted for 14 days, then surface the error.
+        try {
+          await codes.deleteEntity(key, key);
+        } catch {
+          /* leave it for the reaper */
+        }
+        throw e;
+      }
     },
 
     async getByCode(code) {
@@ -213,7 +232,12 @@ export function makeTableStore(): GameStore {
         const code = g.code?.toUpperCase();
         if (code) {
           try {
-            await codes.deleteEntity(code, code);
+            // Only delete the code row if it STILL points at this expired game.
+            // A collision-safe create should make re-pointing impossible, but if
+            // the code was somehow reassigned to a newer game, deleting it blind
+            // would break that live game — so guard on the mapped gameId.
+            const codeRow = await codes.getEntity<CodeRow>(code, code);
+            if (codeRow.gameId === gameId) await codes.deleteEntity(code, code);
           } catch (e) {
             if (!is(e, 404)) throw e;
           }

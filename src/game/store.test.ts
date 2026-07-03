@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { makeMemoryStore } from "./memoryStore";
 import { createGameState } from "./actions";
-import type { GameRecord, SecretRecord } from "./store";
+import { CodeCollisionError, type GameRecord, type SecretRecord } from "./store";
 
 function fixtures(overrides: Partial<GameRecord> = {}) {
   const state = createGameState(
@@ -44,6 +44,15 @@ describe("GameStore (memory)", () => {
     expect(await store.getByCode("ABCDE")).toBe("g1");
     expect(await store.getByCode("abcde")).toBe("g1");
     expect(await store.getByCode("ZZZZZ")).toBeNull();
+  });
+
+  it("raises CodeCollisionError when the code is already taken", async () => {
+    const store = makeMemoryStore();
+    const a = fixtures({ gameId: "g1", code: "ABCDE1" });
+    const b = fixtures({ gameId: "g2", code: "abcde1" }); // same code, different case
+    await store.createGame(a.rec, a.secret);
+    await expect(store.createGame(b.rec, b.secret)).rejects.toBeInstanceOf(CodeCollisionError);
+    expect(await store.getByCode("ABCDE1")).toBe("g1"); // original untouched
   });
 
   it("returns the record with an etag and the secret", async () => {

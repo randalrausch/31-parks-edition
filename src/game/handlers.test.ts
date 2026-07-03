@@ -16,7 +16,7 @@ import {
   handleClientError,
 } from "./handlers";
 import { HIDDEN_CARD } from "./authority";
-import type { GameStore } from "./store";
+import { CodeCollisionError, type GameStore } from "./store";
 
 const CONFIG = {
   config: {
@@ -82,7 +82,7 @@ describe("handlers", () => {
       seatToken: string;
     };
     expect(b.seatIndex).toBe(0);
-    expect(b.code).toMatch(/^[A-HJ-NP-Z2-9]{5}$/);
+    expect(b.code).toMatch(/^[A-HJ-NP-Z2-9]{6}$/);
     expect(typeof b.seatToken).toBe("string");
 
     const st = (await handleState(store, { gameId: b.gameId, seatToken: b.seatToken })).body as {
@@ -93,6 +93,35 @@ describe("handlers", () => {
     expect(st.status).toBe("lobby");
     expect(st.seatIndex).toBe(0);
     expect(st.seats[0].filled).toBe(true);
+  });
+
+  it("create retries with a fresh code past a collision", async () => {
+    // Wrap a real store so the first createGame collides, then delegates.
+    const inner = makeMemoryStore();
+    let calls = 0;
+    const flaky: GameStore = {
+      ...inner,
+      async createGame(rec, secret) {
+        calls += 1;
+        if (calls === 1) throw new CodeCollisionError(rec.code);
+        return inner.createGame(rec, secret);
+      },
+    };
+    const res = await handleCreate(flaky, CONFIG);
+    expect(res.status).toBe(200);
+    expect(calls).toBe(2); // regenerated the code and succeeded on the retry
+  });
+
+  it("create gives up with 503 after exhausting collision retries", async () => {
+    const store = makeMemoryStore();
+    const alwaysCollides: GameStore = {
+      ...store,
+      async createGame(rec) {
+        throw new CodeCollisionError(rec.code);
+      },
+    };
+    const res = await handleCreate(alwaysCollides, CONFIG);
+    expect(res.status).toBe(503);
   });
 
   it("join seats a second human with a distinct token/index", async () => {

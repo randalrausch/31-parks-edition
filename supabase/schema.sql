@@ -55,6 +55,38 @@ alter publication supabase_realtime add table public.games;
 -- Helpful index for joining by code.
 create index if not exists games_code_idx on public.games (code);
 
+-- ── Atomic create ──
+-- Inserts the public row AND the secret row in ONE transaction so a game can
+-- never half-exist (an orphan `games` row squatting a join code). Returns true
+-- on success, false if the code (or id) is already taken so the caller can
+-- regenerate the code and retry. Service-role only (see the revoke below).
+create or replace function public.create_game(
+  p_id uuid,
+  p_code text,
+  p_status text,
+  p_seats jsonb,
+  p_state jsonb,
+  p_seat_tokens jsonb
+) returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.games (id, code, status, version, seats)
+    values (p_id, p_code, p_status, 0, p_seats);
+  insert into public.game_secrets (game_id, state, seat_tokens)
+    values (p_id, p_state, p_seat_tokens);
+  return true;
+exception
+  when unique_violation then
+    return false;  -- code/id already exists — caller retries with a new code
+end;
+$$;
+
+revoke execute on function public.create_game(uuid, text, text, jsonb, jsonb, jsonb)
+  from public, anon, authenticated;
+
 -- ── Atomic optimistic-concurrency commit ──
 -- Bumps games.version (iff unchanged) AND writes the secret state in ONE
 -- transaction, so the public row and the secret row can never half-commit.
