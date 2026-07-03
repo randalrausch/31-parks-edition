@@ -35,8 +35,12 @@ threats we design against, and how:
   are reaped, bounding storage growth. See `docs/AZURE.md → Cost protection`.
 - **Backend data access.** On Azure, game data in Table Storage is reached via the
   Function App's **managed identity** (no data connection string). On Supabase,
-  the secret table is service-role only (RLS denies anon access). The browser only
-  ever holds client-safe values (publishable/anon key, or the public API URL).
+  the secret table is service-role only (RLS denies anon access), and the
+  `SECURITY DEFINER` RPCs (`commit_game`, `incr_if_below`) have `EXECUTE`
+  **revoked from anon/authenticated** so they can't be called over PostgREST to
+  bypass the Edge Function — a CI test (`supabase/schema.grants.test.ts`) enforces
+  that every definer RPC is revoked. The browser only ever holds client-safe
+  values (publishable/anon key, or the public API URL).
 
 ### Explicit non-goals
 

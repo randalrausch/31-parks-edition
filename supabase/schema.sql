@@ -93,6 +93,14 @@ begin
 end;
 $$;
 
+-- SECURITY: this is a SECURITY DEFINER function in the PostgREST-exposed `public`
+-- schema, so Postgres' default EXECUTE-to-PUBLIC grant would let any anon caller
+-- invoke it over /rest/v1/rpc and forge authoritative state. It must ONLY be
+-- callable by the service-role Edge Function (which bypasses grants). Revoke the
+-- default grant. (See migration 20260703000000_revoke_rpc_execute.sql.)
+revoke execute on function public.commit_game(uuid, integer, text, jsonb, jsonb, jsonb)
+  from public, anon, authenticated;
+
 -- ── Durable, cross-instance rate-limit counter (for the `create` op) ──
 create table if not exists public.rate_counters (
   bucket     text        not null,
@@ -126,6 +134,11 @@ begin
   return v_count is not null;
 end;
 $$;
+
+-- SECURITY: service-role only (see the note on commit_game above). Without this,
+-- an anon caller could poison the durable rate counters to deny `create` globally.
+revoke execute on function public.incr_if_below(text, text, integer)
+  from public, anon, authenticated;
 
 -- ── Deterministic reaping (pg_cron) ──
 -- A daily job reaps abandoned games (14 days idle; cascades to game_secrets) and
