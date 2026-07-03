@@ -3,8 +3,8 @@
 **31** is the classic push-your-luck card game: draw, discard, and build the
 highest hand you can in a single suit before someone knocks. This is a free,
 open-source implementation you can play solo against AI opponents, pass around
-one device with friends, or host online — with original national-parks
-artwork and ten AI opponents who each play (and talk) like actual people.
+one device with friends, or host online — themed for America's national
+parks, with ten AI opponents who each have their own personality.
 
 No installs, no accounts, no ads — clone it and you're playing in under a
 minute.
@@ -61,13 +61,15 @@ and card backs — pick one on the home screen or let it surprise you.
 
 ## Features
 
-- A complete, correctly-scored game of 31: draw/discard/knock, Grace, the
-  knock penalty, instant 31, elimination, and an end-of-game score chart.
+- A complete game of 31: draw/discard/knock, Grace, the knock penalty,
+  instant 31, elimination, and an end-of-game score chart.
 - Ten AI opponents with distinct personalities, not just difficulty sliders.
 - Pass-and-play for 2–8 humans on one device, with cover screens so nobody
   peeks at another player's hand.
-- Real national-park settings (Glacier, Yellowstone, Theodore Roosevelt so
-  far) with original art — and a documented path to add your own.
+- Themed for America's national parks (Glacier, Yellowstone, Theodore
+  Roosevelt so far) with original art — and a documented path to add your
+  own. More art — new parks, opponent portraits, card backs — is always
+  welcome; see [For contributors](#for-contributors).
 - Optional online multiplayer, server-authoritative so no one can see cards
   they shouldn't. Take your turn whenever; the game waits for you.
 - Installable as a PWA; solo play works fully offline.
@@ -103,27 +105,34 @@ npm run build && npm run preview
 
 ### 2. Put it online
 
-Online play needs two things: a **static host** for the site and a
-**backend** for the authoritative game server. The app auto-selects a backend
-from environment variables, so pick whichever you prefer — **you don't need
-both**:
+Online play needs a **backend** for the authoritative game server, plus a
+**static host** for the site itself. Two backend implementations ship with
+the project — pick one to get going, or use it as a reference for your own:
 
-| Backend | Set these env vars | Host pairing | Guide |
-|---------|--------------------|--------------|-------|
-| **Azure** (Functions + Table Storage) | `VITE_API_BASE` | Azure Static Web Apps | [docs/AZURE.md](docs/AZURE.md) |
-| **Supabase** (Edge Function + Postgres) | `VITE_SUPABASE_URL`, `VITE_SUPABASE_KEY` | Netlify / Vercel / any static host | [docs/SUPABASE.md](docs/SUPABASE.md) |
+- **Azure (Functions + Table Storage)** — the fastest path to a running
+  online game. One command provisions and deploys everything, scales to zero
+  when idle, and auto-wakes with no manual un-pausing:
 
-If both are configured, **Azure wins**; if neither is set, the site still
-builds and serves **solo + pass-and-play** (the online buttons just hide). The
-server is authoritative and enforces hidden hands either way.
+  ```bash
+  npm run azure:up   # or: azd up
+  ```
 
-- **Azure** is the lowest-maintenance choice — everything scales to zero and
-  **auto-wakes after long gaps with no manual un-pausing**. One command:
-  `azd up` (or `npm run azure:up`). See [docs/AZURE.md](docs/AZURE.md).
-- **Supabase + a static host** (Netlify/Vercel/Azure SWA/Cloudflare) also
-  works; note a free Supabase project **pauses after 7 days idle** and must be
-  un-paused from its dashboard. See [docs/SUPABASE.md](docs/SUPABASE.md) and
-  [docs/DEPLOY.md](docs/DEPLOY.md).
+  See [docs/AZURE.md](docs/AZURE.md).
+
+- **Supabase (Edge Function + Postgres) + any static host** (Netlify, Vercel,
+  Cloudflare, …) — a good fit if you're already on Supabase. Set it up with:
+
+  ```bash
+  npm run supabase:setup
+  ```
+
+  See [docs/SUPABASE.md](docs/SUPABASE.md) and [docs/DEPLOY.md](docs/DEPLOY.md).
+  Note a free Supabase project **pauses after 7 days idle** and needs a
+  manual un-pause from its dashboard.
+
+Either one enforces hidden hands server-side. Without a backend configured,
+the site still builds and serves solo + pass-and-play — the online buttons
+just don't appear.
 
 ## For contributors
 
@@ -134,6 +143,9 @@ bug fixes, features, docs, and especially **new park themes**.
 - **Add a national park** — the highest-leverage contribution. It's mostly
   art plus a color palette plus one registry entry; no code changes required
   for the easy path. See [docs/THEMES.md](docs/THEMES.md).
+- **Contribute artwork** — new park scenes, AI opponent portraits, card backs,
+  emblems. You don't need to touch any code to help here; drop art in and open
+  a PR, or post it on an issue and someone can wire it in.
 - **Add or tune an AI opponent** — one entry in
   [`src/game/aiCharacters.ts`](src/game/aiCharacters.ts): a name, a
   catchphrase, and five trait numbers.
