@@ -17,6 +17,7 @@ import {
 import { makeTableStore } from "./game/tableStore.js";
 import { makeRouter } from "../../src/game/router";
 import { sweep } from "../../src/game/cleanup";
+import { clientIp } from "../../src/game/clientIp";
 import { makeTableRateLimiter } from "./game/rateLimit.js";
 import { initTelemetry } from "./telemetry.js";
 
@@ -36,9 +37,9 @@ const route = makeRouter(store, {
   onEvent: (event, data) => console.log(JSON.stringify({ event, ...data })),
 });
 
-const clientIp = (req: HttpRequest): string =>
-  req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-
+// App Service appends the real client IP (with :port) as the right-most
+// X-Forwarded-For hop; the shared helper takes that hop, never the spoofable
+// left-most one. Azure has no trusted single-value proxy header, so pass none.
 app.http("game", {
   methods: ["POST", "OPTIONS"],
   authLevel: "anonymous",
@@ -46,7 +47,7 @@ app.http("game", {
   handler: async (req: HttpRequest): Promise<HttpResponseInit> => {
     const res = await route({
       method: req.method,
-      ip: clientIp(req),
+      ip: clientIp(req.headers),
       origin: req.headers.get("origin") ?? undefined,
       readJson: () => req.json(),
     });

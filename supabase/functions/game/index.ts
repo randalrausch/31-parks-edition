@@ -16,7 +16,12 @@
  */
 // @ts-expect-error — Deno std import resolved at deploy time
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { makeRouter, makeSupabaseStore, makeSupabaseRateLimiter } from "../_shared/engine.mjs";
+import {
+  makeRouter,
+  makeSupabaseStore,
+  makeSupabaseRateLimiter,
+  clientIp,
+} from "../_shared/engine.mjs";
 
 // @ts-expect-error — Deno global
 const env = (k: string) => Deno.env.get(k);
@@ -41,11 +46,10 @@ const route = makeRouter(store, {
   onEvent: (event, data) => console.log(JSON.stringify({ event, ...data })),
 });
 
-const clientIp = (req: Request): string =>
-  req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-  req.headers.get("cf-connecting-ip") ||
-  "unknown";
-
+// The Supabase/Cloudflare edge sets cf-connecting-ip to the true client and
+// overwrites any client-supplied value, so trust it first; otherwise fall back
+// to the right-most (infra-appended) X-Forwarded-For hop. Never the left-most,
+// which the client controls and could rotate to dodge the rate limits.
 // @ts-expect-error — Deno global
 Deno.serve(async (req: Request): Promise<Response> => {
   // Abandoned games + stale rate counters are reaped by a pg_cron job (see
@@ -54,7 +58,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   // fixed cadence even when traffic stops.
   const res = await route({
     method: req.method,
-    ip: clientIp(req),
+    ip: clientIp(req.headers, ["cf-connecting-ip", "x-real-ip"]),
     origin: req.headers.get("origin") ?? undefined,
     readJson: () => req.json(),
   });

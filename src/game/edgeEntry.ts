@@ -17,3 +17,4 @@ export type { CreateConfigInput, CreateSetup, SeatSetup } from "./config";
 export { makeRouter } from "./router";
 export type { RawRequest, RawResponse } from "./router";
 export { makeSupabaseStore, makeSupabaseRateLimiter } from "./supabaseStore";
+export { clientIp } from "./clientIp";

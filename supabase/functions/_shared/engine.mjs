@@ -894,6 +894,29 @@ function makeSupabaseRateLimiter(admin, maxPerDay, maxPerIpHour) {
   };
   return makeLimiter(counter, maxPerDay, maxPerIpHour);
 }
+
+// src/game/clientIp.ts
+function stripPort(s) {
+  const bracketed = s.match(/^\[(.+)\]:\d+$/);
+  if (bracketed) return bracketed[1];
+  if (/^\d{1,3}(\.\d{1,3}){3}:\d+$/.test(s)) return s.slice(0, s.lastIndexOf(":"));
+  return s;
+}
+function clientIp(headers, trustedHeaders = []) {
+  for (const name of trustedHeaders) {
+    const v = headers.get(name);
+    if (v) {
+      const ip = stripPort(v.trim());
+      if (ip) return ip;
+    }
+  }
+  const xff = headers.get("x-forwarded-for");
+  if (xff) {
+    const hops = xff.split(",").map((h) => stripPort(h.trim())).filter(Boolean);
+    if (hops.length) return hops[hops.length - 1];
+  }
+  return "unknown";
+}
 export {
   APP_VERSION,
   PROTOCOL_VERSION,
@@ -903,6 +926,7 @@ export {
   buildCreateSetup,
   clampKey,
   clampName,
+  clientIp,
   createGameState,
   makeRouter,
   makeSupabaseRateLimiter,
