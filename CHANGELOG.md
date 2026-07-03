@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.2 — 2026-07-03
+
+### Fixes
+
+- stop three redaction tests flaking on an instant natural 31 (#56)
+
 ## v0.7.1 — 2026-07-02
 
 ### Fixes
