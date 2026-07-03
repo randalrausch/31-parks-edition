@@ -67,9 +67,24 @@ class Server {
   }
 }
 
+/**
+ * Build servers until one lands mid-deal rather than an instant natural 31 (a
+ * real but rare — about 1 in ~185 deals at this seat count — outcome that
+ * ends the deal immediately and reveals every hand; see dealtBlitzIndex in
+ * actions.ts). This test exercises the mid-deal hidden view specifically, so
+ * it retries past that edge case instead of flaking on it.
+ */
+function newMidDealServer(players: NewGamePlayer[], options = DEFAULT_OPTIONS): Server {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const server = new Server(players, options);
+    if (server.state.phase === "drawing" || server.state.phase === "discarding") return server;
+  }
+  throw new Error("could not deal a non-blitz hand after 50 attempts");
+}
+
 describe("online multiplayer integration", () => {
   it("never leaks another seat's cards or the deck, mid-deal", () => {
-    const server = new Server(seats(3, 2));
+    const server = newMidDealServer(seats(3, 2));
     expect(["drawing", "discarding"]).toContain(server.state.phase);
 
     for (let viewer = 0; viewer < 5; viewer++) {

@@ -50,6 +50,26 @@ async function newGame(store: GameStore) {
   };
 }
 
+/**
+ * Start fresh games until one deals into "drawing" rather than an instant
+ * natural 31 (a real but rare — about 1 in ~460 deals — outcome that resolves
+ * the deal immediately and reveals every hand; see dealtBlitzIndex in
+ * actions.ts). This test exercises the mid-deal "hands are hidden" view, not
+ * the always-revealed dealEnd view, so it retries past that edge case instead
+ * of flaking on it.
+ */
+async function newMidDealGame(store: GameStore) {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const game = await newGame(store);
+    await handleStart(store, { gameId: game.gameId, seatToken: game.host.seatToken });
+    const probe = (
+      await handleState(store, { gameId: game.gameId, seatToken: game.host.seatToken })
+    ).body as { state: { phase: string } };
+    if (probe.state.phase !== "dealEnd") return game;
+  }
+  throw new Error("could not deal a non-blitz hand after 50 attempts");
+}
+
 describe("handlers", () => {
   it("create returns the expected shape and seats the host at idx 0", async () => {
     const store = makeMemoryStore();
@@ -153,8 +173,7 @@ describe("handlers", () => {
 
   it("state redacts: a viewer sees only their own hand", async () => {
     const store = makeMemoryStore();
-    const { gameId, host, guest } = await newGame(store);
-    await handleStart(store, { gameId, seatToken: host.seatToken });
+    const { gameId, host, guest } = await newMidDealGame(store);
 
     const asHost = (await handleState(store, { gameId, seatToken: host.seatToken })).body as {
       state: { players: { hand: { id: string }[] }[] };

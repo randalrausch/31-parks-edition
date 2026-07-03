@@ -15,6 +15,22 @@ const cardCount = (s: GameState) =>
   s.deck.length + s.discard.length + s.players.reduce((n, p) => n + p.hand.length, 0);
 const hidden = (h: { id: string }[]) => h.every((c) => c.id === HIDDEN_CARD.id);
 
+/**
+ * Deal until it doesn't resolve into an instant natural 31 (a real but rare —
+ * about 1 in ~460 deals — outcome that ends the deal immediately and reveals
+ * every hand; see dealtBlitzIndex in actions.ts). These tests exercise the
+ * mid-deal hidden view, not the always-revealed dealEnd view (covered by
+ * "reveals every hand at deal end" below), so they retry past that edge case
+ * instead of flaking on it.
+ */
+function dealMidDeal(players: NewGamePlayer[], options = DEFAULT_OPTIONS): GameState {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const s = applyAction(createGameState(players, options), { type: "deal" });
+    if (s.phase !== "dealEnd") return s;
+  }
+  throw new Error("could not deal a non-blitz hand after 50 attempts");
+}
+
 const mixed = (humanIds: string[], aiCount: number): NewGamePlayer[] => [
   ...humanIds.map((id, i) => ({
     id,
@@ -33,9 +49,7 @@ const mixed = (humanIds: string[], aiCount: number): NewGamePlayer[] => [
 
 describe("redactState", () => {
   it("shows the viewer their own hand and hides everyone else + the deck", () => {
-    const s = applyAction(createGameState(mixed(["h0"], 2), DEFAULT_OPTIONS), {
-      type: "deal",
-    });
+    const s = dealMidDeal(mixed(["h0"], 2));
     const v = redactState(s, "h0");
     expect(v.players.find((p) => p.id === "h0")!.hand.map((c) => c.id)).toEqual(
       s.players[0].hand.map((c) => c.id),
@@ -48,9 +62,7 @@ describe("redactState", () => {
   });
 
   it("hides all hands from a spectator mid-deal", () => {
-    const s = applyAction(createGameState(mixed(["h0"], 2), DEFAULT_OPTIONS), {
-      type: "deal",
-    });
+    const s = dealMidDeal(mixed(["h0"], 2));
     const v = redactState(s, null);
     expect(v.players.every((p) => hidden(p.hand))).toBe(true);
   });
