@@ -15,6 +15,14 @@ var DEFAULT_TRAITS = {
   aggression: 3,
   risk: 3
 };
+var DEFAULT_OPTIONS = {
+  threeOfAKind: false,
+  grace: true,
+  knockPenalty: false,
+  sound: true,
+  showLog: true,
+  fullHistory: false
+};
 function randomInt(n) {
   const limit = Math.floor(4294967295 / n) * n;
   const buf = new Uint32Array(1);
@@ -332,7 +340,7 @@ function reshuffle(s) {
 }
 function log(s, kind, card) {
   const id = s.log.length === 0 ? 0 : s.log[s.log.length - 1].id + 1;
-  s.log.push({ id, actor: s.players[s.cur].name, kind, card });
+  s.log.push({ id, actor: s.players[s.cur].name, actorSeat: s.cur, kind, card });
   if (s.log.length > 30) s.log.shift();
 }
 function createGameState(players, options) {
@@ -434,7 +442,6 @@ var PROTOCOL_VERSION = 1;
 
 // src/game/config.ts
 var TRAIT_KEYS = ["bluff", "memory", "patience", "aggression", "risk"];
-var BOOL_OPTS = ["threeOfAKind", "grace", "knockPenalty", "sound", "fullHistory"];
 var clampName = (s, fallback) => (typeof s === "string" ? s.trim().slice(0, 40) : "") || fallback;
 var clampKey = (s, fallback) => typeof s === "string" && /^[a-z0-9-]{1,32}$/.test(s) ? s : fallback;
 var clampImage = (s) => typeof s === "string" && s.length <= 512 ? s : void 0;
@@ -451,8 +458,9 @@ function clampTraits(t) {
 function sanitizeOptions(o) {
   const src = o && typeof o === "object" ? o : {};
   const out = {};
-  for (const k of BOOL_OPTS) out[k] = src[k] === true;
-  out.showLog = src.showLog !== false;
+  for (const k of Object.keys(DEFAULT_OPTIONS)) {
+    out[k] = DEFAULT_OPTIONS[k] ? src[k] !== false : src[k] === true;
+  }
   return out;
 }
 function buildCreateSetup(config) {

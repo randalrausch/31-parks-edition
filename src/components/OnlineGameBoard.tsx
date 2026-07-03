@@ -61,9 +61,10 @@ export default function OnlineGameBoard({
   }, [s]);
 
   // Pace opponent (AI/remote) turns: the server settles them atomically, so we
-  // replay the new public log moves one beat at a time for natural flow.
-  const viewerName = s && viewer >= 0 ? (s.players[viewer]?.name ?? null) : null;
-  const replay = useTurnReplay(snap, viewerName);
+  // replay the new public log moves one beat at a time for natural flow. Match
+  // on seat index (not name — names aren't unique) so a same-named opponent's
+  // moves are never mistaken for the viewer's own.
+  const replay = useTurnReplay(snap, viewer >= 0 ? viewer : null);
 
   if (!s) {
     return (

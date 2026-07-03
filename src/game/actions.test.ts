@@ -40,6 +40,26 @@ describe("createGameState + deal", () => {
     applyAction(s0, { type: "drawDeck" });
     expect(JSON.stringify(s0)).toBe(snapshot);
   });
+
+  it("logs each move with the acting player's seat index (stable identity)", () => {
+    // Two players share a display name; actorSeat must still identify who acted,
+    // so a name-based match can't confuse them (the turn-replay attribution bug).
+    const players: NewGamePlayer[] = [
+      { id: "p0", name: "Sam", isAI: true, avatarKey: "ranger", traits: traits() },
+      { id: "p1", name: "Sam", isAI: true, avatarKey: "ranger", traits: traits() },
+    ];
+    let s = applyAction(createGameState(players, DEFAULT_OPTIONS), { type: "deal" });
+    const cur = s.cur;
+    s = applyAction(s, { type: "drawDeck" });
+    s = applyAction(s, { type: "discard", cardId: s.players[cur].hand[0].id });
+    // Every log entry's actorSeat points at the player whose name it recorded.
+    for (const e of s.log) {
+      expect(e.actorSeat).toBeTypeOf("number");
+      expect(s.players[e.actorSeat].name).toBe(e.actor);
+    }
+    // The moves we just made were the first player's, at their seat.
+    expect(s.log.every((e) => e.actorSeat === cur)).toBe(true);
+  });
 });
 
 describe("dealt 31 (blitz) detection", () => {
