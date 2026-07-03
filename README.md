@@ -185,6 +185,8 @@ docs/              Architecture, theming, backend, and deployment guides
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how the pure engine, reducer,
   transports, and authority fit together, and how hidden information is
   enforced.
+- [docs/TESTING.md](docs/TESTING.md) — the test layering (unit/fuzz → local E2E
+  → live-site deployment smoke) and what each layer covers.
 - [docs/THEMES.md](docs/THEMES.md) — how to add your own national park theme.
 - [docs/AZURE.md](docs/AZURE.md) — the optional **Azure** backend (Functions +
   Table Storage + Static Web Apps) via one `azd up`; scales to zero and
