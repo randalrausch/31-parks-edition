@@ -66,4 +66,5 @@ gh variable list
 echo "  (secrets are write-only; listed by name only)"
 echo ""
 echo "  Push to main — or Actions → Deploy (Azure) → Run workflow — to deploy."
-echo "  DEPLOY_AZURE=true also disables the Netlify/Supabase deploys in ci.yml."
+echo "  DEPLOY_AZURE is an independent opt-in: it doesn't touch ci.yml's"
+echo "  DEPLOY_SUPABASE / DEPLOY_NETLIFY, so you can run any combination."

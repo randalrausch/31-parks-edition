@@ -24,6 +24,11 @@ initTelemetry();
 
 const store = makeTableStore();
 const route = makeRouter(store, {
+  // ALLOWED_ORIGIN (set as a Function App setting by infra/resources.bicep from
+  // the ALLOWED_ORIGINS azd var) is read here and passed in; the router never
+  // touches env. Comma-separated list of origins; "*" (the default) allows all.
+  // Mirrors the Supabase adapter so CORS behaves identically across backends.
+  allowedOrigin: process.env.ALLOWED_ORIGIN ?? "*",
   rateLimiter: makeTableRateLimiter(),
   // App Insights auto-collects console output (see telemetry.ts), so this
   // structured line becomes a queryable trace: request + error rate and latency
