@@ -8,6 +8,7 @@ import { createClient, type SupabaseClient, type RealtimeChannel } from "@supaba
 import { BackendError, type GameApi } from "./gameApi";
 import type { GameBackend } from "./backend";
 import { supabaseEnabled, supabaseKey, supabaseUrl } from "./multiplayerConfig";
+import { PROTOCOL_VERSION } from "./version";
 
 export const supabase: SupabaseClient | null = supabaseEnabled
   ? createClient(supabaseUrl!, supabaseKey!, {
@@ -24,7 +25,9 @@ export function makeGameApi(client: SupabaseClient): GameApi {
   async function call<T>(body: Record<string, unknown>): Promise<T> {
     const invoke = () =>
       client.functions.invoke("game", {
-        body,
+        // Tag every request with the wire-protocol version so the server can
+        // reject a client that's gone stale across a breaking deploy (426).
+        body: { protocol: PROTOCOL_VERSION, ...body },
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
     let res: Awaited<ReturnType<typeof invoke>>;
@@ -55,8 +58,9 @@ export function makeGameApi(client: SupabaseClient): GameApi {
         }
       }
       // Carry the status so the transport can treat a 409 conflict as a
-      // recoverable resync rather than a user-facing error.
-      throw new BackendError(message, status, status === 409);
+      // recoverable resync rather than a user-facing error, and a 426 as
+      // "client outdated — refresh".
+      throw new BackendError(message, status, status === 409, status === 426);
     }
     if (data?.error) throw new Error(data.error);
     return data as T;

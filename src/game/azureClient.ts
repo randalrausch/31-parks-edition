@@ -10,6 +10,7 @@ import type { GameAction } from "./actions";
 import { BackendError, type GameApi } from "./gameApi";
 import type { GameBackend } from "./backend";
 import { azureApiBase, azureEnabled } from "./multiplayerConfig";
+import { PROTOCOL_VERSION } from "./version";
 
 // Abort a request that never settles (e.g. a half-open connection on a mobile
 // network handoff). Without this, one stuck fetch would leave NetworkTransport's
@@ -23,7 +24,9 @@ export function makeGameApi(base: string): GameApi {
       res = await fetch(`${base}/game`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        // Tag every request with the wire-protocol version so the server can
+        // reject a client that's gone stale across a breaking deploy (426).
+        body: JSON.stringify({ protocol: PROTOCOL_VERSION, ...body }),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
     } catch {
@@ -42,6 +45,7 @@ export function makeGameApi(base: string): GameApi {
         data?.error || `Request failed (${res.status}).`,
         res.status,
         res.status === 409,
+        res.status === 426,
       );
     if (data?.error) throw new Error(data.error);
     return data as T;

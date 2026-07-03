@@ -758,6 +758,8 @@ function makeRouter(store, opts = {}) {
       return reply(400, { error: "We couldn't read that request." });
     }
     op = String(body?.op ?? "");
+    if (typeof body?.protocol === "number" && body.protocol !== PROTOCOL_VERSION && op !== "version" && op !== "health")
+      return reply(426, { error: "A new version is available \u2014 please refresh the page." });
     if (op === "version") return reply(200, handleVersion(provider).body);
     if (op === "health") {
       const r = await handleHealth(store, provider);
@@ -791,7 +793,8 @@ function makeRouter(store, opts = {}) {
           error: "This game has grown too large to continue. Please start a new one."
         });
       }
-      console.error(`game op=${op} failed:`, e?.stack ?? e);
+      const gid = typeof body?.gameId === "string" ? body.gameId : "-";
+      console.error(`game op=${op} game=${gid} failed:`, e?.stack ?? e);
       return reply(500, {
         error: "Something went wrong on our end. Please try again."
       });
