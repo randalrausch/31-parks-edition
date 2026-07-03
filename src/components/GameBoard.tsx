@@ -96,10 +96,11 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
       }
     >
       {/* Live public-action feed (what everyone at the table can see).
-            Optional — players can hide it; the choice is remembered. */}
+            Optional — players can hide it; the choice is remembered. Shows a
+            full round (up to two entries per living player: draw + discard). */}
       <BoardLog
         entries={s.log}
-        recentLimit={5}
+        recentLimit={aliveCount * 2}
         visible={logOpen}
         canToggle
         onToggle={toggleLog}
