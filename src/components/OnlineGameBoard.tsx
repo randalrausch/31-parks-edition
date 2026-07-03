@@ -101,10 +101,13 @@ export default function OnlineGameBoard({
   // dropping one, not the illegal 4-card total).
   const handScore = me ? bestHandScore(me.hand, s.options) : 0;
 
-  // The feed normally shows the last few moves; when the host's "Full Action
-  // History" house rule is on, players may expand it to the whole deal. We still
-  // gate by the paced-replay cursor so unrevealed moves stay hidden.
-  const RECENT_LOG = 5;
+  // The feed normally shows the last full round of moves — up to two entries
+  // (draw + discard) per living player, so it scales with the table size
+  // instead of clipping mid-round at larger player counts — and when the
+  // host's "Full Action History" house rule is on, players may expand it to
+  // the whole deal. We still gate by the paced-replay cursor so unrevealed
+  // moves stay hidden.
+  const RECENT_LOG = aliveCount * 2;
   const visibleLog = s.log.filter((e) => e.id <= replay.logThrough);
   const logExpandable = s.options.fullHistory && visibleLog.length > RECENT_LOG;
   const logShowingAll = logExpandable && showAllLog;
