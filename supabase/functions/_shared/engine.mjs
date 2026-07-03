@@ -837,18 +837,28 @@ function makeSupabaseStore(admin) {
       });
       if (sErr) throw new Error(`createGame(secret): ${sErr.message}`);
     },
+    // Reads MUST distinguish "row absent" from "DB error". With maybeSingle(),
+    // a missing row is { data: null, error: null }; a transient failure is
+    // { data: null, error }. Swallowing the error and returning null would make
+    // a blip look like a permanent 404 — the handler then tells the player the
+    // game no longer exists (they may leave and lose their seat token), and the
+    // health probe reports 200 while the DB is unreachable. So rethrow on error
+    // and let the router surface a 500 the client treats as "reconnecting".
     async getByCode(code) {
-      const { data } = await admin.from("games").select("id").eq("code", code.toUpperCase()).maybeSingle();
+      const { data, error } = await admin.from("games").select("id").eq("code", code.toUpperCase()).maybeSingle();
+      if (error) throw new Error(`getByCode: ${error.message}`);
       return data?.id ?? null;
     },
     async getGame(gameId) {
-      const { data } = await admin.from("games").select("*").eq("id", gameId).maybeSingle();
+      const { data, error } = await admin.from("games").select("*").eq("id", gameId).maybeSingle();
+      if (error) throw new Error(`getGame: ${error.message}`);
       if (!data) return null;
       const rec = toRecord(data);
       return { rec, etag: String(rec.version) };
     },
     async getSecret(gameId) {
-      const { data } = await admin.from("game_secrets").select("*").eq("game_id", gameId).maybeSingle();
+      const { data, error } = await admin.from("game_secrets").select("*").eq("game_id", gameId).maybeSingle();
+      if (error) throw new Error(`getSecret: ${error.message}`);
       if (!data) return null;
       return {
         state: data.state,

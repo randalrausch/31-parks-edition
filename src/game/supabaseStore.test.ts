@@ -17,12 +17,18 @@ function makeFake() {
   const games = new Map<string, Row>();
   const secrets = new Map<string, Row>();
   const counters = new Map<string, number>();
+  // When set, every SELECT resolves to { data: null, error } — models a
+  // transient DB failure so we can assert reads rethrow instead of null-ing.
+  const control = { readError: null as string | null };
 
   class Builder {
     private mode: "select" | "insert" | "delete" = "select";
     private payload: Row | null = null;
     private filters: [string, string, unknown][] = [];
-    constructor(private table: string) {}
+    constructor(
+      private table: string,
+      private ctl: { readError: string | null },
+    ) {}
     insert(v: Row) {
       this.mode = "insert";
       this.payload = v;
@@ -71,6 +77,7 @@ function makeFake() {
         for (const r of hit) this.map().delete((r.id ?? r.game_id) as string);
         return { data: hit.map((r) => ({ id: r.id })), error: null };
       }
+      if (this.ctl.readError) return { data: null, error: { message: this.ctl.readError } };
       const hit = this.match();
       return { data: single ? (hit[0] ?? null) : hit, error: null };
     }
@@ -86,7 +93,7 @@ function makeFake() {
   }
 
   const client = {
-    from: (table: string) => new Builder(table),
+    from: (table: string) => new Builder(table, control),
     rpc: (fn: string, args: Record<string, unknown>) => {
       if (fn === "commit_game") {
         const g = games.get(args.p_id as string);
@@ -112,7 +119,7 @@ function makeFake() {
       return Promise.resolve({ data: null, error: { message: `unknown rpc ${fn}` } });
     },
   };
-  return { client: client as unknown as SupabaseClient, games, secrets };
+  return { client: client as unknown as SupabaseClient, games, secrets, control };
 }
 
 function fixtures(): { rec: GameRecord; secret: SecretRecord } {
@@ -185,6 +192,29 @@ describe("SupabaseGameStore", () => {
     await expect(store.createGame(rec, huge)).rejects.toBeInstanceOf(StateTooLargeError);
     await store.createGame(rec, secret);
     await expect(store.update("g1", "0", rec, huge)).rejects.toBeInstanceOf(StateTooLargeError);
+  });
+
+  it("rethrows on a DB read error instead of masking it as 'not found'", async () => {
+    const { client, control } = makeFake();
+    const store = makeSupabaseStore(client);
+    const { rec, secret } = fixtures();
+    await store.createGame(rec, secret);
+
+    control.readError = "connection reset"; // transient DB failure
+    await expect(store.getByCode("ABCDE")).rejects.toThrow(/getByCode/);
+    await expect(store.getGame("g1")).rejects.toThrow(/getGame/);
+    await expect(store.getSecret("g1")).rejects.toThrow(/getSecret/);
+
+    control.readError = null; // recovered → reads work again
+    expect(await store.getByCode("ABCDE")).toBe("g1");
+  });
+
+  it("returns null (not an error) for a genuinely absent row", async () => {
+    const { client } = makeFake();
+    const store = makeSupabaseStore(client);
+    expect(await store.getByCode("NOPE0")).toBeNull();
+    expect(await store.getGame("missing")).toBeNull();
+    expect(await store.getSecret("missing")).toBeNull();
   });
 
   it("rate limiter enforces the global daily ceiling via incr_if_below", async () => {
