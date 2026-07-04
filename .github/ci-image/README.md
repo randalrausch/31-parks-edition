@@ -27,35 +27,62 @@ the Dockerfile changes, weekly (to pick up Chrome/base security patches), and on
 manual dispatch. Bump the `FROM` tag and the `playwright@` version together when
 `@playwright/test` in `package.json` moves.
 
-## Adopting it in a job (do this AFTER the image is first published)
+## Keeping it fresh — how you'll know it needs an update
 
-The image must exist in GHCR before any job references it, so publish it first
-(merge this directory, then run **Actions → Build CI image → Run workflow**). Then
-switch a job to run inside it. For the `e2e` job in `ci.yml` — the biggest
-beneficiary — that means adding a `container:` and dropping the now-redundant Chrome
-install:
+Three layers, so a stale image can't slip through unnoticed:
+
+1. **Automatic, on a schedule** — the build workflow runs **weekly**, so Chrome and
+   the base image pick up security patches without anyone doing anything.
+2. **Automatic, on dependency changes** — it also rebuilds whenever
+   `package-lock.json` changes on `main`, so a `@playwright/test` bump republishes
+   the image to follow.
+3. **A blocking guard that notifies you** — `scripts/check-ci-image.mjs` runs in the
+   `gate` job on every PR. If the Dockerfile's pinned Playwright version drifts from
+   the lockfile (e.g. you bump `@playwright/test` to a new minor but the image still
+   targets the old one), **CI fails with the exact fix**. You find out at PR time,
+   not from a weird test failure later. Run it locally too: `node scripts/check-ci-image.mjs`.
+
+So the only manual step is the one that genuinely needs a human decision: when a
+Playwright **minor/major** bump lands, set both pins in the [`Dockerfile`](./Dockerfile)
+to the new `vX.Y.Z` (the guard tells you the number). Patch bumps are tolerated —
+the E2E specs use the system Chrome channel, which isn't tied to Playwright's patch.
+
+Other automation options, if you want less hand-editing still:
+- **Dependabot** (`.github/dependabot.yml`, `docker` + `npm` ecosystems) will open PRs
+  bumping the base image and `@playwright/test` — the guard then keeps the two in step.
+- **Fully hands-off**: parameterize the Dockerfile's version as a build `ARG` and have
+  the build workflow inject it from the lockfile, so the image always matches with no
+  Dockerfile edit. The guard becomes a belt-and-suspenders check. (Not done here to
+  keep the Dockerfile the obvious single source of truth — say the word to switch.)
+
+## Which jobs use it
+
+The `e2e` job in `ci.yml` already runs inside the image (see its `container:` block)
+and no longer installs Chrome. The pattern, for reference and for adopting it
+elsewhere:
 
 ```yaml
   e2e:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/randalrausch/31-parks-edition/ci:latest
-      # Only needed while the GHCR package is private; make it public to drop this.
+      # Needed while the GHCR package is private; make it public to drop this.
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@... # v7
-      # ... paths-filter, setup-node, npm ci ...
-      # DELETE the "Install Chrome for E2E" step — Chrome is baked into the image.
+      # ... checkout, paths-filter, setup-node, npm ci ...
+      # No "Install Chrome" step — Chrome is baked into the image.
       - name: E2E tests (Playwright)
-        if: steps.changes.outputs.code == 'true'
         run: npm run test:e2e
 ```
 
-Add `packages: read` to the workflow's top-level `permissions` so the job can pull
-the image (or make the GHCR package public and skip `credentials`). The same
-pattern applies to the deploy job's post-deploy "play the live deployment" step.
+This needs `packages: read` in the workflow's top-level `permissions` (already set)
+so the job can pull the image, or make the GHCR package public and drop `credentials`.
 
-Roll it out one job at a time and confirm each is green before the next — a bad
-image should only ever be able to redden the one job that opted in.
+**Still on the old path:** the deploy job's post-deploy "play the live deployment"
+step still runs `playwright install --with-deps chrome`. It only executes when
+`DEPLOY_NETLIFY` is enabled (currently off), so it's left as-is; it can adopt the
+same `container:` pattern when deploys are turned on. Roll any such change out one
+job at a time and confirm green before the next — a bad image can then only redden
+the single job that opted in.

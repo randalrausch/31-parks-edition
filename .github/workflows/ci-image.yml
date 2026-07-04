@@ -15,6 +15,10 @@ on:
     paths:
       - ".github/ci-image/Dockerfile"
       - ".github/workflows/ci-image.yml"
+      # Republish when dependencies move — a @playwright/test bump changes the
+      # version the image should carry. The gate's check-ci-image guard blocks a
+      # merge that drifts these, and this keeps the published image following main.
+      - "package-lock.json"
   schedule:
     - cron: "0 5 * * 1" # weekly, Monday 05:00 UTC — keep the baked browser patched
   workflow_dispatch:
