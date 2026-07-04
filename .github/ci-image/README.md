@@ -9,10 +9,14 @@ installs.
 
 ## What's in it
 
-- **Node 20** and every **browser system library** (from the official
-  `mcr.microsoft.com/playwright` base, pinned to the repo's `@playwright/test`
-  version).
-- **Google Chrome** (the E2E specs use `channel: "chrome"`).
+- **Node 20** (a slim `node:20-bookworm-slim` base).
+- **Google Chrome** and its system libraries (`playwright install --with-deps
+  chrome`, pinned to the repo's `@playwright/test` version).
+
+Only Chrome — the browser the E2E specs actually launch (`channel: "chrome"`). The
+official Playwright base image also bundles Chromium, Firefox, and WebKit (~2GB)
+that this project never uses, which made the e2e job's cold pull slower than the
+install it replaced; the slim base roughly halves the image and the pull.
 
 `node_modules` is deliberately **not** baked — it changes with the lockfile and is
 already fast via `actions/setup-node`'s npm cache + `npm ci`. Azurite installs with
@@ -24,8 +28,10 @@ that `npm ci` (it's an `api` devDependency), so it needs no image layer.
 [`Dockerfile`](./Dockerfile) and pushes to
 `ghcr.io/<owner>/31-parks-edition/ci:latest` (plus a commit-SHA tag). It runs when
 the Dockerfile changes, weekly (to pick up Chrome/base security patches), and on
-manual dispatch. Bump the `FROM` tag and the `playwright@` version together when
-`@playwright/test` in `package.json` moves.
+manual dispatch. On a **pull request** that touches the Dockerfile it builds without
+pushing, so a broken image is caught before merge; the build logs the image size.
+Bump the `playwright@` version when `@playwright/test` in `package.json` moves — the
+drift guard below fails the build until you do.
 
 ## Keeping it fresh — how you'll know it needs an update
 

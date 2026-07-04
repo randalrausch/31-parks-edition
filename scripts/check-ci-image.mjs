@@ -25,31 +25,30 @@ if (!runner) {
   process.exit(2);
 }
 
-// The version(s) baked into the image. There are two pins that must agree with
-// each other and with the runner: the base image tag and the `playwright@` CLI.
+// The version the image is built for: the `playwright@X.Y.Z` CLI pin that installs
+// the browser (required). If the base is itself a Playwright image (mcr…:vX.Y.Z),
+// that tag is a second pin that must agree — but a slim Node base has no such tag,
+// so it's only checked when present.
 const dockerfile = read(".github/ci-image/Dockerfile");
 const baseTag = dockerfile.match(/playwright:v([0-9]+\.[0-9]+\.[0-9]+)-/)?.[1];
 const cliPin = dockerfile.match(/playwright@([0-9]+\.[0-9]+\.[0-9]+)/)?.[1];
 
 const problems = [];
-if (!baseTag) problems.push("couldn't read the base image tag (mcr…/playwright:vX.Y.Z-…)");
-if (!cliPin) problems.push("couldn't read the `playwright@X.Y.Z` CLI pin");
+if (!cliPin) problems.push("couldn't read the `playwright@X.Y.Z` CLI pin in the Dockerfile");
 if (baseTag && cliPin && baseTag !== cliPin)
   problems.push(`the two Dockerfile pins disagree: base ${baseTag} vs CLI ${cliPin}`);
-if (baseTag && minor(baseTag) !== minor(runner))
-  problems.push(
-    `the image is built for Playwright ${baseTag} but the app is tested with ${runner}`,
-  );
+if (cliPin && minor(cliPin) !== minor(runner))
+  problems.push(`the image is built for Playwright ${cliPin} but the app is tested with ${runner}`);
 
 if (problems.length) {
   console.error("✗ CI image is out of sync with @playwright/test:\n");
   for (const p of problems) console.error(`  - ${p}`);
   console.error(
-    `\nFix: set BOTH pins in .github/ci-image/Dockerfile to v${runner} ` +
-      `(the base tag and the playwright@ line), commit, and let the "Build CI image" ` +
-      `workflow republish it (it also runs weekly and on demand).`,
+    `\nFix: set the playwright@ pin in .github/ci-image/Dockerfile to ${runner} ` +
+      `(and the base image tag too, if it is a Playwright image), commit, and let the ` +
+      `"Build CI image" workflow republish it (it also runs weekly and on demand).`,
   );
   process.exit(1);
 }
 
-console.log(`✓ CI image Playwright pin (${baseTag}) matches @playwright/test (${runner}).`);
+console.log(`✓ CI image Playwright pin (${cliPin}) matches @playwright/test (${runner}).`);
