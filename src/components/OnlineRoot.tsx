@@ -14,6 +14,7 @@ import { elog } from "../game/debug";
 import { type OnlineSession, saveSession, clearSession } from "../game/onlineSession";
 import OnlineGame from "./OnlineGame";
 import JoinModal from "./JoinModal";
+import UpdatePrompt from "./UpdatePrompt";
 
 export type OnlineIntent =
   | { type: "create"; config: CreateConfig }
@@ -84,20 +85,7 @@ export default function OnlineRoot({
 
   // Out-of-date tab: the live backend speaks a different wire protocol.
   if (compat === "stale") {
-    return (
-      <div className="lobby">
-        <div className="lobby__panel">
-          <h1 className="lobby__title">Update Available</h1>
-          <p className="lobby__waiting">
-            Online play was updated. Refresh the page to get the latest version, then start or
-            rejoin your game.
-          </p>
-          <button className="lobby__leave" type="button" onClick={() => window.location.reload()}>
-            Refresh
-          </button>
-        </div>
-      </div>
-    );
+    return <UpdatePrompt />;
   }
 
   if (session) {

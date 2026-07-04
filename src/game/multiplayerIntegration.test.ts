@@ -135,6 +135,55 @@ describe("online multiplayer (NetworkTransport over the shared handlers)", () =>
     }
   });
 
+  it("treats a 426 (protocol mismatch) as terminal: stops sync and notifies once", async () => {
+    // A backend deploy that bumps PROTOCOL_VERSION lands before the frontend, so
+    // an in-flight tab starts getting 426. The transport must stop retrying and
+    // tell the UI to prompt a refresh — not flap "reconnecting" forever.
+    const outdated = new BackendError("client is outdated", 426, false, true);
+    const api: GameApi = {
+      async create() {
+        throw outdated;
+      },
+      async join() {
+        throw outdated;
+      },
+      async start() {
+        throw outdated;
+      },
+      async act() {
+        throw outdated;
+      },
+      async state() {
+        throw outdated;
+      },
+    };
+    let subscribed = 0;
+    const backend: GameBackend = {
+      name: "Stub",
+      api,
+      subscribe: () => {
+        subscribed++;
+        return () => {};
+      },
+    };
+    let fired = 0;
+    const t = new NetworkTransport(backend, "g", "tok");
+    t.onOutdated(() => fired++);
+    try {
+      await t.connect(); // the initial state() fetch 426s
+      expect(t.isOutdated).toBe(true);
+      expect(fired).toBe(1);
+      // connect() must NOT arm the Realtime subscription or the poll after a 426.
+      expect(subscribed).toBe(0);
+      // Further calls are inert — no repeat notifications, no thrown errors.
+      await expect(t.refresh()).resolves.toBeUndefined();
+      await expect(t.act({ type: "drawDeck" } as GameAction)).resolves.toBeUndefined();
+      expect(fired).toBe(1);
+    } finally {
+      t.destroy();
+    }
+  });
+
   it("applies the current player's move, converges both clients, and ignores out-of-turn moves", async () => {
     const { backend, host, guest, gameId } = await activeGame();
     const hostT = new NetworkTransport(backend, gameId, host.seatToken);

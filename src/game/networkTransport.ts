@@ -38,6 +38,11 @@ export class NetworkTransport {
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   /** Signatures of actions currently awaiting the server, to drop duplicates. */
   private inFlight = new Set<string>();
+  /** Terminal: the server speaks a newer wire protocol (HTTP 426). Once set, we
+   * stop all traffic (every request would just 426 again) and the UI shows a
+   * "refresh to update" prompt. */
+  private outdated = false;
+  private outdatedListeners = new Set<() => void>();
 
   /**
    * Poll interval (ms) as a safety net under Realtime. Realtime delivery is
@@ -56,6 +61,10 @@ export class NetworkTransport {
 
   getState(): GameState | null {
     return this.snap?.state ?? null;
+  }
+  /** True once the server has reported a newer wire protocol (HTTP 426). */
+  get isOutdated(): boolean {
+    return this.outdated;
   }
   /** The seat (player id) this client controls, e.g. "p2". */
   get seatId(): string | null {
@@ -84,12 +93,38 @@ export class NetworkTransport {
   }
 
   /**
+   * Terminal protocol-mismatch signal. A backend deploy that bumps
+   * PROTOCOL_VERSION lands before the frontend, so an in-flight tab starts
+   * getting 426 on every poll and every act. Without this, the transport just
+   * flips to "reconnecting" forever and never tells the player the real fix
+   * (refresh). Subscribers get told once so the board can show the update prompt.
+   */
+  onOutdated(listener: () => void): () => void {
+    this.outdatedListeners.add(listener);
+    if (this.outdated) listener(); // prime, in case it already fired
+    return () => this.outdatedListeners.delete(listener);
+  }
+  private markOutdated() {
+    if (this.outdated) return;
+    this.outdated = true;
+    dlog("net", "server protocol is newer (426) — stopping sync");
+    // Stop retrying: every request would just 426 again.
+    if (this.pollTimer) clearInterval(this.pollTimer);
+    this.pollTimer = null;
+    this.unsubscribe?.();
+    this.unsubscribe = null;
+    this.setLink(false);
+    for (const l of this.outdatedListeners) l();
+  }
+
+  /**
    * Fetch the latest redacted snapshot. Concurrent calls are coalesced, but a
    * refresh requested while one is in flight schedules exactly one more after it
    * — so a post-action refresh is never dropped (which would leave the UI showing
    * stale state even though the action applied).
    */
   async refresh(): Promise<void> {
+    if (this.outdated) return; // terminal — nothing to sync anymore
     if (this.fetching) {
       this.refetchQueued = true;
       return;
@@ -115,6 +150,12 @@ export class NetworkTransport {
       }
       this.setLink(true); // a successful fetch means we're synced
     } catch (e) {
+      // A protocol mismatch is terminal, not a blip — go to the update prompt
+      // instead of flapping "reconnecting" and retrying a request that can't win.
+      if (e instanceof BackendError && e.outdated) {
+        this.markOutdated();
+        return;
+      }
       dlog("net", "refresh failed", (e as Error).message);
       this.setLink(false); // couldn't reach the server — show "reconnecting"
       throw e;
@@ -130,6 +171,7 @@ export class NetworkTransport {
   /** Begin syncing: initial fetch + backend change subscription + safety poll. */
   async connect(): Promise<void> {
     await this.refresh();
+    if (this.outdated) return; // 426 on the first fetch — don't arm polling
     // The backend's change subscription (Realtime on Supabase; possibly a no-op
     // elsewhere). Push health feeds the "reconnecting" indicator; on (re)connect
     // we refetch to catch anything missed.
@@ -146,6 +188,7 @@ export class NetworkTransport {
   }
 
   async act(action: GameAction): Promise<void> {
+    if (this.outdated) return; // terminal — the update prompt is showing
     // Idempotency guard: if the identical action is already awaiting the server
     // (e.g. an impatient double-tap on "Draw"), drop the duplicate rather than
     // submitting it twice. The authority's turn/phase checks catch most repeats
@@ -169,6 +212,12 @@ export class NetworkTransport {
       await this.backend.api.act(this.gameId, this.seatToken, action);
     } catch (e) {
       const msg = (e as Error).message;
+      // A protocol mismatch is terminal: don't surface a transient toast, switch
+      // to the update prompt.
+      if (e instanceof BackendError && e.outdated) {
+        this.markOutdated();
+        return;
+      }
       // A version conflict (concurrent/duplicate submit) is recoverable: the
       // authority already moved, so resync to the truth instead of erroring.
       // Detect it structurally (HTTP 409), with the legacy message match kept as
@@ -195,6 +244,7 @@ export class NetworkTransport {
     this.unsubscribe = null;
     this.listeners.clear();
     this.statusListeners.clear();
+    this.outdatedListeners.clear();
     this.snap = null;
   }
 }
