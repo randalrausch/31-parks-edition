@@ -302,20 +302,21 @@ jobs:
           # into THIS shell so the vitest child sees them (writing $GITHUB_ENV
           # would only reach LATER steps, not this one — the suite would skip).
           #
-          # Use the stable --override-name mapping, NOT `-o json` field names: the
-          # latest CLI moved local stacks to the new sb_publishable/sb_secret key
-          # format, so `.SERVICE_ROLE_KEY` no longer yields a key that authenticates
-          # as service_role (RLS wasn't bypassed → "permission denied for table
-          # games"). --override-name addresses the config value and returns a
-          # working key regardless of format; the service_role key bypasses RLS,
-          # which is what the Edge Function holds.
-          eval "$(supabase status -o env \
-            --override-name api.url=SUPABASE_URL \
-            --override-name auth.anon_key=SUPABASE_ANON_KEY \
-            --override-name auth.service_role_key=SUPABASE_SERVICE_ROLE_KEY)"
-          export SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY
-          # Lengths only (never the secrets) — a quick, safe confirmation that both
-          # keys resolved non-empty before the suite runs.
+          # The latest CLI signs the local stack with NEW asymmetric keys and
+          # publishes sb_publishable_/sb_secret_ API keys; the legacy anon/
+          # service_role JWTs (what `.SERVICE_ROLE_KEY` / auth.service_role_key
+          # return, ~164 chars) no longer validate, so the admin client wasn't
+          # actually service_role → "permission denied for table games". Use the
+          # new keys, which supabase-js@2.108 understands and which map to
+          # service_role (bypasses RLS) / anon; fall back to the legacy fields for
+          # an older CLI. The inventory print (names + lengths, never values) makes
+          # a future key-schema change diagnosable at a glance.
+          supabase status -o json > "$RUNNER_TEMP/sb.json"
+          echo "=== supabase status key inventory (name : value-length) ==="
+          jq -r 'to_entries[] | "\(.key) : \(.value | tostring | length)"' "$RUNNER_TEMP/sb.json"
+          export SUPABASE_URL="$(jq -r '.API_URL' "$RUNNER_TEMP/sb.json")"
+          export SUPABASE_SERVICE_ROLE_KEY="$(jq -r '.SECRET_KEY // .SERVICE_ROLE_KEY' "$RUNNER_TEMP/sb.json")"
+          export SUPABASE_ANON_KEY="$(jq -r '.PUBLISHABLE_KEY // .ANON_KEY' "$RUNNER_TEMP/sb.json")"
           echo "url=$SUPABASE_URL anon_len=${#SUPABASE_ANON_KEY} service_len=${#SUPABASE_SERVICE_ROLE_KEY}"
           npx vitest run src/game/supabaseStore.pg.test.ts
       - name: Stop Supabase
