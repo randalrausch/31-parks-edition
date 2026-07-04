@@ -299,12 +299,24 @@ jobs:
           SUPABASE_PG_REQUIRED: "1"
         run: |
           # Pull the live API URL + keys from the running stack and EXPORT them
-          # into this shell so the vitest child sees them. (Writing $GITHUB_ENV
-          # would only reach LATER steps, not this one — the suite would skip.)
-          supabase status -o json > "$RUNNER_TEMP/sb.json"
-          export SUPABASE_URL="$(jq -r '.API_URL' "$RUNNER_TEMP/sb.json")"
-          export SUPABASE_ANON_KEY="$(jq -r '.ANON_KEY' "$RUNNER_TEMP/sb.json")"
-          export SUPABASE_SERVICE_ROLE_KEY="$(jq -r '.SERVICE_ROLE_KEY' "$RUNNER_TEMP/sb.json")"
+          # into THIS shell so the vitest child sees them (writing $GITHUB_ENV
+          # would only reach LATER steps, not this one — the suite would skip).
+          #
+          # Use the stable --override-name mapping, NOT `-o json` field names: the
+          # latest CLI moved local stacks to the new sb_publishable/sb_secret key
+          # format, so `.SERVICE_ROLE_KEY` no longer yields a key that authenticates
+          # as service_role (RLS wasn't bypassed → "permission denied for table
+          # games"). --override-name addresses the config value and returns a
+          # working key regardless of format; the service_role key bypasses RLS,
+          # which is what the Edge Function holds.
+          eval "$(supabase status -o env \
+            --override-name api.url=SUPABASE_URL \
+            --override-name auth.anon_key=SUPABASE_ANON_KEY \
+            --override-name auth.service_role_key=SUPABASE_SERVICE_ROLE_KEY)"
+          export SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY
+          # Lengths only (never the secrets) — a quick, safe confirmation that both
+          # keys resolved non-empty before the suite runs.
+          echo "url=$SUPABASE_URL anon_len=${#SUPABASE_ANON_KEY} service_len=${#SUPABASE_SERVICE_ROLE_KEY}"
           npx vitest run src/game/supabaseStore.pg.test.ts
       - name: Stop Supabase
         if: ${{ always() && steps.changes.outputs.backend == 'true' }}
