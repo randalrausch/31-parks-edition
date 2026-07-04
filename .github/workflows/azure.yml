@@ -32,10 +32,50 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    # Only ever deploy main. Without the ref guard, a workflow_dispatch on a
-    # feature branch would ship that branch straight to production.
+  # Avoid the double deploy (mirrors ci.yml). When this push's commits will be
+  # released, release.yml is about to push a `chore(release):` version-bump commit
+  # and re-dispatch this workflow on it — that dispatch ships the correctly
+  # versioned artifact. Deploying the pre-bump merge commit here would ship new
+  # code under the OLD version, only to be overwritten minutes later. Classify the
+  # push with the shared release driver (dry-run: no writes, no git changes) and
+  # skip this run when a release is pending. A workflow_dispatch always ships.
+  decide:
     if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_AZURE == 'true' }}
+    runs-on: ubuntu-latest
+    outputs:
+      should_ship: ${{ steps.ship.outputs.should_ship }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          ref: ${{ github.event.inputs.deploy_ref || github.ref }}
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 20
+      - name: Will a release commit supersede this push?
+        id: rel
+        if: ${{ github.event_name == 'push' }}
+        # A dry-run hiccup must never block a deploy: on failure `status` is unset,
+        # which the next step reads as "not a release" → ship normally.
+        continue-on-error: true
+        run: node scripts/release.mjs --dry
+      - name: Decide whether to ship this commit
+        id: ship
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] && [ "${{ steps.rel.outputs.status }}" = "released" ]; then
+            echo "should_ship=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Release pending (${{ steps.rel.outputs.tag }}) — the version-bump commit's dispatch will ship it; skipping this merge-commit deploy."
+          else
+            echo "should_ship=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    needs: decide
+    # Only ever deploy main. Without the ref guard, a workflow_dispatch on a
+    # feature branch would ship that branch straight to production. Skipped when a
+    # release commit is about to supersede this push (see the decide job).
+    if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_AZURE == 'true' && needs.decide.outputs.should_ship == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7

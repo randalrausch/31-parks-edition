@@ -214,8 +214,10 @@ jobs:
           # natural ref for this event.
           ref: ${{ github.event.inputs.deploy_ref || github.ref }}
           # Full history so the build's version number (git commit count) is
-          # accurate; a shallow clone would always report 1.
+          # accurate; a shallow clone would always report 1. Tags too, so the
+          # release dry-run below can see the last release tag.
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Did the backend (supabase/**) change?
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
@@ -232,9 +234,38 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             api/package-lock.json
+
+      # Avoid the double deploy. On a push whose commits WILL be released,
+      # release.yml is about to bump the version, push a `chore(release):` commit,
+      # and re-dispatch this workflow on it — that dispatch ships the correctly
+      # versioned artifact. Deploying the pre-bump merge commit here would ship the
+      # new code under the OLD version string, only to be overwritten minutes
+      # later. So classify the push with the SAME release driver (dry-run, no
+      # writes, no git changes) and, when a release is pending, skip this deploy
+      # and let the release commit's dispatch do it once. A workflow_dispatch (the
+      # release re-deploy and manual rollbacks) always ships.
+      - name: Will a release commit supersede this push?
+        id: rel
+        if: ${{ github.event_name == 'push' }}
+        # A dry-run hiccup must never block a deploy: on failure `status` is unset,
+        # which the next step reads as "not a release" → ship normally.
+        continue-on-error: true
+        run: node scripts/release.mjs --dry
+      - name: Decide whether to ship this commit
+        id: ship
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] && [ "${{ steps.rel.outputs.status }}" = "released" ]; then
+            echo "should_ship=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Release pending (${{ steps.rel.outputs.tag }}) — the version-bump commit's dispatch will ship it; skipping this merge-commit deploy to avoid a double deploy."
+          else
+            echo "should_ship=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - run: npm ci
+        if: ${{ steps.ship.outputs.should_ship == 'true' }}
 
       - name: Production build (secrets baked in)
+        if: ${{ steps.ship.outputs.should_ship == 'true' }}
         run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -244,13 +275,13 @@ jobs:
       # "Run workflow" (workflow_dispatch) forces a backend deploy regardless,
       # so the function can be redeployed without a fake supabase/** commit.
       - name: Install Supabase CLI
-        if: ${{ vars.DEPLOY_SUPABASE == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && steps.changes.outputs.backend == 'true')) }}
+        if: ${{ steps.ship.outputs.should_ship == 'true' && vars.DEPLOY_SUPABASE == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && steps.changes.outputs.backend == 'true')) }}
         uses: supabase/setup-cli@df56b21da46c98abb12a9804e4fb1f657773e333 # v2
         with:
           version: latest
 
       - name: Deploy Supabase backend (migrations + game function)
-        if: ${{ vars.DEPLOY_SUPABASE == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && steps.changes.outputs.backend == 'true')) }}
+        if: ${{ steps.ship.outputs.should_ship == 'true' && vars.DEPLOY_SUPABASE == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && steps.changes.outputs.backend == 'true')) }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -261,7 +292,7 @@ jobs:
           supabase functions deploy game
 
       - name: Deploy site to Netlify (prebuilt — no Netlify build minutes)
-        if: ${{ vars.DEPLOY_NETLIFY == 'true' }}
+        if: ${{ steps.ship.outputs.should_ship == 'true' && vars.DEPLOY_NETLIFY == 'true' }}
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
@@ -269,7 +300,7 @@ jobs:
 
       # ---- Verify the live site serves exactly what we built ----
       - name: Smoke check (live bundle matches build)
-        if: ${{ vars.DEPLOY_NETLIFY == 'true' && vars.NETLIFY_SITE_URL != '' }}
+        if: ${{ steps.ship.outputs.should_ship == 'true' && vars.DEPLOY_NETLIFY == 'true' && vars.NETLIFY_SITE_URL != '' }}
         env:
           # Netlify-specific URL so this can't collide with the Azure smoke's
           # AZURE_SITE_URL when both stacks deploy from the same push.
@@ -297,10 +328,10 @@ jobs:
       # backend configured, so a frontend-only deploy still gets played (boot +
       # solo turn) instead of shipping unverified; retries absorb CDN propagation lag.
       - name: Install Chrome for Playwright
-        if: ${{ vars.DEPLOY_NETLIFY == 'true' && vars.NETLIFY_SITE_URL != '' }}
+        if: ${{ steps.ship.outputs.should_ship == 'true' && vars.DEPLOY_NETLIFY == 'true' && vars.NETLIFY_SITE_URL != '' }}
         run: npx playwright install --with-deps chrome
       - name: Play the live Netlify deployment (Playwright)
-        if: ${{ vars.DEPLOY_NETLIFY == 'true' && vars.NETLIFY_SITE_URL != '' }}
+        if: ${{ steps.ship.outputs.should_ship == 'true' && vars.DEPLOY_NETLIFY == 'true' && vars.NETLIFY_SITE_URL != '' }}
         env:
           E2E_BASE_URL: ${{ vars.NETLIFY_SITE_URL }}
         run: npm run test:e2e:deploy
