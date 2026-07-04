@@ -19,6 +19,8 @@ Guides for playing, contributing to, and operating **31 · National Parks Editio
   - [0003 — a wire `PROTOCOL_VERSION`](adr/0003-protocol-version.md)
 - [TESTING.md](TESTING.md) — the test layers (unit/fuzz → local E2E → live-site
   deployment smoke) and what each covers.
+- [CI.md](CI.md) — the CI job structure and which status checks to require in
+  branch protection.
 
 ## Running your own online backend (both optional)
 
