@@ -19,3 +19,14 @@ export const APP_VERSION = "0.7.5";
 
 /** Wire-contract version. Bump ONLY on a breaking client↔server change. */
 export const PROTOCOL_VERSION = 1;
+
+/**
+ * Schema version of a persisted GameState. Stamped into every new game by
+ * createGameState and checked by the server before it feeds a stored state back
+ * into the engine. Bump this ONLY when a change to the GameState shape makes an
+ * older serialized game unreadable by the current engine — a game whose stored
+ * stateVersion doesn't match is failed with a clear "started on an older
+ * version" message instead of crashing the op with a generic 500. A game with no
+ * stateVersion field predates versioning and is treated as version 1.
+ */
+export const STATE_VERSION = 1;

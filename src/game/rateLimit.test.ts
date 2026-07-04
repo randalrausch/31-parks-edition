@@ -47,4 +47,16 @@ describe("rate limiter (memory)", () => {
     expect(await rl.allowCreate("3.3.3.3", T)).toBe(true);
     expect(await rl.allowCreate("4.4.4.4", T)).toBe(false); // now global (3) is exhausted
   });
+
+  it("caps joins per IP per hour, independent of IPs and of the create budget", async () => {
+    const rl = makeMemoryRateLimiter(1, 1, 2); // maxPerDay=1, per-IP create=1, per-IP join=2
+    expect(await rl.allowJoin("1.1.1.1", T)).toBe(true);
+    expect(await rl.allowJoin("1.1.1.1", T)).toBe(true);
+    expect(await rl.allowJoin("1.1.1.1", T)).toBe(false); // 3rd join in the hour, cap is 2
+    expect(await rl.allowJoin("2.2.2.2", T)).toBe(true); // a different IP is fresh
+    // The join bucket is separate: exhausting joins doesn't touch create, and a
+    // create doesn't consume a join slot.
+    expect(await rl.allowCreate("1.1.1.1", T)).toBe(true);
+    expect(await rl.allowJoin("1.1.1.1", "2026-06-28T11:00:00Z")).toBe(true); // new hour resets
+  });
 });

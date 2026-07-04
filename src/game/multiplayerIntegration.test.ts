@@ -14,7 +14,7 @@ import { handleCreate, handleJoin, handleStart, handleAct, handleState } from ".
 import type { GameStore } from "./store";
 import { BackendError, type CreateConfig, type GameApi } from "./gameApi";
 import type { GameBackend } from "./backend";
-import { NetworkTransport, type NetworkSnapshot } from "./networkTransport";
+import { NetworkTransport, ActConflictError, type NetworkSnapshot } from "./networkTransport";
 import { HIDDEN_CARD } from "./authority";
 import { DEFAULT_OPTIONS } from "./engine";
 import type { GameAction } from "./actions";
@@ -279,6 +279,37 @@ describe("online multiplayer (NetworkTransport over the shared handlers)", () =>
     } finally {
       hostT.destroy();
       guestT.destroy();
+    }
+  });
+
+  it("flags a lost-race turn action (ActConflictError) but stays silent on nextDeal", async () => {
+    const { backend, host, gameId } = await activeGame();
+    const snap = await backend.api.state(gameId, host.seatToken); // resync target
+    // A backend whose writes always lose the CAS (409 conflict), reads succeed.
+    const conflictBackend: GameBackend = {
+      name: "conflict",
+      subscribe: () => () => {},
+      api: {
+        ...backend.api,
+        async act() {
+          throw new BackendError("The game just changed — please retry.", 409, true);
+        },
+        async state() {
+          return snap;
+        },
+      },
+    };
+    const t = new NetworkTransport(conflictBackend, gameId, host.seatToken);
+    try {
+      await t.connect();
+      // A dropped turn action surfaces (the board already resynced to the truth).
+      await expect(t.act({ type: "drawDeck" } as GameAction)).rejects.toBeInstanceOf(
+        ActConflictError,
+      );
+      // A nextDeal race is benign — someone else advanced — so it stays silent.
+      await expect(t.act({ type: "nextDeal" } as GameAction)).resolves.toBeUndefined();
+    } finally {
+      t.destroy();
     }
   });
 });

@@ -154,6 +154,11 @@ function aiDiscardIndex(hand, opts, playRandom) {
   return worst;
 }
 
+// src/game/version.ts
+var APP_VERSION = "0.7.5";
+var PROTOCOL_VERSION = 1;
+var STATE_VERSION = 1;
+
 // src/game/actions.ts
 var curPlayer = (s) => s.players[s.cur];
 function applyAction(state, action) {
@@ -371,7 +376,8 @@ function createGameState(players, options) {
     result: null,
     scoreHistory: [],
     log: [],
-    winnerId: null
+    winnerId: null,
+    stateVersion: STATE_VERSION
   };
 }
 function seatHumanPlayer(state, idx, name, avatarKey = "ranger") {
@@ -455,9 +461,18 @@ function redactState(state, viewerId) {
   };
 }
 
-// src/game/version.ts
-var APP_VERSION = "0.7.5";
-var PROTOCOL_VERSION = 1;
+// src/game/ids.ts
+var CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+var CODE_LENGTH = 6;
+function makeCode() {
+  const bytes = new Uint8Array(CODE_LENGTH);
+  crypto.getRandomValues(bytes);
+  let c = "";
+  for (let i = 0; i < CODE_LENGTH; i++) c += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
+  return c;
+}
+var newToken = () => crypto.randomUUID();
+var seatPlayerId = (idx) => `p${idx}`;
 
 // src/game/config.ts
 var TRAIT_KEYS = ["bluff", "memory", "patience", "aggression", "risk"];
@@ -490,7 +505,7 @@ function buildCreateSetup(config) {
   for (let i = 0; i < humans; i++) {
     const isCreator = i === 0;
     const name = isCreator ? clampName(config.creatorName, "Player 1") : `Player ${i + 1}`;
-    players.push({ id: `p${i}`, name, isAI: false, avatarKey: "ranger" });
+    players.push({ id: seatPlayerId(i), name, isAI: false, avatarKey: "ranger" });
     seats.push({
       idx: i,
       name: isCreator ? name : null,
@@ -505,7 +520,7 @@ function buildCreateSetup(config) {
     const avatar = clampKey(c.avatarKey, "ranger");
     const emoji = typeof c.emoji === "string" ? c.emoji.slice(0, 8) : void 0;
     players.push({
-      id: `p${idx}`,
+      id: seatPlayerId(idx),
       name: aiName,
       isAI: true,
       avatarKey: avatar,
@@ -523,18 +538,6 @@ function buildCreateSetup(config) {
     aiCount: ai.length
   };
 }
-
-// src/game/ids.ts
-var CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-var CODE_LENGTH = 6;
-function makeCode() {
-  const bytes = new Uint8Array(CODE_LENGTH);
-  crypto.getRandomValues(bytes);
-  let c = "";
-  for (let i = 0; i < CODE_LENGTH; i++) c += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
-  return c;
-}
-var newToken = () => crypto.randomUUID();
 
 // src/game/store.ts
 var StateTooLargeError = class extends Error {
@@ -559,6 +562,14 @@ var fail = (status, error) => ({
 });
 var nowIso = () => (/* @__PURE__ */ new Date()).toISOString();
 var expiry = () => new Date(Date.now() + TTL_MS).toISOString();
+function incompatibleState(state) {
+  const v = state.stateVersion ?? 1;
+  if (v === STATE_VERSION) return null;
+  return fail(
+    410,
+    "This game was started on an older version and can't be continued. Please start a new game."
+  );
+}
 function bumped(rec, patch) {
   const now = nowIso();
   return {
@@ -632,6 +643,8 @@ async function handleStart(store, body) {
   const game = await store.getGame(gameId);
   const secret = await store.getSecret(gameId);
   if (!game || !secret) return fail(404, "That game no longer exists.");
+  const startIncompat = incompatibleState(secret.state);
+  if (startIncompat) return startIncompat;
   if (secret.seatTokens[String(body.seatToken)] !== 0)
     return fail(403, "Only the host can start the game.");
   if (game.rec.status !== "lobby") return fail(409, "The game has already started.");
@@ -659,6 +672,8 @@ async function handleAct(store, body) {
   const game = await store.getGame(gameId);
   const secret = await store.getSecret(gameId);
   if (!game || !secret) return fail(404, "That game no longer exists.");
+  const actIncompat = incompatibleState(secret.state);
+  if (actIncompat) return actIncompat;
   const idx = secret.seatTokens[String(body.seatToken)];
   if (idx === void 0) return fail(403, "Your seat is no longer valid for this game.");
   if (typeof body.action !== "object" || body.action === null)
@@ -680,6 +695,8 @@ async function handleState(store, body) {
   const game = await store.getGame(gameId);
   const secret = await store.getSecret(gameId);
   if (!game || !secret) return fail(404, "That game no longer exists.");
+  const stateIncompat = incompatibleState(secret.state);
+  if (stateIncompat) return stateIncompat;
   const tok = body.seatToken;
   const idx = typeof tok === "string" ? secret.seatTokens[tok] : void 0;
   const seatId = idx !== void 0 ? secret.state.players[idx].id : null;
@@ -759,10 +776,11 @@ function makeRouter(store, opts = {}) {
   return async function route(req) {
     const t0 = Date.now();
     let op = "";
+    let game = "-";
     const corsHeaders = cors(req.origin);
     const reply = (status, body2) => {
       if (onEvent && (LOGGED_OPS.has(op) || status >= 400))
-        onEvent("request", { op, status, ms: Date.now() - t0 });
+        onEvent("request", { op, status, ms: Date.now() - t0, game });
       return { status, headers: { ...corsHeaders, "Content-Type": "application/json" }, body: body2 };
     };
     if (req.method === "OPTIONS") return { status: 204, headers: corsHeaders };
@@ -774,6 +792,7 @@ function makeRouter(store, opts = {}) {
       return reply(400, { error: "We couldn't read that request." });
     }
     op = String(body?.op ?? "");
+    if (typeof body?.gameId === "string") game = body.gameId;
     const isState = op === "state";
     const ipKey = isState ? `ip-state:${req.ip}` : `ip:${req.ip}`;
     if (limited(ipKey, isState ? 300 : 90, 6e4))
@@ -799,6 +818,8 @@ function makeRouter(store, opts = {}) {
     if (op === "join") {
       if (limited(`join:${req.ip}`, 30, 6e4))
         return reply(429, { error: "Too many join attempts \u2014 please slow down." });
+      if (rateLimiter && !await rateLimiter.allowJoin(req.ip, (/* @__PURE__ */ new Date()).toISOString()))
+        return reply(429, { error: "Too many join attempts \u2014 please try again later." });
     }
     if (op === "act") {
       const seatToken = typeof body.seatToken === "string" ? body.seatToken : "";
@@ -817,8 +838,7 @@ function makeRouter(store, opts = {}) {
           error: "This game has grown too large to continue. Please start a new one."
         });
       }
-      const gid = typeof body?.gameId === "string" ? body.gameId : "-";
-      console.error(`game op=${op} game=${gid} failed:`, e?.stack ?? e);
+      console.error(`game op=${op} game=${game} failed:`, e?.stack ?? e);
       return reply(500, {
         error: "Something went wrong on our end. Please try again."
       });
@@ -828,13 +848,17 @@ function makeRouter(store, opts = {}) {
 
 // src/game/rateLimit.ts
 var safe = (s) => s.replace(/[^A-Za-z0-9.:_-]/g, "_").slice(0, 200);
-function makeLimiter(counter, maxPerDay, maxPerIpHour) {
+function makeLimiter(counter, maxPerDay, maxPerIpHour, maxJoinsPerIpHour = 120) {
   return {
     async allowCreate(ip, nowIso2) {
       const day = nowIso2.slice(0, 10);
       const hour = nowIso2.slice(0, 13);
       if (!await counter.incrIfBelow("ip", `${safe(ip)}:${hour}`, maxPerIpHour)) return false;
       return counter.incrIfBelow("global", `d:${day}`, maxPerDay);
+    },
+    async allowJoin(ip, nowIso2) {
+      const hour = nowIso2.slice(0, 13);
+      return counter.incrIfBelow("join", `${safe(ip)}:${hour}`, maxJoinsPerIpHour);
     }
   };
 }

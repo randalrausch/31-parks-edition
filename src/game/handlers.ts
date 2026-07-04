@@ -16,7 +16,7 @@ import type { GameAction } from "./actions";
 import { applyPlayerAction, advanceAuthority, redactState } from "./authority";
 import { buildCreateSetup } from "./config";
 import type { CreateConfigInput } from "./config";
-import { APP_VERSION, PROTOCOL_VERSION } from "./version";
+import { APP_VERSION, PROTOCOL_VERSION, STATE_VERSION } from "./version";
 import type { GameState } from "./engine";
 import { makeCode, newToken } from "./ids";
 import { CodeCollisionError, type GameRecord, type GameStore, type SecretRecord } from "./store";
@@ -32,6 +32,22 @@ const fail = (status: number, error: string): OpResult => ({
 
 const nowIso = () => new Date().toISOString();
 const expiry = () => new Date(Date.now() + TTL_MS).toISOString();
+
+/**
+ * Guard a stored state against the current engine's schema version. Returns a
+ * distinct, user-meaningful failure when a game was written by an incompatible
+ * older build, instead of letting the engine crash the op with a generic 500 and
+ * stranding the whole in-flight population behind undifferentiated errors. A
+ * state with no stateVersion predates versioning and reads as version 1.
+ */
+function incompatibleState(state: SecretRecord["state"]): OpResult | null {
+  const v = (state as { stateVersion?: number }).stateVersion ?? 1;
+  if (v === STATE_VERSION) return null;
+  return fail(
+    410,
+    "This game was started on an older version and can't be continued. Please start a new game.",
+  );
+}
 
 /** Produce the next public record: version+1, refreshed timestamps + expiry. */
 function bumped(rec: GameRecord, patch: Partial<GameRecord>): GameRecord {
@@ -142,6 +158,8 @@ export async function handleStart(
   const game = await store.getGame(gameId);
   const secret = await store.getSecret(gameId);
   if (!game || !secret) return fail(404, "That game no longer exists.");
+  const startIncompat = incompatibleState(secret.state);
+  if (startIncompat) return startIncompat;
   if (secret.seatTokens[String(body.seatToken)] !== 0)
     return fail(403, "Only the host can start the game.");
   if (game.rec.status !== "lobby") return fail(409, "The game has already started.");
@@ -179,6 +197,8 @@ export async function handleAct(
   const game = await store.getGame(gameId);
   const secret = await store.getSecret(gameId);
   if (!game || !secret) return fail(404, "That game no longer exists.");
+  const actIncompat = incompatibleState(secret.state);
+  if (actIncompat) return actIncompat;
   const idx = secret.seatTokens[String(body.seatToken)];
   if (idx === undefined) return fail(403, "Your seat is no longer valid for this game.");
   if (typeof body.action !== "object" || body.action === null)
@@ -212,6 +232,8 @@ export async function handleState(
   const game = await store.getGame(gameId);
   const secret = await store.getSecret(gameId);
   if (!game || !secret) return fail(404, "That game no longer exists.");
+  const stateIncompat = incompatibleState(secret.state);
+  if (stateIncompat) return stateIncompat;
   const tok = body.seatToken;
   const idx = typeof tok === "string" ? secret.seatTokens[tok] : undefined;
   const seatId =

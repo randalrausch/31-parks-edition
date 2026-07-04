@@ -129,6 +129,18 @@ describe("router", () => {
     expect((await mk()).status).toBe(429); // global daily cap of 2 hit
   });
 
+  it("enforces the durable per-IP join cap", async () => {
+    const route = makeRouter(makeMemoryStore(), {
+      rateLimiter: makeMemoryRateLimiter(500, 20, 2), // per-IP join cap of 2/hr
+    });
+    const join = () => route(post({ op: "join", code: "ABCDEF", name: "x" }, "6.6.6.6"));
+    // First two attempts reach the handler (404 — no such game); the third trips
+    // the durable join limiter before the handler runs.
+    expect((await join()).status).toBe(404);
+    expect((await join()).status).toBe(404);
+    expect((await join()).status).toBe(429);
+  });
+
   it("rate-limits excessive create from one IP", async () => {
     const route = makeRouter(makeMemoryStore());
     let last = 200;
@@ -208,5 +220,12 @@ describe("router", () => {
     // A failure IS logged even for a non-mutating op.
     await route(post({ op: "nope" }));
     expect(events[events.length - 1]!.data).toMatchObject({ op: "nope", status: 400 });
+
+    // An op carrying a gameId logs it (for correlating one table's events);
+    // create, which has no id yet, logs "-".
+    expect(events[0]!.data.game).toBe("-");
+    await route(post({ op: "act", gameId: "game-xyz", seatToken: "t", action: { type: "knock" } }));
+    const actEvent = events[events.length - 1]!.data;
+    expect(actEvent).toMatchObject({ op: "act", game: "game-xyz" });
   });
 });

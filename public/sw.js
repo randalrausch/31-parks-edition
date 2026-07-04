@@ -7,10 +7,14 @@
  * forever). Online gameplay still needs the network — Supabase calls are never
  * cached.
  */
-// Bump this when the caching logic changes so existing clients drop stale (or
-// poisoned) caches on activate. v2: never cache SPA-fallback HTML under an
-// asset URL (see the fetch handler).
-const CACHE = "parks31-v2";
+// The cache name carries a PER-BUILD tag (`__BUILD__` is replaced at build time
+// by scripts/stamp-sw-cache.mjs with a hash of the built index.html). Each deploy
+// therefore gets a fresh cache, and the `activate` handler below deletes every
+// cache that isn't the current one — so old content-hashed assets don't
+// accumulate forever across deploys. In a raw (unstamped) dev build the literal
+// placeholder is used, which is harmless. Bumping the "v3" prefix additionally
+// busts every client's cache when the caching LOGIC itself changes.
+const CACHE = "parks31-v3-__BUILD__";
 const SHELL = [
   "/",
   "/index.html",

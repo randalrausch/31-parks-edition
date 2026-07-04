@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { activeBackend } from "./backend";
-import { NetworkTransport, type NetworkSnapshot } from "./networkTransport";
+import { NetworkTransport, ActConflictError, type NetworkSnapshot } from "./networkTransport";
 import { elog } from "./debug";
 import type { GameAction } from "./actions";
 
@@ -114,6 +114,12 @@ export function useNetworkGame(gameId: string, seatToken: string): NetworkGameAp
     (a: GameAction) => {
       void ref.current?.act(a).catch((e) => {
         elog("net", `${a.type} failed`, e);
+        // A lost-race conflict is not a connection problem — the board already
+        // resynced to the new truth; nudge the player to look and retry.
+        if (e instanceof ActConflictError) {
+          flashError("The table changed just now — take a look and try your move again.");
+          return;
+        }
         flashError(`Couldn't ${describeAction(a)} — check your connection and try again.`);
       });
     },
