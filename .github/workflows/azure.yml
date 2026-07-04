@@ -14,8 +14,15 @@ name: Deploy (Azure)
 #   Secrets:   AZURE_STATIC_WEB_APPS_API_TOKEN, AZURE_FUNCTIONAPP_PUBLISH_PROFILE
 #   Optional:  AZURE_SITE_URL (the live SWA URL; enables the post-deploy smoke)
 
+# The Azure deploy is GATED ON ci.yml: this workflow runs only after the CI/CD
+# workflow *succeeds* on main (`workflow_run`), so a failed type-check / lint /
+# unit or contract test blocks the deploy instead of racing it. It does NOT re-run
+# the suite — ci.yml already did, once. A manual `workflow_dispatch` (rollback or
+# forced redeploy) bypasses the gate on purpose.
 on:
-  push:
+  workflow_run:
+    workflows: ["CI/CD"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
     inputs:
@@ -27,27 +34,43 @@ on:
 permissions:
   contents: read
 
+# Serialize deploys (workflow_run always runs in the default-branch context, so the
+# ref is constant); never cancel an in-flight deploy.
 concurrency:
-  group: azure-${{ github.ref }}
+  group: azure-deploy
   cancel-in-progress: false
 
 jobs:
-  # Avoid the double deploy (mirrors ci.yml). When this push's commits will be
-  # released, release.yml is about to push a `chore(release):` version-bump commit
-  # and re-dispatch this workflow on it — that dispatch ships the correctly
-  # versioned artifact. Deploying the pre-bump merge commit here would ship new
-  # code under the OLD version, only to be overwritten minutes later. Classify the
-  # push with the shared release driver (dry-run: no writes, no git changes) and
-  # skip this run when a release is pending. A workflow_dispatch always ships.
+  # Gate + classify. Runs only when ci.yml SUCCEEDED on main (or on a manual
+  # dispatch) — a failed ci.yml never reaches here, so the deploy can't proceed on
+  # red tests. Then avoid the double deploy: when the triggering push's commits will
+  # be released, release.yml pushes a `chore(release):` commit whose own ci.yml run
+  # re-triggers this workflow and ships the correctly-versioned artifact — so skip
+  # the pre-bump merge commit here (classified with the shared release dry-run).
   decide:
-    if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_AZURE == 'true' }}
+    if: >-
+      ${{ vars.DEPLOY_AZURE == 'true' && (
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+      ) }}
     runs-on: ubuntu-latest
     outputs:
       should_ship: ${{ steps.ship.outputs.should_ship }}
+      sha: ${{ steps.resolve.outputs.sha }}
     steps:
+      # The commit to deploy: the exact SHA ci.yml validated (workflow_run), or the
+      # dispatch's deploy_ref / main HEAD (manual).
+      - name: Resolve the commit to deploy
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "sha=${{ github.event.inputs.deploy_ref || github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
-          ref: ${{ github.event.inputs.deploy_ref || github.ref }}
+          ref: ${{ steps.resolve.outputs.sha }}
           fetch-depth: 0
           fetch-tags: true
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
@@ -55,7 +78,10 @@ jobs:
           node-version: 20
       - name: Will a release commit supersede this push?
         id: rel
-        if: ${{ github.event_name == 'push' }}
+        # Only when ci.yml ran on a real push (the merge commit). The reason=release
+        # re-dispatch's ci.yml run is a workflow_dispatch, so this is skipped and the
+        # release commit ships.
+        if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' }}
         # A dry-run hiccup must never block a deploy: on failure `status` is unset,
         # which the next step reads as "not a release" → ship normally.
         continue-on-error: true
@@ -63,26 +89,26 @@ jobs:
       - name: Decide whether to ship this commit
         id: ship
         run: |
-          if [ "${{ github.event_name }}" = "push" ] && [ "${{ steps.rel.outputs.status }}" = "released" ]; then
+          if [ "${{ github.event_name }}" = "workflow_run" ] && [ "${{ github.event.workflow_run.event }}" = "push" ] && [ "${{ steps.rel.outputs.status }}" = "released" ]; then
             echo "should_ship=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Release pending (${{ steps.rel.outputs.tag }}) — the version-bump commit's dispatch will ship it; skipping this merge-commit deploy."
+            echo "::notice::Release pending (${{ steps.rel.outputs.tag }}) — the version-bump commit's ci.yml run will re-trigger this deploy; skipping the merge-commit deploy."
           else
             echo "should_ship=true" >> "$GITHUB_OUTPUT"
           fi
 
   deploy:
     needs: decide
-    # Only ever deploy main. Without the ref guard, a workflow_dispatch on a
-    # feature branch would ship that branch straight to production. Skipped when a
-    # release commit is about to supersede this push (see the decide job).
-    if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_AZURE == 'true' && needs.decide.outputs.should_ship == 'true' }}
+    # decide has already confirmed ci.yml succeeded on main (or a manual dispatch)
+    # and DEPLOY_AZURE is on; a skipped decide skips this too. should_ship is false
+    # only when a release commit is about to supersede this push.
+    if: ${{ needs.decide.outputs.should_ship == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
-          # A manual dispatch may pass deploy_ref to ship a specific ref (e.g.
-          # rolling back to a known-good tag); otherwise use this event's ref.
-          ref: ${{ github.event.inputs.deploy_ref || github.ref }}
+          # The exact commit decide resolved (the one ci.yml validated, or the
+          # dispatch's deploy_ref).
+          ref: ${{ needs.decide.outputs.sha }}
           # Full history so the build's version number (git commit count) is
           # accurate; a shallow clone would always report 1.
           fetch-depth: 0

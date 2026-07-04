@@ -43,3 +43,20 @@ Notes:
 - The `reason=release` skip only fires on the internal release re-dispatch, never on
   a PR, so requiring the three gate jobs stays correct. (GitHub also treats a skipped
   required check as passing.)
+
+## Deploys are gated on the gate
+
+Both deploy paths only ship a commit the gate passed on:
+
+- **Supabase / Netlify** — `ci.yml`'s own `deploy` job `needs: [gate, api, e2e,
+  supabase-contract]`, so it never runs unless all four are green.
+- **Azure** ([`azure.yml`](../.github/workflows/azure.yml)) — triggers on `ci.yml`'s
+  **successful** completion on `main` (`workflow_run`). If any gate fails, `ci.yml`
+  doesn't conclude success, so Azure never runs — a red test blocks the play31.fun
+  deploy instead of racing it. It does **not** re-run the suite (`ci.yml` already
+  did), and it deploys the exact commit `ci.yml` validated. A manual
+  **Run workflow** on `azure.yml` bypasses the gate on purpose (rollback / redeploy).
+
+A `feat:`/`fix:` merge deploys once, at the version-bump commit: `release.yml`
+re-dispatches `ci.yml` with `reason=release`, and that run's success re-triggers the
+Azure deploy of the correctly-versioned commit.
