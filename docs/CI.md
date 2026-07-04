@@ -44,19 +44,26 @@ Notes:
   a PR, so requiring the three gate jobs stays correct. (GitHub also treats a skipped
   required check as passing.)
 
-## Deploys are gated on the gate
+## Deploys — one gate, one job per target
 
-Both deploy paths only ship a commit the gate passed on:
+Every deploy target lives in `ci.yml` as a peer job, gated on the same green gate
+(so a red test ships nothing) and **skipped entirely when its flag is off** (zero
+runner time for a disabled target):
 
-- **Supabase / Netlify** — `ci.yml`'s own `deploy` job `needs: [gate, api, e2e,
-  supabase-contract]`, so it never runs unless all four are green.
-- **Azure** ([`azure.yml`](../.github/workflows/azure.yml)) — triggers on `ci.yml`'s
-  **successful** completion on `main` (`workflow_run`). If any gate fails, `ci.yml`
-  doesn't conclude success, so Azure never runs — a red test blocks the play31.fun
-  deploy instead of racing it. It does **not** re-run the suite (`ci.yml` already
-  did), and it deploys the exact commit `ci.yml` validated. A manual
-  **Run workflow** on `azure.yml` bypasses the gate on purpose (rollback / redeploy).
+| Job | Ships | Runs when |
+| --- | --- | --- |
+| `decide` | — (makes the ship decision once) | push/dispatch to `main`, no gate failed |
+| `deploy-supabase-netlify` | Supabase backend and/or the Netlify frontend | `DEPLOY_SUPABASE` or `DEPLOY_NETLIFY` is `true` |
+| `deploy-azure` | Azure Function App + Static Web App | `DEPLOY_AZURE` is `true` |
+
+All deploy jobs `needs:` the gate through `decide`, so a failed `gate` / `api` /
+`e2e` / `supabase-contract` skips `decide` and every target — a red test blocks the
+deploy, it never races it. The suite is **not** re-run in the deploy jobs; they only
+build + ship the exact commit the gate validated. Inside `deploy-supabase-netlify`
+the frontend build runs only when Netlify is on (Supabase is backend-only), so
+nothing is built for a target that isn't shipping.
 
 A `feat:`/`fix:` merge deploys once, at the version-bump commit: `release.yml`
-re-dispatches `ci.yml` with `reason=release`, and that run's success re-triggers the
-Azure deploy of the correctly-versioned commit.
+re-dispatches `ci.yml` with `reason=release` (gate jobs skip; the deploy jobs ship
+the correctly-versioned commit). A manual **Run workflow** on `ci.yml` with a
+`deploy_ref` redeploys/rolls back all enabled targets.

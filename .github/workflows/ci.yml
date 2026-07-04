@@ -28,11 +28,11 @@ name: CI/CD
 #   DEPLOY_SUPABASE=true  → deploy the Supabase backend (migrations + game fn) here
 #   DEPLOY_NETLIFY=true   → deploy the prebuilt frontend to Netlify here
 #   DEPLOY_AZURE=true     → deploy the Azure Function App + Static Web App
-#                           (in .github/workflows/azure.yml)
-# They no longer exclude each other: e.g. DEPLOY_SUPABASE+DEPLOY_NETLIFY ships the
-# Supabase/Netlify stack, DEPLOY_AZURE ships Azure, both sets ship both stacks
-# side by side, and setting nothing deploys nowhere. The tests/quality gate below
-# runs on every push and PR regardless of any flag. See docs/DEPLOY.md & AZURE.md.
+# Each target is its own deploy job below (deploy-supabase-netlify / deploy-azure),
+# gated on the same green gate and SKIPPED ENTIRELY when its flag is off — so a
+# disabled target costs zero runner time. They no longer exclude each other: enable
+# any combination, or none (deploys nowhere). The tests/quality gate below runs on
+# every push and PR regardless of any flag. See docs/DEPLOY.md & AZURE.md.
 
 on:
   push:
@@ -292,13 +292,18 @@ jobs:
         if: ${{ always() && steps.changes.outputs.backend == 'true' }}
         run: supabase stop --no-backup || true
 
-  # ---- Deploy (only on push to main, and only when no gate FAILED). ----
-  # `always()` lets this run even when the gates were SKIPPED — that happens on the
-  # release re-dispatch (reason=release), where re-testing the version-bump commit
-  # would be redundant (its code is identical to the merge commit the gates already
-  # passed on). The result checks still block the deploy if any gate actually FAILED
-  # or was cancelled, so a red gate never ships.
-  deploy:
+  # ---- Deploy: one gate, one ship decision, one job per target ----
+  # Every deploy target (Supabase, Netlify, Azure) is a peer job here, gated on the
+  # SAME green gate (via `needs`) and skipped entirely when its flag is off — so a
+  # disabled target costs zero runner time and a red gate ships nothing. `decide`
+  # makes the release/ship call ONCE and every target job reads it.
+
+  # Runs on push/dispatch to main unless a gate FAILED. `always()` lets it run when
+  # the gates were SKIPPED — the reason=release re-dispatch, where re-testing the
+  # version-bump commit (identical code) would be redundant. Resolves the exact
+  # commit to ship and whether to ship it (skip the pre-bump merge commit when a
+  # release is pending; the release commit's own dispatch ships the versioned build).
+  decide:
     needs: [gate, api, e2e, supabase-contract]
     if: >-
       ${{ always()
@@ -309,19 +314,20 @@ jobs:
       && needs.e2e.result != 'failure' && needs.e2e.result != 'cancelled'
       && needs['supabase-contract'].result != 'failure' && needs['supabase-contract'].result != 'cancelled' }}
     runs-on: ubuntu-latest
+    outputs:
+      should_ship: ${{ steps.ship.outputs.should_ship }}
+      ref: ${{ steps.ship.outputs.ref }}
+      backend_changed: ${{ steps.changes.outputs.backend }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
-          # A manual dispatch may pass deploy_ref to build & ship a specific
-          # ref (e.g. rolling back to a known-good tag); otherwise use the
-          # natural ref for this event.
-          ref: ${{ github.event.inputs.deploy_ref || github.ref }}
-          # Full history so the build's version number (git commit count) is
-          # accurate; a shallow clone would always report 1. Tags too, so the
+          # A manual dispatch may pass deploy_ref to ship a specific ref (e.g.
+          # rolling back to a known-good tag); otherwise the exact triggering commit.
+          ref: ${{ github.event.inputs.deploy_ref || github.sha }}
+          # Full history + tags so the version (commit count) is accurate and the
           # release dry-run below can see the last release tag.
           fetch-depth: 0
           fetch-tags: true
-
       - name: Did the backend (supabase/**) change?
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
         id: changes
@@ -329,24 +335,14 @@ jobs:
           filters: |
             backend:
               - 'supabase/**'
-
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            api/package-lock.json
-
-      # Avoid the double deploy. On a push whose commits WILL be released,
-      # release.yml is about to bump the version, push a `chore(release):` commit,
-      # and re-dispatch this workflow on it — that dispatch ships the correctly
-      # versioned artifact. Deploying the pre-bump merge commit here would ship the
-      # new code under the OLD version string, only to be overwritten minutes
-      # later. So classify the push with the SAME release driver (dry-run, no
-      # writes, no git changes) and, when a release is pending, skip this deploy
-      # and let the release commit's dispatch do it once. A workflow_dispatch (the
-      # release re-deploy and manual rollbacks) always ships.
+      # Avoid the double deploy: on a push whose commits WILL be released, release.yml
+      # bumps the version, pushes a `chore(release):` commit, and re-dispatches this
+      # workflow on it — that dispatch ships the correctly-versioned artifact. Classify
+      # the push with the shared release driver (dry-run: no writes, no git changes)
+      # and, when a release is pending, skip here. workflow_dispatch always ships.
       - name: Will a release commit supersede this push?
         id: rel
         if: ${{ github.event_name == 'push' }}
@@ -357,34 +353,45 @@ jobs:
       - name: Decide whether to ship this commit
         id: ship
         run: |
+          echo "ref=${{ github.event.inputs.deploy_ref || github.sha }}" >> "$GITHUB_OUTPUT"
           if [ "${{ github.event_name }}" = "push" ] && [ "${{ steps.rel.outputs.status }}" = "released" ]; then
             echo "should_ship=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Release pending (${{ steps.rel.outputs.tag }}) — the version-bump commit's dispatch will ship it; skipping this merge-commit deploy to avoid a double deploy."
+            echo "::notice::Release pending (${{ steps.rel.outputs.tag }}) — the version-bump commit's dispatch ships it; skipping this merge-commit deploy."
           else
             echo "should_ship=true" >> "$GITHUB_OUTPUT"
           fi
 
+  # The Supabase/Netlify stack: the Netlify frontend is built against the Supabase
+  # backend URL, so they share one build and deploy backend-before-frontend. The
+  # whole job skips unless at least one flag is on; inside, each piece is flag-gated,
+  # and the frontend build runs ONLY when Netlify is on (Supabase is backend-only).
+  deploy-supabase-netlify:
+    needs: decide
+    if: ${{ needs.decide.outputs.should_ship == 'true' && (vars.DEPLOY_SUPABASE == 'true' || vars.DEPLOY_NETLIFY == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          ref: ${{ needs.decide.outputs.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            api/package-lock.json
       - run: npm ci
-        if: ${{ steps.ship.outputs.should_ship == 'true' }}
 
-      - name: Production build (secrets baked in)
-        if: ${{ steps.ship.outputs.should_ship == 'true' }}
-        run: npm run build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_KEY }}
-
-      # Backend first, and only when supabase/** changed — but a manual
-      # "Run workflow" (workflow_dispatch) forces a backend deploy regardless,
-      # so the function can be redeployed without a fake supabase/** commit.
+      # Backend first (only when supabase/** changed, or forced by a manual dispatch)
+      # so the frontend never calls a function that isn't live yet.
       - name: Install Supabase CLI
-        if: ${{ steps.ship.outputs.should_ship == 'true' && vars.DEPLOY_SUPABASE == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && steps.changes.outputs.backend == 'true')) }}
+        if: ${{ vars.DEPLOY_SUPABASE == 'true' && (github.event_name == 'workflow_dispatch' || needs.decide.outputs.backend_changed == 'true') }}
         uses: supabase/setup-cli@df56b21da46c98abb12a9804e4fb1f657773e333 # v2
         with:
           version: latest
-
       - name: Deploy Supabase backend (migrations + game function)
-        if: ${{ steps.ship.outputs.should_ship == 'true' && vars.DEPLOY_SUPABASE == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && steps.changes.outputs.backend == 'true')) }}
+        if: ${{ vars.DEPLOY_SUPABASE == 'true' && (github.event_name == 'workflow_dispatch' || needs.decide.outputs.backend_changed == 'true') }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -394,8 +401,15 @@ jobs:
           supabase db push
           supabase functions deploy game
 
+      # Frontend (Netlify) — built against the Supabase URL. Only when Netlify is on.
+      - name: Production build (Supabase URL baked in)
+        if: ${{ vars.DEPLOY_NETLIFY == 'true' }}
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_KEY }}
       - name: Deploy site to Netlify (prebuilt — no Netlify build minutes)
-        if: ${{ steps.ship.outputs.should_ship == 'true' && vars.DEPLOY_NETLIFY == 'true' }}
+        if: ${{ vars.DEPLOY_NETLIFY == 'true' }}
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
@@ -403,10 +417,8 @@ jobs:
 
       # ---- Verify the live site serves exactly what we built ----
       - name: Smoke check (live bundle matches build)
-        if: ${{ steps.ship.outputs.should_ship == 'true' && vars.DEPLOY_NETLIFY == 'true' && vars.NETLIFY_SITE_URL != '' }}
+        if: ${{ vars.DEPLOY_NETLIFY == 'true' && vars.NETLIFY_SITE_URL != '' }}
         env:
-          # Netlify-specific URL so this can't collide with the Azure smoke's
-          # AZURE_SITE_URL when both stacks deploy from the same push.
           NETLIFY_SITE_URL: ${{ vars.NETLIFY_SITE_URL }}
         run: |
           BUILT=$(grep -o 'assets/index-[^"]*\.js' dist/index.html | head -1)
@@ -422,19 +434,85 @@ jobs:
           fi
 
       # ---- Post-deploy smoke: actually PLAY the live Netlify/Supabase stack ----
-      # The hash check above only proves the right files landed. This drives a
-      # real browser against the deployed URL and plays it — boot + solo turn +
-      # a two-browser online round (create → join → start → act) against the live
-      # Supabase backend, proving per-seat redaction end to end. Runs whenever the
-      # frontend deploys and a live URL is set — NOT gated on a Supabase deploy
-      # this run. The spec self-skips the online round when the built site has no
-      # backend configured, so a frontend-only deploy still gets played (boot +
-      # solo turn) instead of shipping unverified; retries absorb CDN propagation lag.
       - name: Install Chrome for Playwright
-        if: ${{ steps.ship.outputs.should_ship == 'true' && vars.DEPLOY_NETLIFY == 'true' && vars.NETLIFY_SITE_URL != '' }}
+        if: ${{ vars.DEPLOY_NETLIFY == 'true' && vars.NETLIFY_SITE_URL != '' }}
         run: npx playwright install --with-deps chrome
       - name: Play the live Netlify deployment (Playwright)
-        if: ${{ steps.ship.outputs.should_ship == 'true' && vars.DEPLOY_NETLIFY == 'true' && vars.NETLIFY_SITE_URL != '' }}
+        if: ${{ vars.DEPLOY_NETLIFY == 'true' && vars.NETLIFY_SITE_URL != '' }}
         env:
           E2E_BASE_URL: ${{ vars.NETLIFY_SITE_URL }}
         run: npm run test:e2e:deploy
+
+  # The Azure stack: Static Web App frontend (built against VITE_API_BASE) + Function
+  # App backend. Self-contained; skips entirely unless DEPLOY_AZURE is on.
+  deploy-azure:
+    needs: decide
+    if: ${{ needs.decide.outputs.should_ship == 'true' && vars.DEPLOY_AZURE == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          ref: ${{ needs.decide.outputs.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            api/package-lock.json
+
+      # Install + package (NOT a second quality gate — ci.yml's jobs above already
+      # gated this commit). `npm run build` still type-checks the app via tsc -b.
+      - run: npm ci
+      - run: npm run api:install
+      - run: npm run api:build # bundles api/ into the Function App package deployed below
+      - name: Build web (VITE_API_BASE -> Azure Functions)
+        run: npm run build
+        env:
+          VITE_API_BASE: ${{ vars.VITE_API_BASE }}
+
+      # ---- Deploy backend first (so the live UI never calls a missing API) ----
+      - name: Deploy Function App
+        uses: Azure/functions-action@bc63708cc6539760eea18d8a7de4ce8ef5fdf593 # v1
+        with:
+          app-name: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
+          package: api
+          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+      - name: Deploy Static Web App
+        uses: Azure/static-web-apps-deploy@1a947af9992250f3bc2e68ad0754c0b0c11566c9 # v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: dist
+          api_location: ""
+          output_location: ""
+          skip_app_build: true
+
+      # ---- Warm up the just-redeployed Function App (Consumption plan can cold-start) ----
+      - name: Wait for the Function App to warm up
+        if: ${{ vars.VITE_API_BASE != '' }}
+        run: |
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$VITE_API_BASE/game" \
+              -H 'Content-Type: application/json' -d '{"op":"health"}' || true)
+            if [ "$code" = "200" ]; then
+              echo "Function App healthy after $i attempt(s)."
+              exit 0
+            fi
+            echo "Attempt $i: got HTTP ${code:-<none>}, retrying…"
+            sleep 3
+          done
+          echo "::warning::Function App didn't report healthy in time; proceeding anyway — the smoke test's own retries may still absorb it."
+        env:
+          VITE_API_BASE: ${{ vars.VITE_API_BASE }}
+
+      # ---- Post-deploy smoke: actually PLAY the live Azure stack ----
+      - name: Install Chrome for Playwright
+        if: ${{ vars.AZURE_SITE_URL != '' }}
+        run: npx playwright install --with-deps chrome
+      - name: Play the live deployment (Playwright)
+        if: ${{ vars.AZURE_SITE_URL != '' }}
+        run: npm run test:e2e:deploy
+        env:
+          E2E_BASE_URL: ${{ vars.AZURE_SITE_URL }}
