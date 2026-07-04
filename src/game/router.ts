@@ -185,6 +185,10 @@ export function makeRouter(
       // tries). Per-instance + fail-open, like the other lightweight limiters.
       if (limited(`join:${req.ip}`, 30, 60_000))
         return reply(429, { error: "Too many join attempts — please slow down." });
+      // Durable, cross-instance per-IP/hour cap so the per-instance brake above
+      // can't be multiplied by fanning out across Function instances.
+      if (rateLimiter && !(await rateLimiter.allowJoin(req.ip, new Date().toISOString())))
+        return reply(429, { error: "Too many join attempts — please try again later." });
     }
 
     if (op === "act") {

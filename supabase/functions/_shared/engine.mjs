@@ -818,6 +818,8 @@ function makeRouter(store, opts = {}) {
     if (op === "join") {
       if (limited(`join:${req.ip}`, 30, 6e4))
         return reply(429, { error: "Too many join attempts \u2014 please slow down." });
+      if (rateLimiter && !await rateLimiter.allowJoin(req.ip, (/* @__PURE__ */ new Date()).toISOString()))
+        return reply(429, { error: "Too many join attempts \u2014 please try again later." });
     }
     if (op === "act") {
       const seatToken = typeof body.seatToken === "string" ? body.seatToken : "";
@@ -846,13 +848,17 @@ function makeRouter(store, opts = {}) {
 
 // src/game/rateLimit.ts
 var safe = (s) => s.replace(/[^A-Za-z0-9.:_-]/g, "_").slice(0, 200);
-function makeLimiter(counter, maxPerDay, maxPerIpHour) {
+function makeLimiter(counter, maxPerDay, maxPerIpHour, maxJoinsPerIpHour = 120) {
   return {
     async allowCreate(ip, nowIso2) {
       const day = nowIso2.slice(0, 10);
       const hour = nowIso2.slice(0, 13);
       if (!await counter.incrIfBelow("ip", `${safe(ip)}:${hour}`, maxPerIpHour)) return false;
       return counter.incrIfBelow("global", `d:${day}`, maxPerDay);
+    },
+    async allowJoin(ip, nowIso2) {
+      const hour = nowIso2.slice(0, 13);
+      return counter.incrIfBelow("join", `${safe(ip)}:${hour}`, maxJoinsPerIpHour);
     }
   };
 }

@@ -24,8 +24,10 @@ threats we design against, and how:
   are authorized by token, not by client-supplied seat index.
 - **Guessing / harvesting game codes.** Join codes are 6 chars from a 32-symbol
   alphabet (no I/O/0/1) drawn from a CSPRNG (~1.07B combinations). Combined with
-  a dedicated **per-IP join-attempt cap** and the 14-day game TTL, the window for
-  brute force is small. Codes are allocated collision-safely on both backends (a
+  a dedicated **per-IP join-attempt cap** — a cheap per-instance brake plus a
+  **durable, cross-instance per-IP/hour cap** so it can't be multiplied by fanning
+  out across backend instances — and the 14-day game TTL, the window for brute
+  force is small. Codes are allocated collision-safely on both backends (a
   duplicate is regenerated, never allowed to clobber a live lobby). On Supabase,
   codes live in a **separate, unpublished `game_codes` table** — never in the
   Realtime-published `games` row — because Realtime broadcasts whole rows and

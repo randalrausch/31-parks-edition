@@ -18,6 +18,10 @@
 export interface RateLimiter {
   /** True if a create from `ip` at `nowIso` is within both caps (and records it). */
   allowCreate(ip: string, nowIso: string): Promise<boolean>;
+  /** True if a join from `ip` at `nowIso` is within the per-IP/hour cap. Durable
+   * and cross-instance (unlike the router's per-instance limiter), so it bounds
+   * join-code brute force across all backend instances. */
+  allowJoin(ip: string, nowIso: string): Promise<boolean>;
 }
 
 /** A counter store: atomically increment (pk,rk) iff still below `limit`. */
@@ -29,11 +33,12 @@ export interface Counter {
 // Postgres counter is unaffected but shares the sanitizer for identical keys).
 const safe = (s: string) => s.replace(/[^A-Za-z0-9.:_-]/g, "_").slice(0, 200);
 
-/** Wrap a Counter with the shared day/hour bucketing and the two ceilings. */
+/** Wrap a Counter with the shared day/hour bucketing and the ceilings. */
 export function makeLimiter(
   counter: Counter,
   maxPerDay: number,
   maxPerIpHour: number,
+  maxJoinsPerIpHour = 120,
 ): RateLimiter {
   return {
     async allowCreate(ip, nowIso) {
@@ -47,11 +52,23 @@ export function makeLimiter(
       if (!(await counter.incrIfBelow("ip", `${safe(ip)}:${hour}`, maxPerIpHour))) return false;
       return counter.incrIfBelow("global", `d:${day}`, maxPerDay);
     },
+    async allowJoin(ip, nowIso) {
+      // Per-IP/hour only (join allocates no storage, so there's no global cost
+      // ceiling to defend — just a per-source brake on code brute force). Its own
+      // bucket, so join attempts don't consume the create budget. Generous enough
+      // that real play never trips it; only a grinder does.
+      const hour = nowIso.slice(0, 13);
+      return counter.incrIfBelow("join", `${safe(ip)}:${hour}`, maxJoinsPerIpHour);
+    },
   };
 }
 
 /** In-memory counter for tests. Limits are explicit (no env dependency). */
-export function makeMemoryRateLimiter(maxPerDay = 500, maxPerIpHour = 20): RateLimiter {
+export function makeMemoryRateLimiter(
+  maxPerDay = 500,
+  maxPerIpHour = 20,
+  maxJoinsPerIpHour = 120,
+): RateLimiter {
   const counts = new Map<string, number>();
   return makeLimiter(
     {
@@ -65,5 +82,6 @@ export function makeMemoryRateLimiter(maxPerDay = 500, maxPerIpHour = 20): RateL
     },
     maxPerDay,
     maxPerIpHour,
+    maxJoinsPerIpHour,
   );
 }
