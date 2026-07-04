@@ -1,0 +1,52 @@
+name: Build CI image
+
+# Builds the custom CI runner image (.github/ci-image/Dockerfile) and pushes it to
+# this repo's GitHub Container Registry namespace, so the CI jobs can run inside it
+# (`container:`) instead of reinstalling the Playwright browser + OS deps on a cold
+# VM every run. See .github/ci-image/README.md for how a job opts in.
+#
+# Runs when the image definition changes, weekly (to pick up Chrome + base-image
+# security patches), and on demand. It only publishes an image — it does not gate
+# or change any test, so it is safe to run independently of the CI/CD workflow.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/ci-image/Dockerfile"
+      - ".github/workflows/ci-image.yml"
+  schedule:
+    - cron: "0 5 * * 1" # weekly, Monday 05:00 UTC — keep the baked browser patched
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ci-image
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      # Build + push with the Docker CLI (preinstalled on the runner) rather than a
+      # third-party action, so no unpinned action enters the supply chain — matching
+      # this repo's SHA-pinning discipline. GITHUB_TOKEN + packages:write can push to
+      # the repo's own GHCR namespace.
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build and push the CI image
+        run: |
+          set -euo pipefail
+          # Lowercase the owner/repo — GHCR rejects uppercase in image names, and a
+          # repo owner may contain capitals.
+          IMAGE="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')/ci"
+          docker build -t "$IMAGE:latest" -t "$IMAGE:${GITHUB_SHA::12}" .github/ci-image
+          docker push "$IMAGE:latest"
+          docker push "$IMAGE:${GITHUB_SHA::12}"
+          echo "Pushed $IMAGE:latest and $IMAGE:${GITHUB_SHA::12}"
