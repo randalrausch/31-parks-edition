@@ -66,10 +66,6 @@ export class NetworkTransport {
   get isOutdated(): boolean {
     return this.outdated;
   }
-  /** The seat (player id) this client controls, e.g. "p2". */
-  get seatId(): string | null {
-    return this.snap?.seatIndex != null ? `p${this.snap.seatIndex}` : null;
-  }
 
   subscribe(listener: (s: NetworkSnapshot) => void): () => void {
     this.listeners.add(listener);

@@ -32,6 +32,7 @@ import {
   type Snd,
 } from "./presentation";
 import { elog } from "./debug";
+import { seatPlayerId } from "./ids";
 import {
   saveSolo,
   loadSolo,
@@ -165,7 +166,7 @@ export function useGame(): SoloGameApi {
       clearSolo(); // a fresh game replaces any prior save
       presRef.current = freshPresentation();
       const players: NewGamePlayer[] = config.players.map((c, i) => ({
-        id: `p${i}`,
+        id: seatPlayerId(i),
         name: c.name.trim() || (c.isAI ? "AI" : `Player ${i + 1}`),
         isAI: c.isAI,
         traits: c.traits,

@@ -21,16 +21,10 @@ export interface Transport {
   start(players: NewGamePlayer[], options: GameState["options"]): void;
   /** Submit an authoritative action. */
   dispatch(action: GameAction): void;
-  /**
-   * Which seat this client controls. null = this client controls every seat
-   * (local play). A networked transport returns the local player's id.
-   */
-  readonly seatId: string | null;
   destroy(): void;
 }
 
 export class LocalTransport implements Transport {
-  readonly seatId: string | null = null; // local play controls all seats
   private state: GameState | null = null;
   private listeners = new Set<(s: GameState) => void>();
 

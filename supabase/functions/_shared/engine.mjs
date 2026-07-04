@@ -461,6 +461,19 @@ function redactState(state, viewerId) {
   };
 }
 
+// src/game/ids.ts
+var CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+var CODE_LENGTH = 6;
+function makeCode() {
+  const bytes = new Uint8Array(CODE_LENGTH);
+  crypto.getRandomValues(bytes);
+  let c = "";
+  for (let i = 0; i < CODE_LENGTH; i++) c += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
+  return c;
+}
+var newToken = () => crypto.randomUUID();
+var seatPlayerId = (idx) => `p${idx}`;
+
 // src/game/config.ts
 var TRAIT_KEYS = ["bluff", "memory", "patience", "aggression", "risk"];
 var clampName = (s, fallback) => (typeof s === "string" ? s.trim().slice(0, 40) : "") || fallback;
@@ -492,7 +505,7 @@ function buildCreateSetup(config) {
   for (let i = 0; i < humans; i++) {
     const isCreator = i === 0;
     const name = isCreator ? clampName(config.creatorName, "Player 1") : `Player ${i + 1}`;
-    players.push({ id: `p${i}`, name, isAI: false, avatarKey: "ranger" });
+    players.push({ id: seatPlayerId(i), name, isAI: false, avatarKey: "ranger" });
     seats.push({
       idx: i,
       name: isCreator ? name : null,
@@ -507,7 +520,7 @@ function buildCreateSetup(config) {
     const avatar = clampKey(c.avatarKey, "ranger");
     const emoji = typeof c.emoji === "string" ? c.emoji.slice(0, 8) : void 0;
     players.push({
-      id: `p${idx}`,
+      id: seatPlayerId(idx),
       name: aiName,
       isAI: true,
       avatarKey: avatar,
@@ -525,18 +538,6 @@ function buildCreateSetup(config) {
     aiCount: ai.length
   };
 }
-
-// src/game/ids.ts
-var CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-var CODE_LENGTH = 6;
-function makeCode() {
-  const bytes = new Uint8Array(CODE_LENGTH);
-  crypto.getRandomValues(bytes);
-  let c = "";
-  for (let i = 0; i < CODE_LENGTH; i++) c += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
-  return c;
-}
-var newToken = () => crypto.randomUUID();
 
 // src/game/store.ts
 var StateTooLargeError = class extends Error {

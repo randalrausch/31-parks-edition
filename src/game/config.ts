@@ -11,6 +11,7 @@
  */
 import { DEFAULT_OPTIONS, type GameOptions } from "./engine";
 import type { NewGamePlayer } from "./actions";
+import { seatPlayerId } from "./ids";
 
 /** Public, client-visible seat summary written to the lobby record (no cards). */
 export interface SeatSetup {
@@ -104,7 +105,7 @@ export function buildCreateSetup(config: CreateConfigInput): CreateSetup {
   for (let i = 0; i < humans; i++) {
     const isCreator = i === 0;
     const name = isCreator ? clampName(config.creatorName, "Player 1") : `Player ${i + 1}`;
-    players.push({ id: `p${i}`, name, isAI: false, avatarKey: "ranger" });
+    players.push({ id: seatPlayerId(i), name, isAI: false, avatarKey: "ranger" });
     seats.push({
       idx: i,
       name: isCreator ? name : null,
@@ -119,7 +120,7 @@ export function buildCreateSetup(config: CreateConfigInput): CreateSetup {
     const avatar = clampKey(c.avatarKey, "ranger");
     const emoji = typeof c.emoji === "string" ? c.emoji.slice(0, 8) : undefined;
     players.push({
-      id: `p${idx}`,
+      id: seatPlayerId(idx),
       name: aiName,
       isAI: true,
       avatarKey: avatar,

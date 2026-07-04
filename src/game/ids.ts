@@ -15,3 +15,11 @@ export function makeCode(): string {
 }
 
 export const newToken = (): string => crypto.randomUUID();
+
+/**
+ * The public player id for a seat index — the single source of the `p<idx>`
+ * convention. Player ids are NOT secret (they're sent to every viewer in the
+ * redacted state); the seat *token* is the credential. Minting them in one place
+ * keeps the shape from being independently hard-coded across create/join/solo.
+ */
+export const seatPlayerId = (idx: number): string => `p${idx}`;
