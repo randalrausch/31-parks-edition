@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.5 — 2026-07-04
+
+### Fixes
+
+- resolve open-source review gaps across reliability, security, parity, and docs (#60)
+
 ## v0.7.4 — 2026-07-04
 
 ### Fixes
