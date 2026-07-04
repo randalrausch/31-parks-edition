@@ -52,6 +52,9 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
       }
       return next;
     });
+  // Whether the on-table feed is expanded to the whole deal (only offered when
+  // the "Full Action History" house rule is on — matches the online board).
+  const [showAllLog, setShowAllLog] = useState(false);
   const s = game.state;
   if (!s) return null;
 
@@ -62,6 +65,11 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
     .filter((x) => x.i !== s.cur && isAlive(x.p));
   const aliveCount = s.players.filter(isAlive).length;
   const topDiscard = s.discard[s.discard.length - 1] ?? null;
+  // The on-table feed shows the last full round (up to two entries per living
+  // player). With the "Full Action History" house rule on, let the player
+  // expand it to the whole deal — the same affordance the online board offers.
+  const recentLog = aliveCount * 2;
+  const logExpandable = s.options.fullHistory && s.log.length > recentLog;
 
   const isHumanTurn = !cur.isAI && (s.phase === "drawing" || s.phase === "discarding");
   const canDraw = !cur.isAI && s.phase === "drawing";
@@ -100,11 +108,14 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
             full round (up to two entries per living player: draw + discard). */}
       <BoardLog
         entries={s.log}
-        recentLimit={aliveCount * 2}
+        recentLimit={recentLog}
         visible={logOpen}
         canToggle
         onToggle={toggleLog}
         hideWhenEmpty
+        expandable={logExpandable}
+        showingAll={logExpandable && showAllLog}
+        onToggleExpand={() => setShowAllLog((v) => !v)}
       />
 
       <BoardHeader

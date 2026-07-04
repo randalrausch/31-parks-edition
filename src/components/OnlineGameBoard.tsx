@@ -24,6 +24,7 @@ import {
 import { bestSuit, bestHandScore, isAlive, roundNo, type GameState } from "../game/engine";
 import type { NetworkGameApi } from "../game/useNetworkGame";
 import { useTurnReplay } from "./useTurnReplay";
+import { sndShuffle, sndDeal, sndKnock, sndCoin } from "../game/sound";
 import "./GameBoard.css";
 
 export default function OnlineGameBoard({
@@ -64,7 +65,34 @@ export default function OnlineGameBoard({
   // replay the new public log moves one beat at a time for natural flow. Match
   // on seat index (not name — names aren't unique) so a same-named opponent's
   // moves are never mistaken for the viewer's own.
-  const replay = useTurnReplay(snap, viewer >= 0 ? viewer : null);
+  const replay = useTurnReplay(snap, viewer >= 0 ? viewer : null, !!s?.options.sound);
+
+  // Sound cues for the online table (gated by the shared "Sound" house rule):
+  // a shuffle when a new deal is dealt and a coin when a deal resolves. Opponent
+  // move SFX are paced by useTurnReplay; the viewer's own moves are sounded by
+  // the action handlers below. The first snapshot (join / reconnect) only seeds
+  // the trackers so we don't retro-play sound for state we arrived into.
+  const soundInit = useRef(false);
+  const soundedShuffle = useRef(-1);
+  const soundedCoin = useRef(-1);
+  useEffect(() => {
+    if (!s) return;
+    if (!soundInit.current) {
+      soundInit.current = true;
+      soundedShuffle.current = s.dealNum;
+      soundedCoin.current = s.phase === "dealEnd" ? s.dealNum : -1;
+      return;
+    }
+    if (!s.options.sound) return;
+    if (s.phase !== "dealEnd" && s.dealNum !== soundedShuffle.current) {
+      soundedShuffle.current = s.dealNum;
+      sndShuffle();
+    }
+    if (s.phase === "dealEnd" && s.dealNum !== soundedCoin.current) {
+      soundedCoin.current = s.dealNum;
+      sndCoin();
+    }
+  }, [s]);
 
   if (!s) {
     return (
@@ -73,6 +101,22 @@ export default function OnlineGameBoard({
       </BoardFrame>
     );
   }
+
+  // The viewer's own moves are sounded immediately here (opponents are paced by
+  // useTurnReplay), gated by the shared house rule.
+  const sound = !!s.options.sound;
+  const drawDeck = () => {
+    if (sound) sndDeal();
+    game.act({ type: "drawDeck" });
+  };
+  const takeDiscard = () => {
+    if (sound) sndDeal();
+    game.act({ type: "takeDiscard" });
+  };
+  const knock = () => {
+    if (sound) sndKnock();
+    game.act({ type: "knock" });
+  };
 
   const me = viewer >= 0 ? s.players[viewer] : null;
   // Order opponents clockwise from THIS player's seat: turn order is ascending
@@ -209,8 +253,8 @@ export default function OnlineGameBoard({
         deckCount={s.deck.length}
         topDiscard={topDiscard}
         canDraw={canDraw}
-        onDrawDeck={() => game.act({ type: "drawDeck" })}
-        onTakeDiscard={() => game.act({ type: "takeDiscard" })}
+        onDrawDeck={drawDeck}
+        onTakeDiscard={takeDiscard}
         status={
           <div className="board__status" role="status" aria-live="polite">
             {turnLabel}
@@ -233,11 +277,12 @@ export default function OnlineGameBoard({
               hasDiscard={!!topDiscard}
               canKnock={canDraw && s.knocker === null}
               onSelect={(i) => discarding && setSelected(selected === i ? null : i)}
-              onDrawDeck={() => game.act({ type: "drawDeck" })}
-              onTakeDiscard={() => game.act({ type: "takeDiscard" })}
-              onKnock={() => game.act({ type: "knock" })}
+              onDrawDeck={drawDeck}
+              onTakeDiscard={takeDiscard}
+              onKnock={knock}
               onConfirmDiscard={() => {
                 if (selected === null) return;
+                if (sound) sndDeal();
                 game.act({ type: "discard", cardId: me.hand[selected].id });
                 setSelected(null);
               }}
