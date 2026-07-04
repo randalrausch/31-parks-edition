@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { createGameState, applyAction, dealtBlitzIndex, type NewGamePlayer } from "./actions";
+import {
+  createGameState,
+  applyAction,
+  dealtBlitzIndex,
+  seatHumanPlayer,
+  fillSeatsWithAI,
+  type NewGamePlayer,
+} from "./actions";
 import { DEFAULT_OPTIONS, isAlive, type AITraits, type GamePlayer, type GameState } from "./engine";
 
 const rnd = (n: number) => Math.floor(Math.random() * n);
@@ -59,6 +66,37 @@ describe("createGameState + deal", () => {
     }
     // The moves we just made were the first player's, at their seat.
     expect(s.log.every((e) => e.actorSeat === cur)).toBe(true);
+  });
+});
+
+describe("lobby seat transitions (join / start helpers)", () => {
+  it("seatHumanPlayer converts an AI seat to a human, clearing AI-only fields", () => {
+    const s0 = createGameState(aiPlayers(3), DEFAULT_OPTIONS);
+    expect(s0.players[1].isAI).toBe(true);
+    expect(s0.players[1].traits).toBeDefined();
+
+    const s1 = seatHumanPlayer(s0, 1, "Randy");
+    // New player is a human with no AI residue.
+    expect(s1.players[1].isAI).toBe(false);
+    expect(s1.players[1].name).toBe("Randy");
+    expect(s1.players[1].avatarKey).toBe("ranger");
+    expect(s1.players[1].traits).toBeUndefined();
+    expect(s1.players[1].emoji).toBeUndefined();
+    // Pure: the input is untouched, and other seats are unchanged.
+    expect(s0.players[1].isAI).toBe(true);
+    expect(s1.players[0]).toEqual(s0.players[0]);
+    expect(s1.players[2]).toEqual(s0.players[2]);
+  });
+
+  it("fillSeatsWithAI flips only the named seats to AI, immutably", () => {
+    // Seat two humans, then fill seats 1 and 2 with AI (as start does).
+    let s = createGameState(aiPlayers(3), DEFAULT_OPTIONS);
+    s = seatHumanPlayer(s, 1, "Human A");
+    s = seatHumanPlayer(s, 2, "Human B");
+    const filled = fillSeatsWithAI(s, [2]);
+    expect(filled.players[1].isAI).toBe(false); // untouched
+    expect(filled.players[2].isAI).toBe(true); // converted
+    expect(s.players[2].isAI).toBe(false); // input untouched
   });
 });
 

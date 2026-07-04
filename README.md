@@ -187,6 +187,9 @@ docs/              Architecture, theming, backend, and deployment guides
 
 ### Documentation
 
+- [docs/](docs/README.md) — the full documentation index, including
+  [Architecture Decision Records](docs/adr/) that capture the *why* behind the
+  shared engine, the two-backend seam, and the wire `PROTOCOL_VERSION`.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how the pure engine, reducer,
   transports, and authority fit together, and how hidden information is
   enforced.

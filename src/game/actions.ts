@@ -304,3 +304,39 @@ export function createGameState(
     winnerId: null,
   };
 }
+
+/* ─────────────────────── lobby seat transitions ─────────────────────────
+ * Pure, server-only transforms for the lobby ops (join / start). They're NOT
+ * part of the GameAction union and never reach applyPlayerAction, so a client
+ * can't dispatch them — only the authority (handlers.ts) calls them, the same
+ * way it calls applyAction for "deal". Keeping them here (immutable, clone-based,
+ * unit-tested) instead of mutating the serialized state inside the handler means
+ * seat changes go through the engine's shape, not a hand-rolled cast. */
+
+/** Seat a human into an open (reserved-human or AI) seat, clearing any AI-only
+ * fields. Returns a new state; does not mutate the input. */
+export function seatHumanPlayer(
+  state: GameState,
+  idx: number,
+  name: string,
+  avatarKey = "ranger",
+): GameState {
+  const s: GameState = structuredClone(state);
+  const p = s.players[idx];
+  p.isAI = false;
+  p.name = name;
+  p.avatarKey = avatarKey;
+  // A human seat carries none of the AI-only fields.
+  delete p.traits;
+  delete p.emoji;
+  delete p.image;
+  return s;
+}
+
+/** Convert the given (unfilled) seats to AI — used at start to fill empty seats.
+ * Returns a new state; does not mutate the input. */
+export function fillSeatsWithAI(state: GameState, seatIdxs: readonly number[]): GameState {
+  const s: GameState = structuredClone(state);
+  for (const i of seatIdxs) s.players[i].isAI = true;
+  return s;
+}

@@ -371,6 +371,22 @@ function createGameState(players, options) {
     winnerId: null
   };
 }
+function seatHumanPlayer(state, idx, name, avatarKey = "ranger") {
+  const s = structuredClone(state);
+  const p = s.players[idx];
+  p.isAI = false;
+  p.name = name;
+  p.avatarKey = avatarKey;
+  delete p.traits;
+  delete p.emoji;
+  delete p.image;
+  return s;
+}
+function fillSeatsWithAI(state, seatIdxs) {
+  const s = structuredClone(state);
+  for (const i of seatIdxs) s.players[i].isAI = true;
+  return s;
+}
 
 // src/game/authority.ts
 var HIDDEN_CARD = {
@@ -592,27 +608,17 @@ async function handleJoin(store, body) {
   if (!seat) return fail(409, "That game is full.");
   const idx = seat.idx;
   const name = (typeof body.name === "string" ? body.name.trim().slice(0, 40) : "") || `Player ${idx + 1}`;
-  const tookAI = seat.isAI === true;
   seat.isAI = false;
   seat.filled = true;
   seat.name = name;
   seat.avatar = "ranger";
   seat.emoji = null;
-  const players = secret.state.players;
-  const player = players[idx];
-  player.isAI = false;
-  player.name = name;
-  player.avatarKey = "ranger";
-  if (tookAI) {
-    delete player.traits;
-    player.emoji = null;
-    player.image = null;
-  }
+  const nextState = seatHumanPlayer(secret.state, idx, name);
   const t = newToken();
   const seatTokens = { ...secret.seatTokens, [t]: idx };
   const next = bumped(game.rec, { seats });
   if (!await store.update(gameId, game.etag, next, {
-    state: secret.state,
+    state: nextState,
     seatTokens
   }))
     return fail(409, "The game just changed \u2014 please try again.");
@@ -627,15 +633,16 @@ async function handleStart(store, body) {
     return fail(403, "Only the host can start the game.");
   if (game.rec.status !== "lobby") return fail(409, "The game has already started.");
   const seats = game.rec.seats;
-  const state = secret.state;
+  const aiSeatIdxs = [];
   for (const s of seats) {
     if (!s.isAI && !s.filled) {
       s.isAI = true;
       s.filled = true;
-      state.players[s.idx].isAI = true;
+      aiSeatIdxs.push(s.idx);
     }
   }
-  const dealt = advanceAuthority(applyAction(secret.state, { type: "deal" }));
+  const withAI = fillSeatsWithAI(secret.state, aiSeatIdxs);
+  const dealt = advanceAuthority(applyAction(withAI, { type: "deal" }));
   const next = bumped(game.rec, { seats, status: "playing" });
   if (!await store.update(gameId, game.etag, next, {
     state: dealt,

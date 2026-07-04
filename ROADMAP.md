@@ -18,17 +18,26 @@ or an issue.
 
 ## Near term
 
-- Component/hook tests for the presentation layer (`useGame`, `useNetworkGame`)
-  and an automated accessibility (axe) pass in E2E.
-- A shared store-adapter contract test suite that every backend must pass, so
-  parity is enforced by a failing test rather than review.
-- Fuller in-app "Update available" handling when the server protocol advances
-  mid-session.
+- **Refactor `useGame` into an explicit presentation state machine.** It's the
+  one under-structured module (ref-driven state, `setTimeout` chains, several
+  `exhaustive-deps` suppressions) and the least unit-tested. Modeling `viewPhase`
+  (dealing → cover → thinking → null) as a real state machine — with tests — is a
+  deliberate, standalone piece of work rather than a rushed edit, because the
+  regressions it could introduce (deal/AI/knock timing) are exactly what the
+  current unit suite can't catch. Pair it with component/hook tests for `useGame`
+  and `useNetworkGame`, plus an automated accessibility (axe) pass in E2E.
+- **Run the shared store contract against real Postgres in CI** (`supabase start`)
+  when `supabase/**` changes. The contract already runs against the Supabase fake,
+  the memory store, and real Azurite; adding a real-Postgres run closes the last
+  gap where a migration edit to the `commit_game` SQL could pass CI.
+- **Adopt `noUncheckedIndexedAccess`.** Pervasive array indexing is guarded by
+  `!` and manual bounds checks today; enabling this strictness would catch a real
+  bug class, but it's noisy to adopt and is its own focused change.
 
 ## Later / maybe
 
 - Persisted per-game state versioning with a migration path (so an engine change
-  can't strand in-flight online games).
+  can't strand in-flight online games — the solo save already validates + quarantines).
 - A third backend adapter (e.g. Cloudflare D1 / Durable Objects) purely to
   demonstrate the storage seam — the adapter-contract suite is the substitute
   that proves the seam today.
