@@ -184,6 +184,66 @@ describe("online multiplayer (NetworkTransport over the shared handlers)", () =>
     }
   });
 
+  it("connect: a transient first-fetch failure arms the poll instead of dead-ending", async () => {
+    // A blip on the very first fetch must not be fatal — the lost-link recovery
+    // (poll + resubscribe) should converge, exactly as it would for a blip later.
+    const okSnap: NetworkSnapshot = {
+      status: "playing",
+      version: 1,
+      seats: [],
+      seatIndex: 0,
+      state: { phase: "drawing" } as unknown as NetworkSnapshot["state"],
+    };
+    let calls = 0;
+    const api: GameApi = {
+      async create() {
+        throw new Error("unused");
+      },
+      async join() {
+        throw new Error("unused");
+      },
+      async start() {},
+      async act() {},
+      async state() {
+        calls += 1;
+        if (calls === 1) throw new BackendError("network blip", 503);
+        return okSnap;
+      },
+    };
+    const backend: GameBackend = { name: "Stub", api, subscribe: () => () => {} };
+    const t = new NetworkTransport(backend, "g", "tok");
+    try {
+      await expect(t.connect()).resolves.toBeUndefined(); // did NOT dead-end
+      await t.refresh(); // the next tick converges
+      expect(t.getState()).toEqual(okSnap.state);
+    } finally {
+      t.destroy();
+    }
+  });
+
+  it("connect: a definitive 404 is fatal (rethrown so the UI can offer 'back to menu')", async () => {
+    const api: GameApi = {
+      async create() {
+        throw new Error("unused");
+      },
+      async join() {
+        throw new Error("unused");
+      },
+      async start() {},
+      async act() {},
+      async state() {
+        throw new BackendError("no such game", 404);
+      },
+    };
+    const backend: GameBackend = { name: "Stub", api, subscribe: () => () => {} };
+    const t = new NetworkTransport(backend, "g", "tok");
+    try {
+      await expect(t.connect()).rejects.toBeInstanceOf(BackendError);
+    } finally {
+      t.destroy();
+    }
+  });
+
   it("applies the current player's move, converges both clients, and ignores out-of-turn moves", async () => {
     const { backend, host, guest, gameId } = await activeGame();
     const hostT = new NetworkTransport(backend, gameId, host.seatToken);

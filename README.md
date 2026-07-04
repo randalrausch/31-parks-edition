@@ -275,6 +275,10 @@ React 19, TypeScript, Vite 8, plain CSS, Supabase (optional, for multiplayer),
 and Vitest. There are no game-logic dependencies; the rules are pure,
 serializable TypeScript shared by the client and the server.
 
+Runs on any evergreen browser; the practical floor is Safari 15.4+ / Chrome
+90+ / Firefox 90+ (a small shim backfills `AbortSignal.timeout` for the
+oldest of those).
+
 ## Credits and license
 
 All original artwork in `src/assets/` and `docs/images/` (park scenes, opponent

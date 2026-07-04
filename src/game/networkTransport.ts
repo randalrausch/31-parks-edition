@@ -147,6 +147,11 @@ export class NetworkTransport {
           this.emit();
           dlog("net", `snapshot v${snap.version}`, snap.state.phase);
         }
+        // A finished game never changes again — stop the safety-net poll so an
+        // abandoned tab on the game-over screen doesn't invoke the backend every
+        // few seconds forever. The push subscription (and the visibility/online
+        // refetch) still cover the vanishingly unlikely late update.
+        if (snap.status === "over") this.stopPoll();
       }
       this.setLink(true); // a successful fetch means we're synced
     } catch (e) {
@@ -168,9 +173,26 @@ export class NetworkTransport {
     }
   }
 
+  private stopPoll() {
+    if (this.pollTimer) clearInterval(this.pollTimer);
+    this.pollTimer = null;
+  }
+
   /** Begin syncing: initial fetch + backend change subscription + safety poll. */
   async connect(): Promise<void> {
-    await this.refresh();
+    try {
+      await this.refresh();
+    } catch (e) {
+      // A definitive "this game isn't yours / doesn't exist" is fatal — surface
+      // it (the UI offers "back to menu"). Anything transient (a timeout, a
+      // network blip, a 5xx) is NOT: fall through to arm the poll + push
+      // subscription so the normal lost-link recovery converges, instead of
+      // dead-ending on a screen whose only action is a full page reload. A blip
+      // at second 0 must behave like a blip at second 10.
+      if (e instanceof BackendError && (e.status === 404 || e.status === 403)) throw e;
+      dlog("net", "initial connect fetch failed (transient) — arming poll anyway");
+      this.setLink(false);
+    }
     if (this.outdated) return; // 426 on the first fetch — don't arm polling
     // The backend's change subscription (Realtime on Supabase; possibly a no-op
     // elsewhere). Push health feeds the "reconnecting" indicator; on (re)connect
@@ -184,7 +206,10 @@ export class NetworkTransport {
       },
     );
     // Safety-net poll in case a change event is dropped (or push isn't offered).
-    this.pollTimer = setInterval(() => this.refresh().catch(() => {}), NetworkTransport.POLL_MS);
+    // Skip it if we already loaded a finished game (nothing left to sync).
+    if (this.snap?.status !== "over") {
+      this.pollTimer = setInterval(() => this.refresh().catch(() => {}), NetworkTransport.POLL_MS);
+    }
   }
 
   async act(action: GameAction): Promise<void> {
