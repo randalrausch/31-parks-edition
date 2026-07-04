@@ -33,7 +33,11 @@ export interface RawResponse {
   body?: unknown;
 }
 
-const OPS: Record<string, (s: GameStore, body: any) => Promise<OpResult>> = {
+// The parsed request body is a bag of unknowns; each handler narrows the fields
+// it needs internally. Typing the slot as Record<string, unknown> (not `any`)
+// keeps the dispatch table type-safe — every handler's param stays assignable —
+// without the router pretending to know each op's shape.
+const OPS: Record<string, (s: GameStore, body: Record<string, unknown>) => Promise<OpResult>> = {
   create: handleCreate,
   join: handleJoin,
   start: handleStart,
