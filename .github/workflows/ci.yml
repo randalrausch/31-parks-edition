@@ -107,7 +107,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      # Skip the backend suite when a change can't affect it — a docs/meta-only
+      # diff (Markdown, LICENSE, editor config) never touches the api or the
+      # shared engine it imports. `every` + all-negation means `code` is true
+      # unless EVERY changed file is in this safe set, so we err toward RUNNING:
+      # an unlisted path always runs the suite. A workflow_dispatch (the release
+      # re-deploy) has no diff base, so paths-filter reports everything changed
+      # and the suite runs in full.
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
+        id: changes
+        with:
+          predicate-quantifier: "every"
+          filters: |
+            code:
+              - '!**/*.md'
+              - '!*.md'
+              - '!docs/**'
+              - '!LICENSE'
+              - '!.gitignore'
+              - '!.editorconfig'
+              - '!.prettierignore'
+              - '!.prettierrc.json'
+              - '!.vscode/**'
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        if: steps.changes.outputs.code == 'true'
         with:
           node-version: 20
           cache: npm
@@ -116,7 +139,9 @@ jobs:
             api/package-lock.json
       # Root deps: the api imports the shared op layer straight from ../../src.
       - run: npm ci
+        if: steps.changes.outputs.code == 'true'
       - name: API quality gate
+        if: steps.changes.outputs.code == 'true'
         env:
           # Well-known Azurite dev account; local emulator only, never a real key.
           TABLES_CONNECTION: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;"
@@ -140,7 +165,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      # Same safe-set gate as the api job: a docs/meta-only diff can't change the
+      # built app, so skip the browser install + Playwright run (the pipeline's
+      # single slowest step). `every` + all-negation errs toward RUNNING.
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
+        id: changes
+        with:
+          predicate-quantifier: "every"
+          filters: |
+            code:
+              - '!**/*.md'
+              - '!*.md'
+              - '!docs/**'
+              - '!LICENSE'
+              - '!.gitignore'
+              - '!.editorconfig'
+              - '!.prettierignore'
+              - '!.prettierrc.json'
+              - '!.vscode/**'
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        if: steps.changes.outputs.code == 'true'
         with:
           node-version: 20
           cache: npm
@@ -148,9 +192,12 @@ jobs:
             package-lock.json
             api/package-lock.json
       - run: npm ci
+        if: steps.changes.outputs.code == 'true'
       - name: Install Chrome for E2E
+        if: steps.changes.outputs.code == 'true'
         run: npx playwright install --with-deps chrome
       - name: E2E tests (Playwright)
+        if: steps.changes.outputs.code == 'true'
         # Builds the production bundle, then plays it in a real browser.
         run: npm run test:e2e
 
