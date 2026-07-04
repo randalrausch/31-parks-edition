@@ -18,6 +18,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      deploy_ref:
+        description: "Git ref (branch/tag/SHA) to build & deploy — defaults to the triggering commit. Use to redeploy a known-good release (rollback)."
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -35,6 +40,9 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
+          # A manual dispatch may pass deploy_ref to ship a specific ref (e.g.
+          # rolling back to a known-good tag); otherwise use this event's ref.
+          ref: ${{ github.event.inputs.deploy_ref || github.ref }}
           # Full history so the build's version number (git commit count) is
           # accurate; a shallow clone would always report 1.
           fetch-depth: 0
@@ -42,6 +50,9 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            api/package-lock.json
 
       # ---- Quality gate (web + api) ----
       - run: npm ci

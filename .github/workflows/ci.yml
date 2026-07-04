@@ -33,6 +33,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      deploy_ref:
+        description: "Git ref (branch/tag/SHA) to build & deploy — defaults to the triggering commit. Use to redeploy a known-good release (rollback)."
+        required: false
+        default: ""
 
 # Don't cancel an in-flight deploy; let it finish before the next one starts.
 concurrency:
@@ -48,6 +53,10 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
+          # A manual dispatch may pass deploy_ref to build & ship a specific
+          # ref (e.g. rolling back to a known-good tag); otherwise use the
+          # natural ref for this event.
+          ref: ${{ github.event.inputs.deploy_ref || github.ref }}
           # Full history so the build's version number (git commit count) is
           # accurate; a shallow clone would always report 1.
           fetch-depth: 0
@@ -64,6 +73,11 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          # Key the npm cache on BOTH lockfiles so the api/ install is cached too
+          # (it was re-downloading every run under the root-only key).
+          cache-dependency-path: |
+            package-lock.json
+            api/package-lock.json
 
       - run: npm ci
 
@@ -177,11 +191,15 @@ jobs:
       # Supabase backend, proving per-seat redaction end to end. Runs only when
       # BOTH the frontend and its Supabase backend are being deployed (the online
       # round needs a live backend); retries absorb CDN propagation lag.
+      # Runs whenever the frontend deploys and a live URL is set — NOT gated on a
+      # Supabase deploy this run. The spec self-skips the online round when the
+      # built site has no backend configured, so a frontend-only deploy still
+      # gets played (boot + solo turn) instead of shipping unverified.
       - name: Install Chrome for Playwright
-        if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_NETLIFY == 'true' && vars.DEPLOY_SUPABASE == 'true' && vars.NETLIFY_SITE_URL != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_NETLIFY == 'true' && vars.NETLIFY_SITE_URL != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
         run: npx playwright install --with-deps chrome
       - name: Play the live Netlify deployment (Playwright)
-        if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_NETLIFY == 'true' && vars.DEPLOY_SUPABASE == 'true' && vars.NETLIFY_SITE_URL != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+        if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_NETLIFY == 'true' && vars.NETLIFY_SITE_URL != '' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
         env:
           E2E_BASE_URL: ${{ vars.NETLIFY_SITE_URL }}
         run: npm run test:e2e:deploy
