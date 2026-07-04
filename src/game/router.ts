@@ -111,10 +111,14 @@ export function makeRouter(
   return async function route(req: RawRequest): Promise<RawResponse> {
     const t0 = Date.now();
     let op = "";
+    // The game this request targets, for log correlation — so one stuck table's
+    // errors can be traced instead of guessed at. "-" for create (no id yet) and
+    // for requests that fail before the body is parsed.
+    let game = "-";
     const corsHeaders = cors(req.origin);
     const reply = (status: number, body: unknown): RawResponse => {
       if (onEvent && (LOGGED_OPS.has(op) || status >= 400))
-        onEvent("request", { op, status, ms: Date.now() - t0 });
+        onEvent("request", { op, status, ms: Date.now() - t0, game });
       return { status, headers: { ...corsHeaders, "Content-Type": "application/json" }, body };
     };
     if (req.method === "OPTIONS") return { status: 204, headers: corsHeaders };
@@ -128,6 +132,7 @@ export function makeRouter(
     }
 
     op = String(body?.op ?? "");
+    if (typeof body?.gameId === "string") game = body.gameId;
 
     // Generic per-IP cap, applied now that the op is known (so the 429 logs with
     // the right op, not ""). `state` — the safety-net poll, ~15 req/min per open
@@ -215,8 +220,7 @@ export function makeRouter(
       // the client only ever sees a generic message. Include the gameId so a
       // single stuck game's errors can be correlated (e.g. a persisted state that
       // an engine change can no longer read — see handlers' engine guard).
-      const gid = typeof body?.gameId === "string" ? body.gameId : "-";
-      console.error(`game op=${op} game=${gid} failed:`, (e as Error)?.stack ?? e);
+      console.error(`game op=${op} game=${game} failed:`, (e as Error)?.stack ?? e);
       return reply(500, {
         error: "Something went wrong on our end. Please try again.",
       });

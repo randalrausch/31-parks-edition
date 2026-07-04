@@ -208,5 +208,12 @@ describe("router", () => {
     // A failure IS logged even for a non-mutating op.
     await route(post({ op: "nope" }));
     expect(events[events.length - 1]!.data).toMatchObject({ op: "nope", status: 400 });
+
+    // An op carrying a gameId logs it (for correlating one table's events);
+    // create, which has no id yet, logs "-".
+    expect(events[0]!.data.game).toBe("-");
+    await route(post({ op: "act", gameId: "game-xyz", seatToken: "t", action: { type: "knock" } }));
+    const actEvent = events[events.length - 1]!.data;
+    expect(actEvent).toMatchObject({ op: "act", game: "game-xyz" });
   });
 });

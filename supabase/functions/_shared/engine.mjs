@@ -775,10 +775,11 @@ function makeRouter(store, opts = {}) {
   return async function route(req) {
     const t0 = Date.now();
     let op = "";
+    let game = "-";
     const corsHeaders = cors(req.origin);
     const reply = (status, body2) => {
       if (onEvent && (LOGGED_OPS.has(op) || status >= 400))
-        onEvent("request", { op, status, ms: Date.now() - t0 });
+        onEvent("request", { op, status, ms: Date.now() - t0, game });
       return { status, headers: { ...corsHeaders, "Content-Type": "application/json" }, body: body2 };
     };
     if (req.method === "OPTIONS") return { status: 204, headers: corsHeaders };
@@ -790,6 +791,7 @@ function makeRouter(store, opts = {}) {
       return reply(400, { error: "We couldn't read that request." });
     }
     op = String(body?.op ?? "");
+    if (typeof body?.gameId === "string") game = body.gameId;
     const isState = op === "state";
     const ipKey = isState ? `ip-state:${req.ip}` : `ip:${req.ip}`;
     if (limited(ipKey, isState ? 300 : 90, 6e4))
@@ -833,8 +835,7 @@ function makeRouter(store, opts = {}) {
           error: "This game has grown too large to continue. Please start a new one."
         });
       }
-      const gid = typeof body?.gameId === "string" ? body.gameId : "-";
-      console.error(`game op=${op} game=${gid} failed:`, e?.stack ?? e);
+      console.error(`game op=${op} game=${game} failed:`, e?.stack ?? e);
       return reply(500, {
         error: "Something went wrong on our end. Please try again."
       });
