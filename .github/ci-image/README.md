@@ -43,10 +43,11 @@ Three layers, so a stale image can't slip through unnoticed:
    `package-lock.json` changes on `main`, so a `@playwright/test` bump republishes
    the image to follow.
 3. **A blocking guard that notifies you** — `scripts/check-ci-image.mjs` runs in the
-   `gate` job on every PR. If the Dockerfile's pinned Playwright version drifts from
-   the lockfile (e.g. you bump `@playwright/test` to a new minor but the image still
-   targets the old one), **CI fails with the exact fix**. You find out at PR time,
-   not from a weird test failure later. Run it locally too: `node scripts/check-ci-image.mjs`.
+   `gate` job on every PR. If the Dockerfile drifts from the repo — its Playwright
+   pin vs the lockfile's `@playwright/test`, or its `node:XX` base vs `.nvmrc` —
+   **CI fails with the exact fix**. So bumping `@playwright/test` to a new minor, or
+   `.nvmrc` to a new Node major, without updating the image is caught at PR time, not
+   from a weird test failure later. Run it locally too: `node scripts/check-ci-image.mjs`.
 
 So the only manual step is the one that genuinely needs a human decision: when a
 Playwright **minor/major** bump lands, set both pins in the [`Dockerfile`](./Dockerfile)
