@@ -14,8 +14,10 @@
  *   act    { gameId, seatToken, action }  → { ok }
  *   state  { gameId, seatToken? }         → { status, version, seats, seatIndex, state }
  */
+// Pinned (not a floating `@2`) so the deployed function's SDK version is explicit
+// and reviewable — floating imports are outside Dependabot/CodeQL coverage.
 // @ts-expect-error — Deno std import resolved at deploy time
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "jsr:@supabase/supabase-js@2.108.2";
 import {
   makeRouter,
   makeSupabaseStore,
@@ -34,10 +36,16 @@ const admin = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY")
 const MAX_GAMES_PER_DAY = Number(env("MAX_GAMES_PER_DAY")) || 2000;
 const MAX_GAMES_PER_IP_PER_HOUR = Number(env("MAX_GAMES_PER_IP_PER_HOUR")) || 20;
 
+const allowedOrigin = env("ALLOWED_ORIGIN");
+if (!allowedOrigin)
+  console.warn(
+    "ALLOWED_ORIGIN is not set — CORS allows all origins. Set it to your site origin in production.",
+  );
+
 const store = makeSupabaseStore(admin);
 const route = makeRouter(store, {
   // ALLOWED_ORIGIN is read here (Deno) and passed in; the router never touches env.
-  allowedOrigin: env("ALLOWED_ORIGIN") ?? "*",
+  allowedOrigin: allowedOrigin ?? "*",
   provider: "Supabase",
   // supabase-js sends apikey/authorization/x-client-info, so the CORS preflight
   // must allow them (the Azure fetch client only needs content-type).

@@ -786,6 +786,10 @@ function makeRouter(store, opts = {}) {
           error: "Too many games are being created right now \u2014 please try again later."
         });
     }
+    if (op === "join") {
+      if (limited(`join:${req.ip}`, 30, 6e4))
+        return reply(429, { error: "Too many join attempts \u2014 please slow down." });
+    }
     if (op === "act") {
       const seatToken = typeof body.seatToken === "string" ? body.seatToken : "";
       if (seatToken && limited(`act:${seatToken}`, 30, 1e4))
@@ -835,7 +839,11 @@ function guardSize(state) {
 function toRecord(row) {
   return {
     gameId: row.id,
-    code: row.code,
+    // The join code is not a column on the public row anymore (it moved to the
+    // unpublished game_codes lookup so Realtime can't broadcast it). It's a
+    // lookup key resolved via getByCode, not a property of the game record, so
+    // reads don't carry it — nothing at runtime reads rec.code off a getGame.
+    code: "",
     status: row.status,
     version: row.version,
     seats: row.seats,
@@ -869,9 +877,9 @@ function makeSupabaseStore(admin) {
     // health probe reports 200 while the DB is unreachable. So rethrow on error
     // and let the router surface a 500 the client treats as "reconnecting".
     async getByCode(code) {
-      const { data, error } = await admin.from("games").select("id").eq("code", code.toUpperCase()).maybeSingle();
+      const { data, error } = await admin.from("game_codes").select("game_id").eq("code", code.toUpperCase()).maybeSingle();
       if (error) throw new Error(`getByCode: ${error.message}`);
-      return data?.id ?? null;
+      return data?.game_id ?? null;
     },
     async getGame(gameId) {
       const { data, error } = await admin.from("games").select("*").eq("id", gameId).maybeSingle();

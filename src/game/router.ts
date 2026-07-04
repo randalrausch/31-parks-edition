@@ -169,6 +169,15 @@ export function makeRouter(
         });
     }
 
+    if (op === "join") {
+      // Join probes an invite code. The 32^6 space + short TTL already makes blind
+      // brute force weak, but a tighter per-IP cap than the generic 90/min shrinks
+      // the enumeration rate further while staying far above legitimate use (a few
+      // tries). Per-instance + fail-open, like the other lightweight limiters.
+      if (limited(`join:${req.ip}`, 30, 60_000))
+        return reply(429, { error: "Too many join attempts — please slow down." });
+    }
+
     if (op === "act") {
       // Per-seat write cap. Each APPLIED act commits new state AND broadcasts a
       // change ping, so `act` is the real amplification vector — a valid seat

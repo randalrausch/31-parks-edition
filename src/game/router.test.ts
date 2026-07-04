@@ -163,6 +163,15 @@ describe("router", () => {
     expect(s).toBe(429);
   });
 
+  it("caps join attempts per IP (code-enumeration brake)", async () => {
+    const route = makeRouter(makeMemoryStore());
+    const join = () => route(post({ op: "join", code: "ZZZZZ9", name: "x" }, "8.8.8.8"));
+    let status = 0;
+    // First 30 reach the handler (404, no such code); the 31st trips the cap.
+    for (let i = 0; i < 31; i++) status = (await join()).status;
+    expect(status).toBe(429);
+  });
+
   it("caps act writes per seat token, independent of IP", async () => {
     const route = makeRouter(makeMemoryStore());
     const act = (token: string) =>

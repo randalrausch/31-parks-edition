@@ -8,14 +8,26 @@
 -- info is enforced by the Edge Function via redactState().
 
 -- ── Public lobby + change-ping table (Realtime-enabled, no card data) ──
+-- NB: the join `code` is deliberately NOT a column here. Realtime broadcasts the
+-- whole changed row and ignores column-level GRANTs, so any anon-readable column
+-- on a published table is effectively public. Codes live in game_codes (below),
+-- which is unpublished and anon-denied. (See migration
+-- 20260704000000_move_join_code_out_of_realtime.sql.)
 create table if not exists public.games (
   id uuid primary key default gen_random_uuid(),
-  code text unique not null,
   status text not null default 'lobby',         -- lobby | playing | over
   version integer not null default 0,           -- bumped on every change
   seats jsonb not null default '[]'::jsonb,      -- [{idx,name,avatar,emoji,isAI,filled}]
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
+);
+
+-- ── Join code → game lookup (NOT published to Realtime, NO anon access) ──
+-- Separate from `games` precisely so an invite code is never in a Realtime row
+-- payload. The primary key on `code` also gives create-time collision detection.
+create table if not exists public.game_codes (
+  code    text primary key,
+  game_id uuid not null references public.games(id) on delete cascade
 );
 
 -- ── Authoritative full state + secret seat tokens (NO anon access) ──
@@ -26,6 +38,7 @@ create table if not exists public.game_secrets (
 );
 
 alter table public.games enable row level security;
+alter table public.game_codes enable row level security;
 alter table public.game_secrets enable row level security;
 
 -- Anon may READ the public lobby row (for Realtime pings + lobby display).
@@ -34,26 +47,16 @@ drop policy if exists "games are readable by anyone" on public.games;
 create policy "games are readable by anyone"
   on public.games for select using (true);
 
--- PRIVACY: keep the row-level SELECT open (Realtime needs it) but hide the join
--- `code` column from anon REST enumeration via column-level privileges, so a
--- public-key client can't scrape open lobbies' invite codes. The client never
--- reads `code` from the table (it comes from the create/join Edge Function
--- responses); the Edge Function uses the service-role key, which bypasses these
--- grants. No card data is ever here (it lives in game_secrets, fully denied).
--- (Shipped as migration 20260701120000_restrict_lobby_code_select.sql.)
-revoke select on public.games from anon, authenticated;
-grant select (id, status, version, seats, created_at, updated_at)
-  on public.games to anon, authenticated;
+-- The published `games` row carries only non-sensitive lobby fields, so the
+-- permissive row-level SELECT above is safe for Realtime. (There is no join
+-- `code` column to hide anymore — it moved to game_codes.)
 
--- No anon write policies on games, and NO policies at all on game_secrets, so
--- anon is fully denied there. The Edge Function uses the service-role key,
--- which bypasses RLS.
+-- No anon policies on game_codes or game_secrets, so anon is fully denied on
+-- both. The Edge Function uses the service-role key, which bypasses RLS. Neither
+-- table is added to the Realtime publication, so their rows are never broadcast.
 
--- Realtime: publish the public games table so clients get change pings.
+-- Realtime: publish ONLY the public games table so clients get change pings.
 alter publication supabase_realtime add table public.games;
-
--- Helpful index for joining by code.
-create index if not exists games_code_idx on public.games (code);
 
 -- ── Atomic create ──
 -- Inserts the public row AND the secret row in ONE transaction so a game can
@@ -73,8 +76,10 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.games (id, code, status, version, seats)
-    values (p_id, p_code, p_status, 0, p_seats);
+  insert into public.games (id, status, version, seats)
+    values (p_id, p_status, 0, p_seats);
+  insert into public.game_codes (code, game_id)
+    values (p_code, p_id);
   insert into public.game_secrets (game_id, state, seat_tokens)
     values (p_id, p_state, p_seat_tokens);
   return true;
