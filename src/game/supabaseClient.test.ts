@@ -55,12 +55,12 @@ describe("subscribeToGame (realtime resubscribe-with-backoff)", () => {
     );
 
     expect(channels.length).toBe(1);
-    channels[0].emit("SUBSCRIBED");
+    channels[0]!.emit("SUBSCRIBED");
     expect(status).toEqual([true]);
 
     // A drop reports "not live", tears down the dead channel, and schedules a
     // reconnect (no new channel until the backoff elapses).
-    channels[0].emit("CHANNEL_ERROR");
+    channels[0]!.emit("CHANNEL_ERROR");
     expect(status).toEqual([true, false]);
     expect(removed).toContain(channels[0]);
     expect(channels.length).toBe(1);
@@ -68,11 +68,11 @@ describe("subscribeToGame (realtime resubscribe-with-backoff)", () => {
     // After the backoff a fresh channel is created and can go live again.
     vi.advanceTimersByTime(2000);
     expect(channels.length).toBe(2);
-    channels[1].emit("SUBSCRIBED");
+    channels[1]!.emit("SUBSCRIBED");
     expect(status).toEqual([true, false, true]);
 
     // A late callback from the superseded channel is ignored — no loop, no flap.
-    channels[0].emit("CLOSED");
+    channels[0]!.emit("CLOSED");
     expect(status).toEqual([true, false, true]);
 
     unsub();
@@ -87,9 +87,9 @@ describe("subscribeToGame (realtime resubscribe-with-backoff)", () => {
       () => {},
       () => {},
     );
-    channels[0].emit("SUBSCRIBED");
+    channels[0]!.emit("SUBSCRIBED");
     unsub();
-    channels[0].emit("CHANNEL_ERROR"); // disposed → ignored
+    channels[0]!.emit("CHANNEL_ERROR"); // disposed → ignored
     vi.advanceTimersByTime(60_000);
     expect(channels.length).toBe(1); // no new channel ever created
   });

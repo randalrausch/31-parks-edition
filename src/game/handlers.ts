@@ -184,7 +184,7 @@ export async function handleAct(
   if (typeof body.action !== "object" || body.action === null)
     return fail(400, "That move wasn't understood.");
 
-  const seatId = (secret.state as GameState & { players: { id: string }[] }).players[idx].id;
+  const seatId = (secret.state as GameState & { players: { id: string }[] }).players[idx]!.id;
   const next = applyPlayerAction(secret.state, seatId, body.action as GameAction);
   // A no-op (wrong turn / unknown type / out of phase) returns the same reference.
   if (next === secret.state) return ok({ ok: false, reason: "not-applied" });
@@ -216,7 +216,7 @@ export async function handleState(
   const idx = typeof tok === "string" ? secret.seatTokens[tok] : undefined;
   const seatId =
     idx !== undefined
-      ? (secret.state as GameState & { players: { id: string }[] }).players[idx].id
+      ? (secret.state as GameState & { players: { id: string }[] }).players[idx]!.id
       : null;
   return ok({
     status: game.rec.status,

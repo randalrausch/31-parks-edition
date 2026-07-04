@@ -35,7 +35,7 @@ function shuffledCharIds(): string[] {
   const ids = AI_CHARACTERS.map((c) => c.id);
   for (let i = ids.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [ids[i], ids[j]] = [ids[j], ids[i]];
+    [ids[i], ids[j]] = [ids[j]!, ids[i]!]; // i and j are both in-bounds
   }
   return ids;
 }
@@ -215,7 +215,7 @@ export default function SetupScreen({
     setAiCharIds((prev) => {
       const j = prev.indexOf(id);
       const next = [...prev];
-      if (j !== -1 && j !== i) next[j] = prev[i];
+      if (j !== -1 && j !== i) next[j] = prev[i]!;
       next[i] = id;
       return next;
     });
@@ -229,11 +229,11 @@ export default function SetupScreen({
       players.push({
         name: names[i]?.trim() || `Player ${i + 1}`,
         isAI: false,
-        avatarKey: AVATAR_POOL[i % AVATAR_POOL.length],
+        avatarKey: AVATAR_POOL[i % AVATAR_POOL.length]!,
       });
     }
     aiCharIds.forEach((id) => {
-      const c = CHARACTERS_BY_ID[id] ?? AI_CHARACTERS[0];
+      const c = CHARACTERS_BY_ID[id] ?? AI_CHARACTERS[0]!;
       players.push({
         name: c.name,
         isAI: true,
@@ -252,7 +252,7 @@ export default function SetupScreen({
       creatorName: names[0]?.trim() || "Player 1",
       humans: Math.max(1, humans),
       ai: aiCharIds.map((id) => {
-        const c = CHARACTERS_BY_ID[id] ?? AI_CHARACTERS[0];
+        const c = CHARACTERS_BY_ID[id] ?? AI_CHARACTERS[0]!;
         return {
           name: c.name,
           avatarKey: "ranger",
@@ -397,7 +397,7 @@ export default function SetupScreen({
               <span className="setup__sublabel">Choose your opponents</span>
               <div className="setup__ai-list">
                 {aiCharIds.map((id, i) => {
-                  const c = CHARACTERS_BY_ID[id] ?? AI_CHARACTERS[0];
+                  const c = CHARACTERS_BY_ID[id] ?? AI_CHARACTERS[0]!;
                   return (
                     <div className="ai-card" key={i}>
                       <div className="ai-card__head">

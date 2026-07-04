@@ -48,8 +48,10 @@ function makeDeck() {
 }
 function scoreHand(hand, opts) {
   if (hand.length === 0) return 0;
-  if (opts.threeOfAKind && hand.length === 3 && hand[0].rank === hand[1].rank && hand[1].rank === hand[2].rank)
-    return 30.5;
+  if (opts.threeOfAKind && hand.length === 3) {
+    const [c0, c1, c2] = hand;
+    if (c0 && c1 && c2 && c0.rank === c1.rank && c1.rank === c2.rank) return 30.5;
+  }
   let best = 0;
   for (const suit of SUITS) {
     const t = hand.filter((c) => c.suit === suit).reduce((n, c) => n + cardValue(c.rank), 0);
@@ -153,6 +155,7 @@ function aiDiscardIndex(hand, opts, playRandom) {
 }
 
 // src/game/actions.ts
+var curPlayer = (s) => s.players[s.cur];
 function applyAction(state, action) {
   const s = structuredClone(state);
   switch (action.type) {
@@ -163,21 +166,21 @@ function applyAction(state, action) {
       if (s.phase !== "drawing") return s;
       if (s.deck.length === 0) reshuffle(s);
       if (s.deck.length === 0) return s;
-      s.players[s.cur].hand.push(s.deck.pop());
+      curPlayer(s).hand.push(s.deck.pop());
       log(s, "deck", null);
       s.phase = "discarding";
       return s;
     case "takeDiscard": {
       if (s.phase !== "drawing" || s.discard.length === 0) return s;
       const taken = s.discard.pop();
-      s.players[s.cur].hand.push(taken);
+      curPlayer(s).hand.push(taken);
       log(s, "takeDiscard", taken);
       s.phase = "discarding";
       return s;
     }
     case "discard": {
       if (s.phase !== "discarding") return s;
-      const p = s.players[s.cur];
+      const p = curPlayer(s);
       const idx = p.hand.findIndex((c) => c.id === action.cardId);
       if (idx < 0) return s;
       const removed = p.hand.splice(idx, 1)[0];
@@ -340,7 +343,7 @@ function reshuffle(s) {
 }
 function log(s, kind, card) {
   const id = s.log.length === 0 ? 0 : s.log[s.log.length - 1].id + 1;
-  s.log.push({ id, actor: s.players[s.cur].name, actorSeat: s.cur, kind, card });
+  s.log.push({ id, actor: curPlayer(s).name, actorSeat: s.cur, kind, card });
   if (s.log.length > 30) s.log.shift();
 }
 function createGameState(players, options) {

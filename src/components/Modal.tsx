@@ -47,10 +47,10 @@ export default function Modal({ open, onClose, children, variant, labelledBy }: 
       const active = document.activeElement;
       if (e.shiftKey && (active === first || active === panel)) {
         e.preventDefault();
-        last.focus();
+        last?.focus();
       } else if (!e.shiftKey && active === last) {
         e.preventDefault();
-        first.focus();
+        first?.focus();
       }
     };
 

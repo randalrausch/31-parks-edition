@@ -36,6 +36,10 @@ export type GameAction =
   | { type: "nextDeal" } // advance from dealEnd → next deal or game over
   | { type: "setShowLog"; value: boolean }; // table setting: show/hide the action feed
 
+/** The player whose turn it is. The current seat is always in-bounds, so this
+ * asserts non-null rather than forcing every caller to re-check. */
+const curPlayer = (s: GameState): GamePlayer => s.players[s.cur]!;
+
 /** Apply an action to a state, returning a new state. Pure (clones input). */
 export function applyAction(state: GameState, action: GameAction): GameState {
   const s: GameState = structuredClone(state);
@@ -47,24 +51,24 @@ export function applyAction(state: GameState, action: GameAction): GameState {
       if (s.phase !== "drawing") return s;
       if (s.deck.length === 0) reshuffle(s);
       if (s.deck.length === 0) return s;
-      s.players[s.cur].hand.push(s.deck.pop()!);
+      curPlayer(s).hand.push(s.deck.pop()!);
       log(s, "deck", null);
       s.phase = "discarding";
       return s;
     case "takeDiscard": {
       if (s.phase !== "drawing" || s.discard.length === 0) return s;
       const taken = s.discard.pop()!;
-      s.players[s.cur].hand.push(taken);
+      curPlayer(s).hand.push(taken);
       log(s, "takeDiscard", taken);
       s.phase = "discarding";
       return s;
     }
     case "discard": {
       if (s.phase !== "discarding") return s;
-      const p = s.players[s.cur];
+      const p = curPlayer(s);
       const idx = p.hand.findIndex((c) => c.id === action.cardId);
       if (idx < 0) return s;
-      const removed = p.hand.splice(idx, 1)[0];
+      const removed = p.hand.splice(idx, 1)[0]!; // idx >= 0, so splice removes one
       s.discard.push(removed);
       log(s, "discard", removed);
       s.phase = "drawing";
@@ -82,7 +86,7 @@ export function applyAction(state: GameState, action: GameAction): GameState {
       s.queue = [];
       let i = (s.cur + 1) % s.players.length;
       while (i !== s.cur) {
-        if (isAlive(s.players[i])) s.queue.push(i);
+        if (isAlive(s.players[i]!)) s.queue.push(i);
         i = (i + 1) % s.players.length;
       }
       if (s.queue.length === 0) {
@@ -164,7 +168,7 @@ export function dealtBlitzIndex(players: GamePlayer[], options: GameOptions): nu
 function firstLivingFrom(s: GameState, from: number): number {
   const n = s.players.length;
   let i = ((from % n) + n) % n;
-  for (let guard = 0; guard < n && isEliminated(s.players[i]); guard++) {
+  for (let guard = 0; guard < n && isEliminated(s.players[i]!); guard++) {
     i = (i + 1) % n;
   }
   return i;
@@ -188,7 +192,7 @@ function endTurn(s: GameState): void {
       return;
     }
     let next = (s.cur + 1) % s.players.length;
-    while (isEliminated(s.players[next])) next = (next + 1) % s.players.length;
+    while (isEliminated(s.players[next]!)) next = (next + 1) % s.players.length;
     s.cur = next;
   }
   s.turnInDeal += 1;
@@ -199,8 +203,8 @@ function endTurn(s: GameState): void {
 function resolveDeal(s: GameState, winnerIdx: number | null): void {
   const opts = s.options;
   const participants = s.players.filter((p) => p.hand.length > 0);
-  const knockerId = s.knocker !== null ? s.players[s.knocker].id : null;
-  const winnerId = winnerIdx !== null ? s.players[winnerIdx].id : null;
+  const knockerId = s.knocker !== null ? s.players[s.knocker]!.id : null;
+  const winnerId = winnerIdx !== null ? s.players[winnerIdx]!.id : null;
 
   const rows = participants.map((p) => ({
     playerId: p.id,
@@ -242,7 +246,7 @@ function resolveDeal(s: GameState, winnerIdx: number | null): void {
     knockerId,
   });
   s.result = {
-    title: winnerId !== null ? `31! ${s.players[winnerIdx!].name} takes the deal` : "Deal Over",
+    title: winnerId !== null ? `31! ${s.players[winnerIdx!]!.name} takes the deal` : "Deal Over",
     rows,
   };
   s.phase = "dealEnd";
@@ -256,8 +260,8 @@ function reshuffle(s: GameState): void {
 }
 
 function log(s: GameState, kind: LogEntry["kind"], card: CardModel | null): void {
-  const id = s.log.length === 0 ? 0 : s.log[s.log.length - 1].id + 1;
-  s.log.push({ id, actor: s.players[s.cur].name, actorSeat: s.cur, kind, card });
+  const id = s.log.length === 0 ? 0 : s.log[s.log.length - 1]!.id + 1;
+  s.log.push({ id, actor: curPlayer(s).name, actorSeat: s.cur, kind, card });
   if (s.log.length > 30) s.log.shift();
 }
 
@@ -322,7 +326,7 @@ export function seatHumanPlayer(
   avatarKey = "ranger",
 ): GameState {
   const s: GameState = structuredClone(state);
-  const p = s.players[idx];
+  const p = s.players[idx]!; // idx is a seat index the caller validated
   p.isAI = false;
   p.name = name;
   p.avatarKey = avatarKey;
@@ -337,6 +341,6 @@ export function seatHumanPlayer(
  * Returns a new state; does not mutate the input. */
 export function fillSeatsWithAI(state: GameState, seatIdxs: readonly number[]): GameState {
   const s: GameState = structuredClone(state);
-  for (const i of seatIdxs) s.players[i].isAI = true;
+  for (const i of seatIdxs) s.players[i]!.isAI = true;
   return s;
 }

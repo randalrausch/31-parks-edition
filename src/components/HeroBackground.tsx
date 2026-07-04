@@ -51,7 +51,7 @@ export default function HeroBackground({ themeId }: { themeId: string }) {
     return () => clearTimeout(timer.current);
   }, [themeId, cur]);
 
-  const curTheme = THEMES_BY_ID[cur];
+  const curTheme = THEMES_BY_ID[cur]!; // `cur` is always a valid theme id
   const prevTheme = prev ? THEMES_BY_ID[prev] : null;
 
   return (

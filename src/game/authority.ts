@@ -39,15 +39,15 @@ export function aiTurnActions(s: GameState): GameAction[] {
   const plan = planAITurn(s);
   if (plan.kind === "knock") return [{ type: "knock" }];
   if (plan.kind === "takeDiscard") {
-    const cardId = s.players[s.cur].hand[plan.handIndex].id;
+    const cardId = s.players[s.cur]!.hand[plan.handIndex]!.id;
     return [{ type: "takeDiscard" }, { type: "discard", cardId }];
   }
   // drawDeck → simulate the draw so the discard is chosen from the new hand.
   const drew = applyAction(s, { type: "drawDeck" });
-  const p = drew.players[drew.cur];
+  const p = drew.players[drew.cur]!;
   const playRandom = Math.random() < aiPlayRandomChance(p.traits ?? DEFAULT_TRAITS);
   const idx = aiDiscardIndex(p.hand, drew.options, playRandom);
-  return [{ type: "drawDeck" }, { type: "discard", cardId: p.hand[idx].id }];
+  return [{ type: "drawDeck" }, { type: "discard", cardId: p.hand[idx]!.id }];
 }
 
 /** Run a single AI player's full turn, returning the resulting state. */
@@ -65,7 +65,7 @@ export function advanceAuthority(s: GameState): GameState {
   let guard = 0;
   while (
     (state.phase === "drawing" || state.phase === "discarding") &&
-    state.players[state.cur].isAI &&
+    state.players[state.cur]!.isAI &&
     guard++ < 500
   ) {
     state = stepAI(state);
@@ -106,7 +106,7 @@ export function applyPlayerAction(state: GameState, seatId: string, action: Game
   if (!PLAYER_TURN_ACTIONS.has(action.type)) return state;
   // Turn actions must come from the player whose turn it is.
   if (state.phase !== "drawing" && state.phase !== "discarding") return state;
-  if (state.players[state.cur].id !== seatId) return state;
+  if (state.players[state.cur]!.id !== seatId) return state;
   return settledOrSame(state, advanceAuthority(applyAction(state, action)));
 }
 

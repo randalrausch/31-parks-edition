@@ -44,7 +44,7 @@ const STEP_MS = 950; // a beat per opponent turn
 const SETTLE_MS = 650; // hold on the last move before returning control
 
 const top = (d: CardModel[]) => d[d.length - 1] ?? null;
-const lastId = (log: LogEntry[]) => (log.length ? log[log.length - 1].id : -1);
+const lastId = (log: LogEntry[]) => (log.length ? log[log.length - 1]!.id : -1);
 const SUIT: Record<Suit, string> = {
   spades: "♠",
   hearts: "♥",
@@ -121,7 +121,7 @@ export function useTurnReplay(
     const groups: LogEntry[][] = [];
     for (const e of fresh) {
       const g = groups[groups.length - 1];
-      if (g && seatOf(g[0]) === seatOf(e)) g.push(e);
+      if (g && seatOf(g[0]!) === seatOf(e)) g.push(e);
       else groups.push([e]);
     }
 
@@ -138,8 +138,8 @@ export function useTurnReplay(
     const running = [...shown.discard];
     let t = 0;
     for (const g of groups) {
-      const actor = g[0].actor; // display name (fine for the recap text)
-      const seat = seatOf(g[0]);
+      const actor = g[0]!.actor; // display name (fine for the recap text)
+      const seat = seatOf(g[0]!);
       const mine = seat === viewerSeat;
       for (const e of g) {
         if (e.kind === "discard" && e.card) running.push(e.card);
@@ -154,7 +154,7 @@ export function useTurnReplay(
             drop ? `, dropped ${cardName(drop)}` : ""
           }`;
       // Reveal the feed up through this turn's last move, in step with the beat.
-      const groupMaxId = g[g.length - 1].id;
+      const groupMaxId = g[g.length - 1]!.id;
       const step: ReplayView = {
         discardTop: top(running),
         actingSeat: mine ? null : seat,

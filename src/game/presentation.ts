@@ -99,6 +99,8 @@ export const TIMING = {
 
 const humansAlive = (s: GameState): number => s.players.filter((p) => !p.isAI && isAlive(p)).length;
 const multipleHumans = (s: GameState): boolean => humansAlive(s) > 1;
+/** A seat that's known in-bounds (a current/AI/knocker index). */
+const seat = (s: GameState, i: number) => s.players[i]!;
 
 /** Shallow-clone the overlay so callers never mutate the input. */
 const clone = (p: Presentation): Presentation => ({ ...p });
@@ -112,7 +114,7 @@ export function step(pres: Presentation, auth: GameState, ev: PEvent): StepResul
   switch (ev.t) {
     case "dealStart": {
       // A fresh deal: hide it behind the cover for multiple humans, else animate.
-      if (multipleHumans(auth) && !auth.players[auth.cur].isAI) {
+      if (multipleHumans(auth) && !seat(auth, auth.cur).isAI) {
         p.viewPhase = "cover";
         p.status = "";
         return { pres: p, effects: [] };
@@ -152,7 +154,7 @@ export function step(pres: Presentation, auth: GameState, ev: PEvent): StepResul
       // A committed move has resolved; re-enable input.
       p.committing = false;
       if (auth.phase === "drawing") {
-        const cur = auth.players[auth.cur];
+        const cur = seat(auth, auth.cur);
         if (cur.isAI) {
           p.viewPhase = "thinking";
           p.status = `${cur.name} is thinking…`;
@@ -160,9 +162,7 @@ export function step(pres: Presentation, auth: GameState, ev: PEvent): StepResul
         }
         p.viewPhase = multipleHumans(auth) ? "cover" : null;
         p.status =
-          auth.knocker !== null
-            ? `${auth.players[auth.knocker].name} knocked — your last hand`
-            : "";
+          auth.knocker !== null ? `${seat(auth, auth.knocker).name} knocked — your last hand` : "";
         // Rest point: waiting on a human. Snapshot so a reload/crash resumes here.
         return { pres: p, effects: [{ e: "save" }] };
       }
@@ -183,11 +183,11 @@ export function step(pres: Presentation, auth: GameState, ev: PEvent): StepResul
     case "runAI": {
       if (auth.phase !== "drawing") return null;
       const aiIdx = auth.cur;
-      const cur = auth.players[aiIdx];
+      const cur = seat(auth, aiIdx);
       const actions = aiTurnActions(auth);
       p.aiActions = actions;
       p.aiIdx = aiIdx;
-      if (actions[0].type === "knock") {
+      if (actions[0]!.type === "knock") {
         p.status = `${cur.name} knocks!`;
         return {
           pres: p,
@@ -201,7 +201,7 @@ export function step(pres: Presentation, auth: GameState, ev: PEvent): StepResul
       return {
         pres: p,
         effects: [
-          { e: "dispatch", action: actions[0] },
+          { e: "dispatch", action: actions[0]! },
           { e: "sound", snd: "deal" },
           { e: "schedule", ms: TIMING.aiDrawToDiscard, ev: { t: "aiStep2" } },
         ],
@@ -215,7 +215,7 @@ export function step(pres: Presentation, auth: GameState, ev: PEvent): StepResul
       return {
         pres: p,
         effects: [
-          { e: "dispatch", action: actions[1] },
+          { e: "dispatch", action: actions[1]! },
           { e: "sound", snd: "deal" },
           { e: "schedule", ms: TIMING.aiDiscardHold, ev: { t: "aiStep3" } },
         ],
@@ -237,14 +237,14 @@ export function step(pres: Presentation, auth: GameState, ev: PEvent): StepResul
       return {
         pres: p,
         effects: [
-          { e: "dispatch", action: actions[0] },
+          { e: "dispatch", action: actions[0]! },
           { e: "now", ev: { t: "advance" } },
         ],
       };
     }
 
     case "drawDeck": {
-      if (p.committing || auth.phase !== "drawing" || auth.players[auth.cur].isAI) return null;
+      if (p.committing || auth.phase !== "drawing" || seat(auth, auth.cur).isAI) return null;
       p.selected = null;
       return {
         pres: p,
@@ -256,7 +256,7 @@ export function step(pres: Presentation, auth: GameState, ev: PEvent): StepResul
     }
 
     case "drawDiscard": {
-      if (p.committing || auth.phase !== "drawing" || auth.players[auth.cur].isAI) return null;
+      if (p.committing || auth.phase !== "drawing" || seat(auth, auth.cur).isAI) return null;
       if (auth.discard.length === 0) return null;
       p.selected = null;
       return {
@@ -269,14 +269,14 @@ export function step(pres: Presentation, auth: GameState, ev: PEvent): StepResul
     }
 
     case "select": {
-      if (auth.phase !== "discarding" || auth.players[auth.cur].isAI) return null;
+      if (auth.phase !== "discarding" || seat(auth, auth.cur).isAI) return null;
       p.selected = p.selected === ev.idx ? null : ev.idx;
       return { pres: p, effects: [] };
     }
 
     case "confirmDiscard": {
       if (p.committing || p.selected === null || auth.phase !== "discarding") return null;
-      const card = auth.players[auth.cur].hand[p.selected];
+      const card = seat(auth, auth.cur).hand[p.selected];
       if (!card) return null;
       p.selected = null;
       return {
@@ -292,14 +292,14 @@ export function step(pres: Presentation, auth: GameState, ev: PEvent): StepResul
       if (
         p.committing ||
         auth.phase !== "drawing" ||
-        auth.players[auth.cur].isAI ||
+        seat(auth, auth.cur).isAI ||
         auth.knocker !== null
       )
         return null;
       // Lock input immediately so a stray draw/second-knock during the beat can't
       // be applied (and silently drop the queued knock).
       p.committing = true;
-      p.status = `${auth.players[auth.cur].name} knocks!`;
+      p.status = `${seat(auth, auth.cur).name} knocks!`;
       return {
         pres: p,
         effects: [

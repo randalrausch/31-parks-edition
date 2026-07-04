@@ -65,7 +65,7 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
   const s = game.state;
   if (!s) return null;
 
-  const cur = s.players[s.cur];
+  const cur = s.players[s.cur]!; // the current seat is always in-bounds
   // Seat only living opponents (eliminated players leave the table).
   const opponents = s.players
     .map((p, i) => ({ p, i }))

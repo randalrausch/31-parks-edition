@@ -129,7 +129,7 @@ export default function OnlineGameBoard({
   for (let k = 1; k <= seatCount; k++) {
     const i = (start + k) % seatCount;
     if (i === viewer) continue; // skip yourself
-    if (isAlive(s.players[i])) opponents.push({ p: s.players[i], i });
+    if (isAlive(s.players[i]!)) opponents.push({ p: s.players[i]!, i });
   }
   const aliveCount = s.players.filter(isAlive).length;
   const current = s.players[s.cur];
@@ -283,7 +283,7 @@ export default function OnlineGameBoard({
               onConfirmDiscard={() => {
                 if (selected === null) return;
                 if (sound) sndDeal();
-                game.act({ type: "discard", cardId: me.hand[selected].id });
+                game.act({ type: "discard", cardId: me.hand[selected]!.id });
                 setSelected(null);
               }}
             />
