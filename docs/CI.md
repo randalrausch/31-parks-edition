@@ -8,7 +8,7 @@ as **four parallel jobs** (plus a deploy job that waits on them):
 | `gate` | typecheck · format · lint · unit/fuzz tests · edge-bundle sync · CI-image sync · build | every push & PR |
 | `api` | Azure Functions typecheck + Table Storage (Azurite) CAS suite + build | every push & PR |
 | `e2e` | real-browser Playwright, inside the prebuilt CI image | every push & PR |
-| `supabase-contract` | the shared store contract + anon RLS/grant assertions against a real local Postgres (`supabase start`) | every push & PR |
+| `supabase-contract` | boots a real local Postgres (`supabase start`) and asserts the SQL contract with psql — `commit_game` CAS, `create_game` atomicity, anon RPC-EXECUTE revokes, and the RLS hiding `game_secrets` / the join code | every push & PR |
 | `deploy` | builds with secrets, ships enabled targets, runs the post-deploy smoke | push to `main` only |
 
 CodeQL ([`codeql.yml`](../.github/workflows/codeql.yml)) runs in parallel as the

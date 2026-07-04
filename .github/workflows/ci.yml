@@ -237,15 +237,23 @@ jobs:
         # Builds the production bundle, then plays it in the image's baked Chrome.
         run: npm run test:e2e
 
-  # ---- Real-Postgres store contract: run the SAME runStoreContract the memory
-  # store, Azurite, and the supabase-js fake run — but against a REAL local
-  # Supabase stack (`supabase start`) — plus the assertions only a live database
-  # can make: anon cannot EXECUTE the SECURITY DEFINER RPCs, and cannot read
-  # game_secrets or the join code. This closes the gap where a migration edit to
-  # the commit_game CAS (or a dropped revoke / leaky RLS policy) would pass the
-  # fake-backed suite. Docker-heavy, so it only spins up the stack when
-  # supabase/** actually changed; otherwise it no-ops green in seconds. Runs in
-  # parallel with the other gates.
+  # ---- Real-Postgres contract: boot a REAL local Supabase stack
+  # (`supabase start`) and assert the SQL directly with psql — the commit_game
+  # CAS, the create_game atomicity/collision, the anon EXECUTE revokes on the
+  # SECURITY DEFINER RPCs, and the RLS that hides game_secrets and the join code.
+  # This closes the gap where a migration edit could pass the fake-backed suite.
+  #
+  # Why psql and not the supabase-js store contract: Supabase CLI 2.71.1+ signs
+  # the local stack's JWTs with ES256 (asymmetric), which the local PostgREST
+  # doesn't verify for supabase-js — so no key (service_role JWT or the new
+  # sb_secret) authenticates as service_role locally (supabase/cli#4524, closed
+  # not-planned). Asserting the SQL over psql sidesteps the whole key/JWT layer,
+  # needs no pinned/legacy CLI, and tests exactly what a bad migration would
+  # break. The adapter code itself stays covered by the fake-backed
+  # runStoreContract in src/game/supabaseStore.test.ts.
+  #
+  # Docker-heavy, so it only spins up the stack when supabase/** actually changed;
+  # otherwise it no-ops green in seconds. Runs in parallel with the other gates.
   supabase-contract:
     # Skipped on the release re-dispatch (reason=release) — see the gate job.
     if: ${{ github.event.inputs.reason != 'release' }}
@@ -256,28 +264,9 @@ jobs:
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
         id: changes
         with:
-          # Boot the real stack when the SQL under test changes OR when the
-          # contract suite that guards it changes — so an edit to either is
-          # actually exercised against Postgres, not just when a migration lands.
           filters: |
             backend:
               - 'supabase/**'
-              - 'src/game/supabaseStore.pg.test.ts'
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
-        if: steps.changes.outputs.backend == 'true'
-        with:
-          # Node 22 (not 20 like the other jobs): supabase-js' createClient
-          # eagerly builds a RealtimeClient that needs a global WebSocket, which
-          # Node < 21 lacks — it throws at construction. This is a test-runner
-          # artifact only (prod runs on Deno / the browser, both with native
-          # WebSocket; the adapter itself uses only PostgREST .from()/.rpc()).
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            api/package-lock.json
-      - run: npm ci
-        if: steps.changes.outputs.backend == 'true'
       - name: Install Supabase CLI
         if: steps.changes.outputs.backend == 'true'
         uses: supabase/setup-cli@df56b21da46c98abb12a9804e4fb1f657773e333 # v2
@@ -291,34 +280,14 @@ jobs:
         run: |
           supabase start
           supabase db reset
-      - name: Run the store contract against real Postgres
+      - name: Assert the SQL contract against real Postgres
         if: steps.changes.outputs.backend == 'true'
-        # SUPABASE_PG_REQUIRED makes the suite FAIL (not skip) if the connection
-        # env is somehow missing — so a broken export can't pass vacuously.
-        env:
-          SUPABASE_PG_REQUIRED: "1"
         run: |
-          # Pull the live API URL + keys from the running stack and EXPORT them
-          # into THIS shell so the vitest child sees them (writing $GITHUB_ENV
-          # would only reach LATER steps, not this one — the suite would skip).
-          #
-          # The latest CLI signs the local stack with NEW asymmetric keys and
-          # publishes sb_publishable_/sb_secret_ API keys; the legacy anon/
-          # service_role JWTs (what `.SERVICE_ROLE_KEY` / auth.service_role_key
-          # return, ~164 chars) no longer validate, so the admin client wasn't
-          # actually service_role → "permission denied for table games". Use the
-          # new keys, which supabase-js@2.108 understands and which map to
-          # service_role (bypasses RLS) / anon; fall back to the legacy fields for
-          # an older CLI. The inventory print (names + lengths, never values) makes
-          # a future key-schema change diagnosable at a glance.
-          supabase status -o json > "$RUNNER_TEMP/sb.json"
-          echo "=== supabase status key inventory (name : value-length) ==="
-          jq -r 'to_entries[] | "\(.key) : \(.value | tostring | length)"' "$RUNNER_TEMP/sb.json"
-          export SUPABASE_URL="$(jq -r '.API_URL' "$RUNNER_TEMP/sb.json")"
-          export SUPABASE_SERVICE_ROLE_KEY="$(jq -r '.SECRET_KEY // .SERVICE_ROLE_KEY' "$RUNNER_TEMP/sb.json")"
-          export SUPABASE_ANON_KEY="$(jq -r '.PUBLISHABLE_KEY // .ANON_KEY' "$RUNNER_TEMP/sb.json")"
-          echo "url=$SUPABASE_URL anon_len=${#SUPABASE_ANON_KEY} service_len=${#SUPABASE_SERVICE_ROLE_KEY}"
-          npx vitest run src/game/supabaseStore.pg.test.ts
+          # DB_URL is the local superuser connection string (postgres). psql is
+          # preinstalled on ubuntu runners. ON_ERROR_STOP turns any RAISE in the
+          # checks into a non-zero exit, failing the job.
+          DB_URL="$(supabase status -o json | jq -r '.DB_URL')"
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/contract.sql
       - name: Stop Supabase
         if: ${{ always() && steps.changes.outputs.backend == 'true' }}
         run: supabase stop --no-backup || true
