@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
 # Wire the azd-provisioned Azure values into this repo's GitHub Actions Variables
-# and Secrets, so `.github/workflows/azure.yml` can auto-deploy on push to main.
+# and Secrets, so the `deploy-azure` job in `.github/workflows/ci.yml` can
+# auto-deploy after the tests pass on main.
 # Run this AFTER `./scripts/setup-azure.sh` (or `azd up`) has succeeded. See
 # docs/AZURE.md → "Automated deploys". Idempotent — safe to re-run.
 #

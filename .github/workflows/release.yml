@@ -105,10 +105,8 @@ jobs:
           # reason=release tells ci.yml this commit is byte-identical to the merge
           # commit already tested on push (only version strings + regenerated
           # engine.mjs differ), so it skips the redundant gate/api/e2e jobs and runs
-          # only the deploy — the code is tested once per change, not twice.
-          #
-          # azure.yml is NOT dispatched here: it triggers on ci.yml's successful
-          # completion (workflow_run), so this ci.yml run ships the Azure deploy too.
+          # only the deploy jobs — the code is tested once per change, not twice.
+          # Every enabled target (Supabase/Netlify/Azure) ships from this one run.
           gh workflow run ci.yml --ref main -f reason=release
 
       - name: Ask a human when the bump is ambiguous

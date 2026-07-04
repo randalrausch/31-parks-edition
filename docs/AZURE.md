@@ -206,8 +206,9 @@ within the poll interval.
 
 ## Automated deploys (GitHub Actions)
 
-`.github/workflows/azure.yml` is **opt-in** — it does nothing unless you enable
-it with the `DEPLOY_AZURE` Variable below.
+The Azure deploy is **opt-in** — the `deploy-azure` job in
+`.github/workflows/ci.yml` does nothing unless you enable it with the `DEPLOY_AZURE`
+Variable below. It runs only after the tests pass on `main`.
 
 **The easy way — after `azd up`, run:**
 

@@ -131,10 +131,11 @@ backend instead, see [AZURE.md](AZURE.md).
   then the **Netlify frontend** (`DEPLOY_NETLIFY`), then a smoke check.
 
 > **Deploy targets are independent opt-ins.** Each is a repo Variable you set to
-> `true`: `DEPLOY_SUPABASE` (backend) and `DEPLOY_NETLIFY` (frontend) here, plus
-> `DEPLOY_AZURE` for the Azure stack (`.github/workflows/azure.yml`). Enable any
-> combination — the Supabase/Netlify stack, Azure, both at once, or none (with no
-> flags set, nothing deploys). The tests run either way. See [AZURE.md](AZURE.md).
+> `true`: `DEPLOY_SUPABASE` (backend) and `DEPLOY_NETLIFY` (frontend), plus
+> `DEPLOY_AZURE` for the Azure stack. Each is its own deploy job in
+> `.github/workflows/ci.yml`, gated on the tests and skipped when its flag is off.
+> Enable any combination — the Supabase/Netlify stack, Azure, both at once, or none
+> (nothing set → nothing deploys). The tests run either way. See [AZURE.md](AZURE.md).
 
 Two deliberate free-tier choices live in that workflow:
 
