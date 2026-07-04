@@ -1,9 +1,9 @@
 {
   "name": "31-parks-edition",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.7.4",
   "type": "module",
-  "description": "31: National Parks Edition — a vintage WPA-inspired card game prototype.",
+  "description": "31: National Parks Edition — a free, open-source, WPA-inspired implementation of the card game 31.",
   "author": "Randy Rausch",
   "license": "MIT",
   "homepage": "https://github.com/randalrausch/31-parks-edition",
