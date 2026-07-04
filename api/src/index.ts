@@ -59,11 +59,20 @@ app.http("game", {
 app.timer("cleanup", {
   schedule: "0 0 3 * * *", // 03:00 UTC daily
   handler: async (_t: Timer, ctx: InvocationContext): Promise<void> => {
-    const removed = await sweep(store, new Date().toISOString());
-    // Also reap rate-counter rows older than 2 days (the game reaper never
-    // touches the Rate table; without this it leaks one row per IP-hour).
+    // Run the two reaps independently: a failure in one must not skip the other
+    // (a broken game sweep used to mean rate rows were never reaped at all).
     const rateCutoff = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
-    const rateRows = await reapRateCounters(rateCutoff);
+    const [games, rate] = await Promise.allSettled([
+      sweep(store, new Date().toISOString()),
+      reapRateCounters(rateCutoff),
+    ]);
+    const removed = games.status === "fulfilled" ? games.value : "error";
+    const rateRows = rate.status === "fulfilled" ? rate.value : "error";
+    // Structured line so "reaper outcome" is a queryable App Insights trace, not
+    // just a log string — an operator can alert on games/rate === "error".
+    console.log(JSON.stringify({ event: "reap", games: removed, rate: rateRows }));
+    if (games.status === "rejected") ctx.error("cleanup: game sweep failed", games.reason);
+    if (rate.status === "rejected") ctx.error("cleanup: rate reap failed", rate.reason);
     ctx.log(`cleanup: removed ${removed} expired game(s), ${rateRows} stale rate row(s)`);
   },
 });

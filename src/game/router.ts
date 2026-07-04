@@ -116,9 +116,6 @@ export function makeRouter(
     if (req.method === "OPTIONS") return { status: 204, headers: corsHeaders };
     if (req.method !== "POST") return reply(405, { error: "POST only." });
 
-    if (limited(req.ip, 90, 60_000))
-      return reply(429, { error: "Too many requests — please slow down." });
-
     let body: Record<string, unknown>;
     try {
       body = (await req.readJson()) as Record<string, unknown>;
@@ -127,6 +124,16 @@ export function makeRouter(
     }
 
     op = String(body?.op ?? "");
+
+    // Generic per-IP cap, applied now that the op is known (so the 429 logs with
+    // the right op, not ""). `state` — the safety-net poll, ~15 req/min per open
+    // tab — gets its own, much larger bucket so several tabs behind ONE NAT (a
+    // family, a classroom, an office) don't collectively trip the shared cap and
+    // all flap "reconnecting" together; every other op keeps the tighter cap.
+    const isState = op === "state";
+    const ipKey = isState ? `ip-state:${req.ip}` : `ip:${req.ip}`;
+    if (limited(ipKey, isState ? 300 : 90, 60_000))
+      return reply(429, { error: "Too many requests — please slow down." });
 
     // Wire-protocol gate. Clients tag each request with their PROTOCOL_VERSION;
     // if it's present and doesn't match this server's, the client is stale

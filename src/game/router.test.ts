@@ -148,6 +148,21 @@ describe("router", () => {
     expect(last).toBe(429); // create cap is 15 / 10 min per IP
   });
 
+  it("gives `state` polls a larger per-IP bucket than other ops (shared-NAT tolerance)", async () => {
+    const route = makeRouter(makeMemoryStore());
+    // 200 state polls from one IP stay under the state bucket (300/min) — several
+    // tabs behind one NAT shouldn't collectively trip the shared cap.
+    let last = 0;
+    for (let i = 0; i < 200; i++)
+      last = (await route(post({ op: "state", gameId: "g", seatToken: "t" }, "5.5.5.5"))).status;
+    expect(last).not.toBe(429);
+    // A non-state op from the SAME IP has its own tighter 90/min bucket.
+    let s = 0;
+    for (let i = 0; i < 91; i++)
+      s = (await route(post({ op: "start", gameId: "g", seatToken: "t" }, "5.5.5.5"))).status;
+    expect(s).toBe(429);
+  });
+
   it("caps act writes per seat token, independent of IP", async () => {
     const route = makeRouter(makeMemoryStore());
     const act = (token: string) =>

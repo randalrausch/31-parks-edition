@@ -214,35 +214,50 @@ export function makeTableStore(): GameStore {
     async deleteExpired(nowIso) {
       await ready;
       let n = 0;
+      let failed = 0;
       const expired = games.listEntities<GameRow>({
         queryOptions: {
           filter: odata`RowKey eq 'game' and expiresAt le ${nowIso}`,
         },
       });
+      // Reap each game independently: one row that deterministically errors (or a
+      // transient throttle mid-scan) must not abort the whole sweep and strand
+      // everything enumerated after it. Log per-row failures as a queryable trace
+      // and keep going; the next run retries whatever we couldn't delete.
       for await (const g of expired) {
         const gameId = g.partitionKey;
         try {
-          await games.submitTransaction([
-            ["delete", { partitionKey: gameId, rowKey: "game" }],
-            ["delete", { partitionKey: gameId, rowKey: "secret" }],
-          ]);
-        } catch (e) {
-          if (!is(e, 404)) throw e;
-        }
-        const code = g.code?.toUpperCase();
-        if (code) {
           try {
-            // Only delete the code row if it STILL points at this expired game.
-            // A collision-safe create should make re-pointing impossible, but if
-            // the code was somehow reassigned to a newer game, deleting it blind
-            // would break that live game — so guard on the mapped gameId.
-            const codeRow = await codes.getEntity<CodeRow>(code, code);
-            if (codeRow.gameId === gameId) await codes.deleteEntity(code, code);
+            await games.submitTransaction([
+              ["delete", { partitionKey: gameId, rowKey: "game" }],
+              ["delete", { partitionKey: gameId, rowKey: "secret" }],
+            ]);
           } catch (e) {
             if (!is(e, 404)) throw e;
           }
+          const code = g.code?.toUpperCase();
+          if (code) {
+            try {
+              // Only delete the code row if it STILL points at this expired game.
+              // A collision-safe create should make re-pointing impossible, but if
+              // the code was somehow reassigned to a newer game, deleting it blind
+              // would break that live game — so guard on the mapped gameId.
+              const codeRow = await codes.getEntity<CodeRow>(code, code);
+              if (codeRow.gameId === gameId) await codes.deleteEntity(code, code);
+            } catch (e) {
+              if (!is(e, 404)) throw e;
+            }
+          }
+          n += 1;
+        } catch (e) {
+          failed += 1;
+          console.log(
+            JSON.stringify({ event: "reap_error", kind: "game", gameId, error: String(e) }),
+          );
         }
-        n += 1;
+      }
+      if (failed) {
+        console.log(JSON.stringify({ event: "reap", kind: "game", removed: n, failed }));
       }
       return n;
     },

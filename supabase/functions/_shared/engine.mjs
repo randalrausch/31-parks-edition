@@ -757,8 +757,6 @@ function makeRouter(store, opts = {}) {
     };
     if (req.method === "OPTIONS") return { status: 204, headers: corsHeaders };
     if (req.method !== "POST") return reply(405, { error: "POST only." });
-    if (limited(req.ip, 90, 6e4))
-      return reply(429, { error: "Too many requests \u2014 please slow down." });
     let body;
     try {
       body = await req.readJson();
@@ -766,6 +764,10 @@ function makeRouter(store, opts = {}) {
       return reply(400, { error: "We couldn't read that request." });
     }
     op = String(body?.op ?? "");
+    const isState = op === "state";
+    const ipKey = isState ? `ip-state:${req.ip}` : `ip:${req.ip}`;
+    if (limited(ipKey, isState ? 300 : 90, 6e4))
+      return reply(429, { error: "Too many requests \u2014 please slow down." });
     if (typeof body?.protocol === "number" && body.protocol !== PROTOCOL_VERSION && op !== "version" && op !== "health")
       return reply(426, { error: "A new version is available \u2014 please refresh the page." });
     if (op === "version") return reply(200, handleVersion(provider).body);

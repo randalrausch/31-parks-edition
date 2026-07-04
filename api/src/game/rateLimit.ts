@@ -83,21 +83,35 @@ export async function reapRateCounters(olderThanIso: string): Promise<number> {
   const client: TableClient = tableClient("Rate");
   const cutoff = new Date(olderThanIso);
   let n = 0;
+  let failed = 0;
   try {
     const stale = client.listEntities({
       queryOptions: { filter: odata`Timestamp lt ${cutoff}` },
     });
+    // Per-row tolerance: a single delete failing (throttle, transient) must not
+    // abort the sweep and leak every row after it. Skip 404s (already gone),
+    // log-and-continue on anything else.
     for await (const e of stale) {
       try {
         await client.deleteEntity(e.partitionKey as string, e.rowKey as string);
         n += 1;
       } catch (err) {
-        if (!isStatus(err, 404)) throw err; // already gone — fine
+        if (isStatus(err, 404)) continue; // already gone — fine
+        failed += 1;
+        console.log(
+          JSON.stringify({
+            event: "reap_error",
+            kind: "rate",
+            pk: e.partitionKey,
+            error: String(err),
+          }),
+        );
       }
     }
   } catch (err) {
     if (isStatus(err, 404)) return 0; // Rate table doesn't exist yet
     throw err;
   }
+  if (failed) console.log(JSON.stringify({ event: "reap", kind: "rate", removed: n, failed }));
   return n;
 }
