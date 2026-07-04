@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.8.0 — 2026-07-04
+
+### Features
+
+- version persisted state and close the remaining open-source review gaps (#66)
+
 ## v0.7.5 — 2026-07-04
 
 ### Fixes

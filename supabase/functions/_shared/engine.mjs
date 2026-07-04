@@ -155,7 +155,7 @@ function aiDiscardIndex(hand, opts, playRandom) {
 }
 
 // src/game/version.ts
-var APP_VERSION = "0.7.5";
+var APP_VERSION = "0.8.0";
 var PROTOCOL_VERSION = 1;
 var STATE_VERSION = 1;
 
