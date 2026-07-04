@@ -89,6 +89,32 @@ begin
   end if;
 end $$;
 
+\echo '== incr_if_below atomic increment-iff-below-limit =='
+do $$
+declare
+  ok boolean;
+  c  integer;
+begin
+  -- Limit 2: the first two calls are allowed, the third is rejected — this is the
+  -- durable per-window rate ceiling the create/join limiters lean on.
+  ok := public.incr_if_below('rl-bucket', 'w1', 2);
+  if not ok then raise exception 'incr_if_below call 1 should be allowed (count 0 < 2)'; end if;
+  ok := public.incr_if_below('rl-bucket', 'w1', 2);
+  if not ok then raise exception 'incr_if_below call 2 should be allowed (count 1 < 2)'; end if;
+  ok := public.incr_if_below('rl-bucket', 'w1', 2);
+  if ok then raise exception 'incr_if_below call 3 should be rejected (count 2 = limit)'; end if;
+
+  -- The counter settled at exactly the limit — the rejected call did NOT increment.
+  select count into c from public.rate_counters where bucket = 'rl-bucket' and window_key = 'w1';
+  if c <> 2 then
+    raise exception 'rate_counters settled at % , expected 2 (a rejected call must not increment)', c;
+  end if;
+
+  -- A different window is an independent bucket (windows don't bleed into each other).
+  ok := public.incr_if_below('rl-bucket', 'w2', 2);
+  if not ok then raise exception 'incr_if_below for a fresh window should be allowed'; end if;
+end $$;
+
 \echo '== EXECUTE on the SECURITY DEFINER RPCs is revoked from anon/authenticated =='
 do $$
 declare
