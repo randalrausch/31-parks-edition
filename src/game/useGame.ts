@@ -19,11 +19,18 @@
  *                  player's hand.
  */
 import { useCallback, useEffect, useReducer, useRef } from "react";
-import { type GameOptions, type GameState, type AITraits, isAlive } from "./engine";
+import { type GameOptions, type GameState, type AITraits } from "./engine";
 import { LocalTransport, type Transport } from "./transport";
-import { aiTurnActions } from "./authority";
 import type { GameAction, NewGamePlayer } from "./actions";
 import { sndShuffle, sndDeal, sndKnock, sndCoin } from "./sound";
+import {
+  step,
+  freshPresentation,
+  TIMING,
+  type Presentation,
+  type PEvent,
+  type Snd,
+} from "./presentation";
 import { elog } from "./debug";
 import {
   saveSolo,
@@ -64,30 +71,10 @@ export interface SoloGameApi {
   newGame: () => void;
 }
 
-interface Presentation {
-  viewPhase: "dealing" | "cover" | "thinking" | null;
-  selected: number | null;
-  status: string;
-  dealReveal: number;
-  holdCur: number | null;
-  /** True while a committed move is animating (e.g. a knock) — locks input so a
-   * follow-up click can't be applied or silently dropped before it resolves. */
-  committing: boolean;
-}
-
-const freshPres = (): Presentation => ({
-  viewPhase: null,
-  selected: null,
-  status: "",
-  dealReveal: 0,
-  holdCur: null,
-  committing: false,
-});
-
 export function useGame(): SoloGameApi {
   const transportRef = useRef<Transport | null>(null);
   const authRef = useRef<GameState | null>(null);
-  const presRef = useRef<Presentation>(freshPres());
+  const presRef = useRef<Presentation>(freshPresentation());
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [, force] = useReducer((n) => n + 1, 0);
 
@@ -105,139 +92,70 @@ export function useGame(): SoloGameApi {
   // from a solo game to online play).
   useEffect(() => clearTimers, [clearTimers]);
 
-  const A = () => authRef.current;
-  const P = () => presRef.current;
   const beep = (fn: () => void) => {
     if (authRef.current?.options.sound) fn();
+  };
+  const play = (snd: Snd) => {
+    if (snd === "shuffle") beep(sndShuffle);
+    else if (snd === "deal") beep(sndDeal);
+    else if (snd === "knock") beep(sndKnock);
+    else beep(sndCoin);
   };
   const dispatch = (action: GameAction) => {
     transportRef.current?.dispatch(action);
     authRef.current = transportRef.current?.getState() ?? null;
   };
-  const multipleHumans = () => (A()?.players.filter((p) => !p.isAI && isAlive(p)).length ?? 0) > 1;
 
-  /* ── flow control (presentation) ─────────────────────────────────────── */
+  /* ── flow control: interpret the pure presentation machine ─────────────── */
 
-  // After the turn passes to a new player (or the deal resolves), set up the
-  // right presentation and schedule the AI if needed.
-  const advance = useCallback(() => {
-    const a = A();
-    const pres = P();
-    if (!a) return;
-    pres.committing = false; // the committed move has resolved; re-enable input
-    if (a.phase === "drawing") {
-      const p = a.players[a.cur];
-      if (p.isAI) {
-        pres.viewPhase = "thinking";
-        pres.status = `${p.name} is thinking…`;
-        render();
-        after(900, runAITurn);
-      } else {
-        pres.viewPhase = multipleHumans() ? "cover" : null;
-        pres.status =
-          a.knocker !== null ? `${a.players[a.knocker].name} knocked — your last hand` : "";
-        // Rest point: the game is now waiting on a human. Snapshot it so a
-        // reload/crash resumes here (never mid-animation or mid-AI-turn).
-        saveSolo(a);
-        render();
-      }
-    } else if (a.phase === "dealEnd") {
-      pres.viewPhase = null;
-      const rows = a.result?.rows ?? [];
-      const maxDrop = rows.reduce((m, r) => Math.max(m, r.livesLost), 0);
-      for (let c = 0; c < maxDrop; c++) after(c * 280, () => beep(sndCoin));
-      saveSolo(a); // rest point: waiting on the human to start the next deal
-      render();
-    } else {
-      if (a.phase === "gameOver") clearSolo(); // nothing left to resume
-      pres.viewPhase = null;
-      render();
-    }
+  // Run one event and its synchronous cascade (dispatch → now → …) against the
+  // real transport, timers, sound, and persistence, then re-render once. Every
+  // *decision* — which view phase, which beat, how long — lives in the pure
+  // machine (presentation.ts, step()); this only performs the effects it emits.
+  const run = useCallback(
+    (event: PEvent) => {
+      let touched = false;
+      const process = (ev: PEvent) => {
+        const a = authRef.current;
+        if (!a) return;
+        const res = step(presRef.current, a, ev);
+        if (!res) return; // guard-rejected no-op — render nothing
+        touched = true;
+        presRef.current = res.pres;
+        for (const eff of res.effects) {
+          switch (eff.e) {
+            case "dispatch":
+              dispatch(eff.action); // advances authRef for the next now/scheduled read
+              break;
+            case "sound":
+              play(eff.snd);
+              break;
+            case "coinStagger":
+              for (let c = 0; c < eff.count; c++) after(c * TIMING.coinStep, () => play("coin"));
+              break;
+            case "save": {
+              const cur = authRef.current;
+              if (cur) saveSolo(cur);
+              break;
+            }
+            case "clearSave":
+              clearSolo();
+              break;
+            case "schedule":
+              after(eff.ms, () => run(eff.ev));
+              break;
+            case "now":
+              process(eff.ev); // synchronous continuation, re-reads authRef
+              break;
+          }
+        }
+      };
+      process(event);
+      if (touched) render();
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [after, render]);
-
-  // Drive one AI turn by dispatching the shared AI action sequence (same logic
-  // the server uses), but spaced out with presentational beats.
-  const runAITurn = useCallback(() => {
-    const a = A();
-    const pres = P();
-    if (!a || a.phase !== "drawing") return;
-    const aiIdx = a.cur;
-    const p = a.players[aiIdx];
-    const actions = aiTurnActions(a);
-
-    if (actions[0].type === "knock") {
-      pres.status = `${p.name} knocks!`;
-      beep(sndKnock);
-      render();
-      after(800, () => {
-        dispatch(actions[0]);
-        advance();
-      });
-      return;
-    }
-
-    // Draw (deck or discard), beat, then discard while holding on the AI.
-    dispatch(actions[0]);
-    beep(sndDeal);
-    render();
-    after(700, () => {
-      dispatch(actions[1]);
-      beep(sndDeal);
-      pres.holdCur = aiIdx; // keep showing the AI while its discard sits
-      render();
-      after(600, () => {
-        pres.holdCur = null;
-        advance();
-      });
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [after, render, advance]);
-
-  // Animate the deal (single-human / AI-first), then hand off to advance().
-  const startDealAnimation = useCallback(() => {
-    const a = A();
-    const pres = P();
-    if (!a) return;
-    pres.viewPhase = "dealing";
-    pres.dealReveal = 0;
-    pres.status = "";
-    render();
-    beep(sndShuffle);
-    const dealtCount = a.players.filter((p) => p.hand.length > 0).length;
-    const total = dealtCount * 3;
-    let t = 420;
-    for (let k = 1; k <= total; k++) {
-      after(t, () => {
-        P().dealReveal = k;
-        beep(sndDeal);
-        render();
-      });
-      t += 130;
-    }
-    after(t + 80, () => {
-      P().viewPhase = null;
-      render();
-      advance();
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [after, render, advance]);
-
-  // After a fresh deal: hide it behind the cover for multiple humans, else
-  // play the deal animation.
-  const beginDealPresentation = useCallback(() => {
-    const a = A();
-    const pres = P();
-    if (!a) return;
-    if (multipleHumans() && !a.players[a.cur].isAI) {
-      pres.viewPhase = "cover";
-      pres.status = "";
-      render();
-    } else {
-      startDealAnimation();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [render, startDealAnimation]);
+    [after, render],
+  );
 
   /* ── public actions ──────────────────────────────────────────────────── */
 
@@ -245,7 +163,7 @@ export function useGame(): SoloGameApi {
     (config: GameConfig) => {
       clearTimers();
       clearSolo(); // a fresh game replaces any prior save
-      presRef.current = freshPres();
+      presRef.current = freshPresentation();
       const players: NewGamePlayer[] = config.players.map((c, i) => ({
         id: `p${i}`,
         name: c.name.trim() || (c.isAI ? "AI" : `Player ${i + 1}`),
@@ -259,98 +177,18 @@ export function useGame(): SoloGameApi {
       transportRef.current = t;
       t.start(players, config.options); // creates state + deals the first hand
       authRef.current = t.getState();
-      beginDealPresentation();
+      run({ t: "dealStart" });
     },
-    [clearTimers, beginDealPresentation],
+    [clearTimers, run],
   );
 
-  const drawDeck = useCallback(() => {
-    const a = A();
-    if (!a || P().committing || a.phase !== "drawing" || a.players[a.cur].isAI) return;
-    dispatch({ type: "drawDeck" });
-    beep(sndDeal);
-    P().selected = null;
-    render();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [render]);
-
-  const drawDiscard = useCallback(() => {
-    const a = A();
-    if (!a || P().committing || a.phase !== "drawing" || a.players[a.cur].isAI) return;
-    if (a.discard.length === 0) return;
-    dispatch({ type: "takeDiscard" });
-    beep(sndDeal);
-    P().selected = null;
-    render();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [render]);
-
-  const selectCard = useCallback(
-    (idx: number) => {
-      const a = A();
-      if (!a || a.phase !== "discarding" || a.players[a.cur].isAI) return;
-      P().selected = P().selected === idx ? null : idx;
-      render();
-    },
-    [render],
-  );
-
-  const confirmDiscard = useCallback(() => {
-    const a = A();
-    const pres = P();
-    if (!a || pres.committing || pres.selected === null || a.phase !== "discarding") return;
-    const card = a.players[a.cur].hand[pres.selected];
-    if (!card) return;
-    pres.selected = null;
-    dispatch({ type: "discard", cardId: card.id });
-    advance();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [advance]);
-
-  const knock = useCallback(() => {
-    const a = A();
-    const pres = P();
-    if (
-      !a ||
-      pres.committing ||
-      a.phase !== "drawing" ||
-      a.players[a.cur].isAI ||
-      a.knocker !== null
-    )
-      return;
-    // Lock input immediately so a stray draw/second-knock click during the
-    // announcement beat can't be applied (and silently drop the queued knock).
-    pres.committing = true;
-    // Hold on the knocker's own board for the announcement, THEN dispatch so the
-    // next player's hand is never shown before the cover/thinking goes up.
-    pres.status = `${a.players[a.cur].name} knocks!`;
-    beep(sndKnock);
-    render();
-    after(800, () => {
-      dispatch({ type: "knock" });
-      advance();
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [after, render, advance]);
-
-  const coverReady = useCallback(() => {
-    if (P().viewPhase !== "cover") return;
-    P().viewPhase = null;
-    render();
-  }, [render]);
-
-  const nextDeal = useCallback(() => {
-    const a = A();
-    if (!a || a.phase !== "dealEnd") return;
-    dispatch({ type: "nextDeal" });
-    if (A()?.phase === "gameOver") {
-      P().viewPhase = null;
-      render();
-    } else {
-      beginDealPresentation();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [render, beginDealPresentation]);
+  const drawDeck = useCallback(() => run({ t: "drawDeck" }), [run]);
+  const drawDiscard = useCallback(() => run({ t: "drawDiscard" }), [run]);
+  const selectCard = useCallback((idx: number) => run({ t: "select", idx }), [run]);
+  const confirmDiscard = useCallback(() => run({ t: "confirmDiscard" }), [run]);
+  const knock = useCallback(() => run({ t: "knock" }), [run]);
+  const coverReady = useCallback(() => run({ t: "coverReady" }), [run]);
+  const nextDeal = useCallback(() => run({ t: "nextDeal" }), [run]);
 
   const newGame = useCallback(() => {
     clearTimers();
@@ -358,13 +196,13 @@ export function useGame(): SoloGameApi {
     transportRef.current?.destroy();
     transportRef.current = null;
     authRef.current = null;
-    presRef.current = freshPres();
+    presRef.current = freshPresentation();
     render();
   }, [clearTimers, render]);
 
   // Restore a persisted solo game (only at app start, before any game is
-  // active). We only ever saved a human-rest or deal-end state, so advance()
-  // lands directly on the board / deal-end screen and waits — no re-deal
+  // active). We only ever saved a human-rest or deal-end state, so the "advance"
+  // event lands directly on the board / deal-end screen and waits — no re-deal
   // animation, and never a stranded AI turn.
   const resumeSolo = useCallback((): boolean => {
     if (authRef.current) return false; // a game is already in progress
@@ -382,12 +220,12 @@ export function useGame(): SoloGameApi {
     markSoloResuming(); // cleared by GameBoard's mount effect once it renders OK
     try {
       clearTimers();
-      presRef.current = freshPres();
+      presRef.current = freshPresentation();
       const t = new LocalTransport();
       transportRef.current = t;
       t.load(saved);
       authRef.current = t.getState();
-      advance();
+      run({ t: "advance" });
     } catch (err) {
       // A synchronous throw while restoring — clear the poison and reset so the
       // app lands on a clean setup screen instead of a broken board.
@@ -396,14 +234,14 @@ export function useGame(): SoloGameApi {
       transportRef.current?.destroy();
       transportRef.current = null;
       authRef.current = null;
-      presRef.current = freshPres();
+      presRef.current = freshPresentation();
       render();
       elog("solo", "failed to resume a saved game; discarded it", err);
       return false;
     }
     return true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clearTimers, advance, render]);
+  }, [clearTimers, run, render]);
 
   /* ── derive the view state from auth + presentation overlay ───────────── */
   const view = ((): GameState | null => {

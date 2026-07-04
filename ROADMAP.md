@@ -18,14 +18,10 @@ or an issue.
 
 ## Near term
 
-- **Refactor `useGame` into an explicit presentation state machine.** It's the
-  one under-structured module (ref-driven state, `setTimeout` chains, several
-  `exhaustive-deps` suppressions) and the least unit-tested. Modeling `viewPhase`
-  (dealing → cover → thinking → null) as a real state machine — with tests — is a
-  deliberate, standalone piece of work rather than a rushed edit, because the
-  regressions it could introduce (deal/AI/knock timing) are exactly what the
-  current unit suite can't catch. Pair it with component/hook tests for `useGame`
-  and `useNetworkGame`, plus an automated accessibility (axe) pass in E2E.
+- **Component/hook tests + accessibility.** The solo presentation flow is now a
+  pure, unit-tested state machine (`presentation.ts`); the remaining gap is
+  hook-level tests for `useNetworkGame` and an automated accessibility (axe) pass
+  in E2E.
 - **Run the shared store contract against real Postgres in CI** (`supabase start`)
   when `supabase/**` changes. The contract already runs against the Supabase fake,
   the memory store, and real Azurite; adding a real-Postgres run closes the last
