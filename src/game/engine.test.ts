@@ -12,6 +12,7 @@ import {
   aiKnockTarget,
   aiBluffChance,
   aiPlayRandomChance,
+  recentLogLimit,
   type GameOptions,
   type GamePlayer,
 } from "./engine";
@@ -127,6 +128,13 @@ describe("isAlive / isEliminated", () => {
     expect(isAlive(player({ tokens: 0, grace: true }))).toBe(true);
     expect(isEliminated(player({ tokens: 0, grace: false }))).toBe(true);
     expect(isAlive(player({ tokens: 1 }))).toBe(true);
+  });
+});
+
+describe("recentLogLimit", () => {
+  it("shows up to two recent entries per living player (shared by both boards)", () => {
+    expect(recentLogLimit(2)).toBe(4);
+    expect(recentLogLimit(5)).toBe(10);
   });
 });
 

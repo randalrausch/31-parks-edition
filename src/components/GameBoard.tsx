@@ -26,7 +26,14 @@ import {
   BoardFrame,
   SwitchParkModal,
 } from "./BoardParts";
-import { bestSuit, bestHandScore, isAlive, roundNo, type GameState } from "../game/engine";
+import {
+  bestSuit,
+  bestHandScore,
+  isAlive,
+  roundNo,
+  recentLogLimit,
+  type GameState,
+} from "../game/engine";
 import type { SoloGameApi } from "../game/useGame";
 import { clearSoloResuming } from "../game/soloPersist";
 import "./GameBoard.css";
@@ -75,7 +82,7 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
   // The on-table feed shows the last full round (up to two entries per living
   // player). With the "Full Action History" house rule on, let the player
   // expand it to the whole deal — the same affordance the online board offers.
-  const recentLog = aliveCount * 2;
+  const recentLog = recentLogLimit(aliveCount);
   const logExpandable = s.options.fullHistory && s.log.length > recentLog;
 
   const isHumanTurn = !cur.isAI && (s.phase === "drawing" || s.phase === "discarding");
