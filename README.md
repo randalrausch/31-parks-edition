@@ -18,7 +18,7 @@ playing locally in under a minute. No installs, no accounts, no ads.
   <img src="docs/images/board-glacier.jpg" alt="A hand mid-round at Glacier National Park: three cards on the felt in front of a mountain-lake backdrop, with a discard pile and three AI opponents seated around the table." width="820">
 </p>
 
-## Play in one sentence
+## How to play
 
 > Hold three cards. On your turn, draw one and discard one. Collect the
 > highest total you can in a single suit — 31 is perfect. Knock when you're
