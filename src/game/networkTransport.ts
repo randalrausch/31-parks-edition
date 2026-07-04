@@ -26,6 +26,19 @@ export interface NetworkSnapshot {
   state: GameState;
 }
 
+/**
+ * Thrown by act() when a turn action lost the optimistic-concurrency race and
+ * genuinely did not apply (the table changed under it). The transport has already
+ * resynced to the truth; the UI shows a brief "try again" hint rather than
+ * silently dropping the move. NOT thrown for a nextDeal race (benign).
+ */
+export class ActConflictError extends Error {
+  constructor() {
+    super("The table changed before your move landed.");
+    this.name = "ActConflictError";
+  }
+}
+
 export class NetworkTransport {
   private unsubscribe: (() => void) | null = null;
   private snap: NetworkSnapshot | null = null;
@@ -247,6 +260,12 @@ export class NetworkTransport {
       if (conflict) {
         dlog("net", `act ${action.type} conflict — resyncing`);
         await this.refresh();
+        // A turn action that lost the CAS genuinely did NOT apply — same-action
+        // double-taps are deduped above and a stale/wrong-phase move returns a
+        // 200 no-op, so a 409 here means the table moved under a real move. Tell
+        // the player (the board now shows the new truth). A nextDeal race is
+        // benign — someone else advanced the deal — so stay silent for it.
+        if (action.type !== "nextDeal") throw new ActConflictError();
         return;
       }
       dlog("net", `act ${action.type} failed`, msg);
