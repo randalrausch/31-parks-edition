@@ -371,6 +371,22 @@ function createGameState(players, options) {
     winnerId: null
   };
 }
+function seatHumanPlayer(state, idx, name, avatarKey = "ranger") {
+  const s = structuredClone(state);
+  const p = s.players[idx];
+  p.isAI = false;
+  p.name = name;
+  p.avatarKey = avatarKey;
+  delete p.traits;
+  delete p.emoji;
+  delete p.image;
+  return s;
+}
+function fillSeatsWithAI(state, seatIdxs) {
+  const s = structuredClone(state);
+  for (const i of seatIdxs) s.players[i].isAI = true;
+  return s;
+}
 
 // src/game/authority.ts
 var HIDDEN_CARD = {
@@ -592,27 +608,17 @@ async function handleJoin(store, body) {
   if (!seat) return fail(409, "That game is full.");
   const idx = seat.idx;
   const name = (typeof body.name === "string" ? body.name.trim().slice(0, 40) : "") || `Player ${idx + 1}`;
-  const tookAI = seat.isAI === true;
   seat.isAI = false;
   seat.filled = true;
   seat.name = name;
   seat.avatar = "ranger";
   seat.emoji = null;
-  const players = secret.state.players;
-  const player = players[idx];
-  player.isAI = false;
-  player.name = name;
-  player.avatarKey = "ranger";
-  if (tookAI) {
-    delete player.traits;
-    player.emoji = null;
-    player.image = null;
-  }
+  const nextState = seatHumanPlayer(secret.state, idx, name);
   const t = newToken();
   const seatTokens = { ...secret.seatTokens, [t]: idx };
   const next = bumped(game.rec, { seats });
   if (!await store.update(gameId, game.etag, next, {
-    state: secret.state,
+    state: nextState,
     seatTokens
   }))
     return fail(409, "The game just changed \u2014 please try again.");
@@ -627,15 +633,16 @@ async function handleStart(store, body) {
     return fail(403, "Only the host can start the game.");
   if (game.rec.status !== "lobby") return fail(409, "The game has already started.");
   const seats = game.rec.seats;
-  const state = secret.state;
+  const aiSeatIdxs = [];
   for (const s of seats) {
     if (!s.isAI && !s.filled) {
       s.isAI = true;
       s.filled = true;
-      state.players[s.idx].isAI = true;
+      aiSeatIdxs.push(s.idx);
     }
   }
-  const dealt = advanceAuthority(applyAction(secret.state, { type: "deal" }));
+  const withAI = fillSeatsWithAI(secret.state, aiSeatIdxs);
+  const dealt = advanceAuthority(applyAction(withAI, { type: "deal" }));
   const next = bumped(game.rec, { seats, status: "playing" });
   if (!await store.update(gameId, game.etag, next, {
     state: dealt,
@@ -757,8 +764,6 @@ function makeRouter(store, opts = {}) {
     };
     if (req.method === "OPTIONS") return { status: 204, headers: corsHeaders };
     if (req.method !== "POST") return reply(405, { error: "POST only." });
-    if (limited(req.ip, 90, 6e4))
-      return reply(429, { error: "Too many requests \u2014 please slow down." });
     let body;
     try {
       body = await req.readJson();
@@ -766,6 +771,10 @@ function makeRouter(store, opts = {}) {
       return reply(400, { error: "We couldn't read that request." });
     }
     op = String(body?.op ?? "");
+    const isState = op === "state";
+    const ipKey = isState ? `ip-state:${req.ip}` : `ip:${req.ip}`;
+    if (limited(ipKey, isState ? 300 : 90, 6e4))
+      return reply(429, { error: "Too many requests \u2014 please slow down." });
     if (typeof body?.protocol === "number" && body.protocol !== PROTOCOL_VERSION && op !== "version" && op !== "health")
       return reply(426, { error: "A new version is available \u2014 please refresh the page." });
     if (op === "version") return reply(200, handleVersion(provider).body);
@@ -783,6 +792,10 @@ function makeRouter(store, opts = {}) {
         return reply(429, {
           error: "Too many games are being created right now \u2014 please try again later."
         });
+    }
+    if (op === "join") {
+      if (limited(`join:${req.ip}`, 30, 6e4))
+        return reply(429, { error: "Too many join attempts \u2014 please slow down." });
     }
     if (op === "act") {
       const seatToken = typeof body.seatToken === "string" ? body.seatToken : "";
@@ -833,7 +846,11 @@ function guardSize(state) {
 function toRecord(row) {
   return {
     gameId: row.id,
-    code: row.code,
+    // The join code is not a column on the public row anymore (it moved to the
+    // unpublished game_codes lookup so Realtime can't broadcast it). It's a
+    // lookup key resolved via getByCode, not a property of the game record, so
+    // reads don't carry it — nothing at runtime reads rec.code off a getGame.
+    code: "",
     status: row.status,
     version: row.version,
     seats: row.seats,
@@ -867,9 +884,9 @@ function makeSupabaseStore(admin) {
     // health probe reports 200 while the DB is unreachable. So rethrow on error
     // and let the router surface a 500 the client treats as "reconnecting".
     async getByCode(code) {
-      const { data, error } = await admin.from("games").select("id").eq("code", code.toUpperCase()).maybeSingle();
+      const { data, error } = await admin.from("game_codes").select("game_id").eq("code", code.toUpperCase()).maybeSingle();
       if (error) throw new Error(`getByCode: ${error.message}`);
-      return data?.id ?? null;
+      return data?.game_id ?? null;
     },
     async getGame(gameId) {
       const { data, error } = await admin.from("games").select("*").eq("id", gameId).maybeSingle();

@@ -77,6 +77,14 @@ claim it, and don't hesitate to open a draft PR early for feedback.
   checked in CI (`npm run format:check`).
 - **Hidden information is sacred.** Never send a player another player's cards.
   The server `redactState` enforces this; keep it that way.
+- **Keep the two boards and two backend adapters in parity.** The game has two
+  front‑end boards (`src/components/GameBoard.tsx` solo, `OnlineGameBoard.tsx`
+  online) and two backend store adapters (`src/game/supabaseStore.ts`,
+  `api/src/game/tableStore.ts`). When you change one, change or verify its
+  sibling — a feature that lands in only one is the project's most common bug.
+  Shared board UI belongs in `src/components/BoardParts.tsx` (an ESLint rule
+  forbids the two boards importing each other). Run `/parity-check` if you use
+  Claude Code.
 
 ## Commit & PR
 

@@ -10,6 +10,7 @@ import { elog } from "../game/debug";
 import type { OnlineSession } from "../game/onlineSession";
 import Lobby from "./Lobby";
 import OnlineGameBoard from "./OnlineGameBoard";
+import UpdatePrompt from "./UpdatePrompt";
 
 export default function OnlineGame({
   session,
@@ -35,6 +36,13 @@ export default function OnlineGame({
       setStarting(false);
     }
   };
+
+  // A protocol bump deploys backend-first, so a tab already in this game starts
+  // getting 426s. This is terminal (sync has stopped) and takes precedence over
+  // any last-good snapshot — the only fix is to refresh.
+  if (game.outdated) {
+    return <UpdatePrompt />;
+  }
 
   const snap = game.snap;
   if (!snap) {

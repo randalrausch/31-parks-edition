@@ -8,6 +8,7 @@
 import { describe, it, expect } from "vitest";
 import { makeSupabaseStore, makeSupabaseRateLimiter } from "./supabaseStore";
 import { StateTooLargeError, type GameRecord, type SecretRecord } from "./store";
+import { runStoreContract } from "./storeContract";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Row = Record<string, unknown>;
@@ -15,6 +16,7 @@ type Row = Record<string, unknown>;
 /** Minimal chainable stand-in for the subset of supabase-js the adapter uses. */
 function makeFake() {
   const games = new Map<string, Row>();
+  const codes = new Map<string, Row>(); // code -> { code, game_id } (unpublished lookup)
   const secrets = new Map<string, Row>();
   const counters = new Map<string, number>();
   // When set, every SELECT resolves to { data: null, error } — models a
@@ -51,7 +53,7 @@ function makeFake() {
       return this;
     }
     private map() {
-      return this.table === "games" ? games : secrets;
+      return this.table === "games" ? games : this.table === "game_codes" ? codes : secrets;
     }
     private match(): Row[] {
       return [...this.map().values()].filter((r) =>
@@ -99,17 +101,17 @@ function makeFake() {
         const id = args.p_id as string;
         const code = args.p_code as string;
         // unique_violation on either the id or the code → false (caller retries).
-        const codeTaken = [...games.values()].some((g) => g.code === code);
-        if (games.has(id) || codeTaken) return Promise.resolve({ data: false, error: null });
+        // Codes live in the separate game_codes lookup, not on the games row.
+        if (games.has(id) || codes.has(code)) return Promise.resolve({ data: false, error: null });
         games.set(id, {
           id,
-          code,
           status: args.p_status,
           version: 0,
           seats: args.p_seats,
           created_at: "2026-06-28T00:00:00.000Z",
           updated_at: "2026-06-28T00:00:00.000Z",
         });
+        codes.set(code, { code, game_id: id });
         secrets.set(id, { game_id: id, state: args.p_state, seat_tokens: args.p_seat_tokens });
         return Promise.resolve({ data: true, error: null });
       }
@@ -168,7 +170,9 @@ describe("SupabaseGameStore", () => {
     expect(await store.getByCode("abcde")).toBe("g1"); // case-insensitive
     const got = await store.getGame("g1");
     expect(got?.rec.gameId).toBe("g1");
-    expect(got?.rec.code).toBe("ABCDE");
+    // The code isn't carried on the game row anymore (it lives in the unpublished
+    // game_codes lookup, resolved via getByCode above), so reads don't return it.
+    expect(got?.rec.code).toBe("");
     expect(got?.etag).toBe("0"); // version doubles as the concurrency token
 
     const sec = await store.getSecret("g1");
@@ -243,4 +247,12 @@ describe("SupabaseGameStore", () => {
     expect(await rl.allowCreate("2.2.2.2", T)).toBe(true);
     expect(await rl.allowCreate("3.3.3.3", T)).toBe(false); // global cap of 2 hit
   });
+});
+
+// The same behavioral contract every adapter is held to (MemoryGameStore and
+// TableGameStore-on-Azurite run it too). Wiring it here — against a fresh fake
+// per test — closes the gap where "the two backends behave identically" was a
+// test for Table Storage but only a review assertion for Supabase.
+describe("SupabaseGameStore — shared store contract", () => {
+  runStoreContract(() => makeSupabaseStore(makeFake().client));
 });

@@ -150,13 +150,23 @@ export const supabaseBackend: GameBackend | null =
         api: gameApi,
         subscribe: (gameId, onChange, onStatus) =>
           subscribeToGame(supabase!, gameId, onChange, onStatus),
-        // Fire-and-forget crash report to the Edge Function's logs; swallow any
-        // failure so the reporter never worsens the error it's reporting.
+        // Fire-and-forget crash report to the Edge Function's logs. A raw fetch
+        // with keepalive (rather than functions.invoke, which can't set it) lets
+        // the report survive a page unload — the common case for a crash report,
+        // which otherwise dies with the tab. Failures are swallowed so the
+        // reporter never worsens the error it's reporting.
         reportError: (report) => {
           try {
-            void supabase!.functions
-              .invoke("game", { body: { op: "clientError", ...report } })
-              .catch(() => {});
+            void fetch(`${supabaseUrl}/functions/v1/game`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: supabaseKey!,
+                Authorization: `Bearer ${supabaseKey!}`,
+              },
+              body: JSON.stringify({ op: "clientError", ...report }),
+              keepalive: true,
+            }).catch(() => {});
           } catch {
             /* never throw from the error reporter */
           }

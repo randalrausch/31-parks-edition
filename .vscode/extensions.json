@@ -1,0 +1,9 @@
+{
+  "// note": "Recommended extensions for this repo (mirrors .devcontainer). VS Code offers to install these on first open; none are required to build or test.",
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-azuretools.vscode-azurefunctions",
+    "ms-azuretools.vscode-bicep"
+  ]
+}

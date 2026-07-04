@@ -22,11 +22,15 @@ threats we design against, and how:
 - **Seat hijacking.** Each seat is bound to an unguessable per-seat **token**
   (UUID v4) issued on create/join and stored only in the secret record. Actions
   are authorized by token, not by client-supplied seat index.
-- **Guessing game codes.** Join codes are 6 chars from a 32-symbol alphabet
-  (no I/O/0/1) drawn from a CSPRNG (~1.07B combinations). Combined with the
-  per-IP request cap and the 14-day game TTL, the window for brute force is
-  small. Codes are allocated collision-safely on both backends (a duplicate is
-  regenerated, never allowed to clobber a live lobby).
+- **Guessing / harvesting game codes.** Join codes are 6 chars from a 32-symbol
+  alphabet (no I/O/0/1) drawn from a CSPRNG (~1.07B combinations). Combined with
+  a dedicated **per-IP join-attempt cap** and the 14-day game TTL, the window for
+  brute force is small. Codes are allocated collision-safely on both backends (a
+  duplicate is regenerated, never allowed to clobber a live lobby). On Supabase,
+  codes live in a **separate, unpublished `game_codes` table** — never in the
+  Realtime-published `games` row — because Realtime broadcasts whole rows and
+  ignores column-level grants, so an anon client can't harvest open lobbies'
+  codes off the change feed.
 - **Floods / abuse / cost-runaway.** Anonymous endpoints are defended in layers so
   no attack, bug, or spike can drive up a cloud bill: a cheap per-instance limiter
   (a per-IP request rate, plus a **per-seat cap on `act`** so a single seat token —
@@ -40,8 +44,9 @@ threats we design against, and how:
   are reaped, bounding storage growth. See `docs/AZURE.md → Cost protection`.
 - **Backend data access.** On Azure, game data in Table Storage is reached via the
   Function App's **managed identity** (no data connection string). On Supabase,
-  the secret table is service-role only (RLS denies anon access), and the
-  `SECURITY DEFINER` RPCs (`commit_game`, `incr_if_below`) have `EXECUTE`
+  the secret and code tables are service-role only (RLS denies anon access), and
+  the `SECURITY DEFINER` RPCs (`create_game`, `commit_game`, `incr_if_below`)
+  have `EXECUTE`
   **revoked from anon/authenticated** so they can't be called over PostgREST to
   bypass the Edge Function — a CI test (`supabase/schema.grants.test.ts`) enforces
   that every definer RPC is revoked. The browser only ever holds client-safe

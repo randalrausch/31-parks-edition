@@ -20,4 +20,7 @@ jobs:
       - uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
         with:
           languages: javascript-typescript
+          # Broader coverage than the default suite for a security-sensitive
+          # (auth, redaction, multiplayer) codebase.
+          queries: security-extended
       - uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4

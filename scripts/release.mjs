@@ -71,10 +71,21 @@ function replaceInFile(file, re, replacement) {
 
 function bumpVersionFiles(version) {
   // src/game/version.ts is the single source of truth read by the frontend and
-  // both backends. The package.json `version` fields are decorative npm metadata
-  // and are deliberately left alone — editing them would desync the lockfiles and
-  // break `npm ci` in CI for no display benefit.
+  // both backends.
   replaceInFile("src/game/version.ts", /(APP_VERSION\s*=\s*")[^"]+(")/, `$1${version}$2`);
+
+  // Keep package.json in step so contributors reading the manifest don't see a
+  // stale version. `npm ci` verifies package.json's version matches the lockfile's
+  // top-level `version` and `packages[""].version`, so bump those two lockfile
+  // lines too (anchored to the package name so nested deps that happen to share a
+  // version string are never touched). The root package.json `version` appears
+  // once, so a non-global replace hits only it.
+  replaceInFile("package.json", /("version":\s*")[^"]+(")/, `$1${version}$2`);
+  replaceInFile(
+    "package-lock.json",
+    /("name": "31-parks-edition",\s*\n\s*"version": ")[^"]+(")/g,
+    `$1${version}$2`,
+  );
 }
 
 function prependChangelog(section) {

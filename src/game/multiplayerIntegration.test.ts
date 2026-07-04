@@ -135,6 +135,115 @@ describe("online multiplayer (NetworkTransport over the shared handlers)", () =>
     }
   });
 
+  it("treats a 426 (protocol mismatch) as terminal: stops sync and notifies once", async () => {
+    // A backend deploy that bumps PROTOCOL_VERSION lands before the frontend, so
+    // an in-flight tab starts getting 426. The transport must stop retrying and
+    // tell the UI to prompt a refresh — not flap "reconnecting" forever.
+    const outdated = new BackendError("client is outdated", 426, false, true);
+    const api: GameApi = {
+      async create() {
+        throw outdated;
+      },
+      async join() {
+        throw outdated;
+      },
+      async start() {
+        throw outdated;
+      },
+      async act() {
+        throw outdated;
+      },
+      async state() {
+        throw outdated;
+      },
+    };
+    let subscribed = 0;
+    const backend: GameBackend = {
+      name: "Stub",
+      api,
+      subscribe: () => {
+        subscribed++;
+        return () => {};
+      },
+    };
+    let fired = 0;
+    const t = new NetworkTransport(backend, "g", "tok");
+    t.onOutdated(() => fired++);
+    try {
+      await t.connect(); // the initial state() fetch 426s
+      expect(t.isOutdated).toBe(true);
+      expect(fired).toBe(1);
+      // connect() must NOT arm the Realtime subscription or the poll after a 426.
+      expect(subscribed).toBe(0);
+      // Further calls are inert — no repeat notifications, no thrown errors.
+      await expect(t.refresh()).resolves.toBeUndefined();
+      await expect(t.act({ type: "drawDeck" } as GameAction)).resolves.toBeUndefined();
+      expect(fired).toBe(1);
+    } finally {
+      t.destroy();
+    }
+  });
+
+  it("connect: a transient first-fetch failure arms the poll instead of dead-ending", async () => {
+    // A blip on the very first fetch must not be fatal — the lost-link recovery
+    // (poll + resubscribe) should converge, exactly as it would for a blip later.
+    const okSnap: NetworkSnapshot = {
+      status: "playing",
+      version: 1,
+      seats: [],
+      seatIndex: 0,
+      state: { phase: "drawing" } as unknown as NetworkSnapshot["state"],
+    };
+    let calls = 0;
+    const api: GameApi = {
+      async create() {
+        throw new Error("unused");
+      },
+      async join() {
+        throw new Error("unused");
+      },
+      async start() {},
+      async act() {},
+      async state() {
+        calls += 1;
+        if (calls === 1) throw new BackendError("network blip", 503);
+        return okSnap;
+      },
+    };
+    const backend: GameBackend = { name: "Stub", api, subscribe: () => () => {} };
+    const t = new NetworkTransport(backend, "g", "tok");
+    try {
+      await expect(t.connect()).resolves.toBeUndefined(); // did NOT dead-end
+      await t.refresh(); // the next tick converges
+      expect(t.getState()).toEqual(okSnap.state);
+    } finally {
+      t.destroy();
+    }
+  });
+
+  it("connect: a definitive 404 is fatal (rethrown so the UI can offer 'back to menu')", async () => {
+    const api: GameApi = {
+      async create() {
+        throw new Error("unused");
+      },
+      async join() {
+        throw new Error("unused");
+      },
+      async start() {},
+      async act() {},
+      async state() {
+        throw new BackendError("no such game", 404);
+      },
+    };
+    const backend: GameBackend = { name: "Stub", api, subscribe: () => () => {} };
+    const t = new NetworkTransport(backend, "g", "tok");
+    try {
+      await expect(t.connect()).rejects.toBeInstanceOf(BackendError);
+    } finally {
+      t.destroy();
+    }
+  });
+
   it("applies the current player's move, converges both clients, and ignores out-of-turn moves", async () => {
     const { backend, host, guest, gameId } = await activeGame();
     const hostT = new NetworkTransport(backend, gameId, host.seatToken);

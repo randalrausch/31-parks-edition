@@ -187,6 +187,9 @@ docs/              Architecture, theming, backend, and deployment guides
 
 ### Documentation
 
+- [docs/](docs/README.md) — the full documentation index, including
+  [Architecture Decision Records](docs/adr/) that capture the *why* behind the
+  shared engine, the two-backend seam, and the wire `PROTOCOL_VERSION`.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how the pure engine, reducer,
   transports, and authority fit together, and how hidden information is
   enforced.
@@ -274,6 +277,10 @@ version numbers. Full breakdown in
 React 19, TypeScript, Vite 8, plain CSS, Supabase (optional, for multiplayer),
 and Vitest. There are no game-logic dependencies; the rules are pure,
 serializable TypeScript shared by the client and the server.
+
+Runs on any evergreen browser; the practical floor is Safari 15.4+ / Chrome
+90+ / Firefox 90+ (a small shim backfills `AbortSignal.timeout` for the
+oldest of those).
 
 ## Credits and license
 

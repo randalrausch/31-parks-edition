@@ -11,7 +11,7 @@
  * Hidden info: `state` responses always run redactState(state, seatId) so the
  * wire never carries another seat's cards.
  */
-import { createGameState, applyAction } from "./actions";
+import { createGameState, applyAction, seatHumanPlayer, fillSeatsWithAI } from "./actions";
 import type { GameAction } from "./actions";
 import { applyPlayerAction, advanceAuthority, redactState } from "./authority";
 import { buildCreateSetup } from "./config";
@@ -109,30 +109,22 @@ export async function handleJoin(
   const idx = seat.idx;
   const name =
     (typeof body.name === "string" ? body.name.trim().slice(0, 40) : "") || `Player ${idx + 1}`;
-  const tookAI = seat.isAI === true;
+  // Public row seat (lobby display) …
   seat.isAI = false;
   seat.filled = true;
   seat.name = name;
   seat.avatar = "ranger";
   seat.emoji = null;
-
-  const players = (secret.state as unknown as { players: Record<string, unknown>[] }).players;
-  const player = players[idx];
-  player.isAI = false;
-  player.name = name;
-  player.avatarKey = "ranger";
-  if (tookAI) {
-    delete player.traits;
-    player.emoji = null;
-    player.image = null;
-  }
+  // … and the authoritative player, via the engine's pure seat transform (no
+  // hand-rolled mutation of the serialized state).
+  const nextState = seatHumanPlayer(secret.state, idx, name);
   const t = newToken();
   const seatTokens = { ...secret.seatTokens, [t]: idx };
 
   const next = bumped(game.rec, { seats });
   if (
     !(await store.update(gameId, game.etag, next, {
-      state: secret.state,
+      state: nextState,
       seatTokens,
     }))
   )
@@ -155,15 +147,17 @@ export async function handleStart(
   if (game.rec.status !== "lobby") return fail(409, "The game has already started.");
 
   const seats = game.rec.seats;
-  const state = secret.state as GameState & { players: { isAI: boolean }[] };
+  const aiSeatIdxs: number[] = [];
   for (const s of seats) {
     if (!s.isAI && !s.filled) {
-      s.isAI = true;
+      s.isAI = true; // public row (lobby display)
       s.filled = true;
-      state.players[s.idx].isAI = true;
+      aiSeatIdxs.push(s.idx);
     }
   }
-  const dealt = advanceAuthority(applyAction(secret.state, { type: "deal" } as GameAction));
+  // Fill the unclaimed seats with AI via the engine's pure transform, then deal.
+  const withAI = fillSeatsWithAI(secret.state, aiSeatIdxs);
+  const dealt = advanceAuthority(applyAction(withAI, { type: "deal" } as GameAction));
   const next = bumped(game.rec, { seats, status: "playing" });
   if (
     !(await store.update(gameId, game.etag, next, {

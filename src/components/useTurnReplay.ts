@@ -16,6 +16,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { NetworkSnapshot } from "../game/networkTransport";
 import type { LogEntry } from "../game/engine";
 import type { CardModel, Suit } from "../types";
+import { sndDeal, sndKnock } from "../game/sound";
 
 export interface ReplayView {
   /** Discard top to render while replaying (otherwise use the live top). */
@@ -59,7 +60,11 @@ interface Shown {
   discard: CardModel[];
 }
 
-export function useTurnReplay(snap: NetworkSnapshot | null, viewerSeat: number | null): ReplayView {
+export function useTurnReplay(
+  snap: NetworkSnapshot | null,
+  viewerSeat: number | null,
+  sound = false,
+): ReplayView {
   const [view, setView] = useState<ReplayView>(IDLE);
   const shownRef = useRef<Shown | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -159,11 +164,16 @@ export function useTurnReplay(snap: NetworkSnapshot | null, viewerSeat: number |
       };
       t += mine ? 0 : STEP_MS; // the viewer's own move shows immediately
       timers.current.push(setTimeout(() => setView(step), t));
+      // Opponent SFX, in step with the beat (the viewer's own move is sounded
+      // immediately by the board's action handlers, so skip `mine` here).
+      if (sound && !mine) {
+        timers.current.push(setTimeout(knocked ? sndKnock : sndDeal, t));
+      }
     }
     timers.current.push(setTimeout(settleNow, t + SETTLE_MS));
 
     return clear;
-  }, [snap, viewerSeat]);
+  }, [snap, viewerSeat, sound]);
 
   return view;
 }

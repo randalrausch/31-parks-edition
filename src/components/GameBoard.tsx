@@ -8,7 +8,7 @@
  * pieces live in BoardParts; this file owns the solo-only bits (AI "thinking"
  * view, pass-the-device cover, deal/game-over overlays).
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CardBack from "./CardBack";
 import HelpPanel from "./HelpPanel";
 import CoverScreen from "./CoverScreen";
@@ -28,9 +28,16 @@ import {
 } from "./BoardParts";
 import { bestSuit, bestHandScore, isAlive, roundNo, type GameState } from "../game/engine";
 import type { SoloGameApi } from "../game/useGame";
+import { clearSoloResuming } from "../game/soloPersist";
 import "./GameBoard.css";
 
 export default function GameBoard({ game }: { game: SoloGameApi }) {
+  // Reaching a mounted board means a resumed save rendered without crashing, so
+  // clear the resume guard (a save that DID crash never gets here, so its guard
+  // survives the reload and the next resume discards it). No-op for fresh games.
+  useEffect(() => {
+    clearSoloResuming();
+  }, []);
   const [helpOpen, setHelpOpen] = useState(false);
   const [parksOpen, setParksOpen] = useState(false);
   // Whether the live action feed is shown on the table. Defaults to on, and
@@ -52,6 +59,9 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
       }
       return next;
     });
+  // Whether the on-table feed is expanded to the whole deal (only offered when
+  // the "Full Action History" house rule is on — matches the online board).
+  const [showAllLog, setShowAllLog] = useState(false);
   const s = game.state;
   if (!s) return null;
 
@@ -62,6 +72,11 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
     .filter((x) => x.i !== s.cur && isAlive(x.p));
   const aliveCount = s.players.filter(isAlive).length;
   const topDiscard = s.discard[s.discard.length - 1] ?? null;
+  // The on-table feed shows the last full round (up to two entries per living
+  // player). With the "Full Action History" house rule on, let the player
+  // expand it to the whole deal — the same affordance the online board offers.
+  const recentLog = aliveCount * 2;
+  const logExpandable = s.options.fullHistory && s.log.length > recentLog;
 
   const isHumanTurn = !cur.isAI && (s.phase === "drawing" || s.phase === "discarding");
   const canDraw = !cur.isAI && s.phase === "drawing";
@@ -100,11 +115,14 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
             full round (up to two entries per living player: draw + discard). */}
       <BoardLog
         entries={s.log}
-        recentLimit={aliveCount * 2}
+        recentLimit={recentLog}
         visible={logOpen}
         canToggle
         onToggle={toggleLog}
         hideWhenEmpty
+        expandable={logExpandable}
+        showingAll={logExpandable && showAllLog}
+        onToggleExpand={() => setShowAllLog((v) => !v)}
       />
 
       <BoardHeader

@@ -14,6 +14,9 @@ export interface NetworkGameApi {
   snap: NetworkSnapshot | null;
   /** Set if the game couldn't be loaded (e.g. a stale/expired session). */
   error: string | null;
+  /** True once the live backend speaks a newer wire protocol — the tab must
+   * refresh. Terminal: sync has stopped. */
+  outdated: boolean;
   /** False while we've lost the connection and are trying to resync. */
   connected: boolean;
   /** A transient, dismissible message when a move couldn't be sent. */
@@ -51,6 +54,7 @@ function describeAction(a: GameAction): string {
 export function useNetworkGame(gameId: string, seatToken: string): NetworkGameApi {
   const [snap, setSnap] = useState<NetworkSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [outdated, setOutdated] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [connected, setConnected] = useState(true);
   const ref = useRef<NetworkTransport | null>(null);
@@ -72,11 +76,13 @@ export function useNetworkGame(gameId: string, seatToken: string): NetworkGameAp
       return;
     }
     setError(null);
+    setOutdated(false);
     setConnected(true);
     const t = new NetworkTransport(activeBackend, gameId, seatToken);
     ref.current = t;
     const unsub = t.subscribe(setSnap);
     const unsubStatus = t.onStatus(setConnected);
+    const unsubOutdated = t.onOutdated(() => setOutdated(true));
     // The initial connect fetch can reject (game gone / network) — surface it.
     t.connect().catch((e) => {
       elog("net", "connect failed", e);
@@ -97,6 +103,7 @@ export function useNetworkGame(gameId: string, seatToken: string): NetworkGameAp
       document.removeEventListener("visibilitychange", onVisible);
       unsub();
       unsubStatus();
+      unsubOutdated();
       t.destroy();
       ref.current = null;
       if (errorTimer.current) clearTimeout(errorTimer.current);
@@ -121,6 +128,7 @@ export function useNetworkGame(gameId: string, seatToken: string): NetworkGameAp
   return {
     snap,
     error,
+    outdated,
     connected,
     actionError,
     clearActionError,

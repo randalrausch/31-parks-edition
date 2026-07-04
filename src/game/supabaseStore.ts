@@ -35,7 +35,6 @@ function guardSize(state: unknown): void {
 /** Map a public `games` row (snake_case) to the shared GameRecord (camelCase). */
 function toRecord(row: {
   id: string;
-  code: string;
   status: string;
   version: number;
   seats: GameRecord["seats"];
@@ -44,7 +43,11 @@ function toRecord(row: {
 }): GameRecord {
   return {
     gameId: row.id,
-    code: row.code,
+    // The join code is not a column on the public row anymore (it moved to the
+    // unpublished game_codes lookup so Realtime can't broadcast it). It's a
+    // lookup key resolved via getByCode, not a property of the game record, so
+    // reads don't carry it — nothing at runtime reads rec.code off a getGame.
+    code: "",
     status: row.status,
     version: row.version,
     seats: row.seats,
@@ -84,13 +87,17 @@ export function makeSupabaseStore(admin: SupabaseClient): GameStore {
     // health probe reports 200 while the DB is unreachable. So rethrow on error
     // and let the router surface a 500 the client treats as "reconnecting".
     async getByCode(code) {
+      // Codes live in the unpublished game_codes lookup (see schema.sql), read
+      // here with the service-role key. Same "distinguish absent from error"
+      // discipline as the other reads — a transient failure must rethrow, not
+      // masquerade as "no such game".
       const { data, error } = await admin
-        .from("games")
-        .select("id")
+        .from("game_codes")
+        .select("game_id")
         .eq("code", code.toUpperCase())
         .maybeSingle();
       if (error) throw new Error(`getByCode: ${error.message}`);
-      return (data?.id as string | undefined) ?? null;
+      return (data?.game_id as string | undefined) ?? null;
     },
 
     async getGame(gameId) {
