@@ -164,7 +164,10 @@ describe("online multiplayer integration", () => {
   });
 
   it("rejects actions from a seat that isn't the current player", () => {
-    const server = new Server(seats(2, 0));
+    // Retry past an instant natural 31 (which resolves the deal to dealEnd, where
+    // drawDeck is no longer legal and the final assertion would flake false) — the
+    // same guard every other deal-dependent test here uses.
+    const server = newMidDealServer(seats(2, 0));
     const cur = server.state.cur;
     const other = (cur + 1) % 2;
     expect(server.act(other, { type: "drawDeck" })).toBe(false); // not your turn
