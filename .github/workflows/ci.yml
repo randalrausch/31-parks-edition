@@ -44,6 +44,10 @@ on:
         description: "Git ref (branch/tag/SHA) to build & deploy — defaults to the triggering commit. Use to redeploy a known-good release (rollback)."
         required: false
         default: ""
+      reason:
+        description: "Internal signal. release.yml sets this to 'release' when it re-dispatches on the version-bump commit — that commit is byte-identical to the already-tested merge commit (only version strings + regenerated engine.mjs differ), so the gate/api/e2e jobs skip and only the deploy runs. Leave blank for manual runs (full gate)."
+        required: false
+        default: ""
 
 # Superseded PR/branch runs are cancelled so a rapid series of pushes doesn't
 # queue up N full runs — you only ever wait on the latest. On main we NEVER
@@ -64,6 +68,10 @@ jobs:
   # (git commit count) only matters for a shipped artifact, which the deploy job
   # rebuilds with full history.
   gate:
+    # Skipped on the release re-dispatch (reason=release): that commit's code is
+    # identical to the merge commit this gate already ran on. Runs for every push,
+    # PR, and manual dispatch.
+    if: ${{ github.event.inputs.reason != 'release' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -111,6 +119,8 @@ jobs:
   # actually verified — the suite FAILS if Azurite is unreachable rather than
   # skipping silently. Runs in parallel with the web gate.
   api:
+    # Skipped on the release re-dispatch (reason=release) — see the gate job.
+    if: ${{ github.event.inputs.reason != 'release' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -169,6 +179,9 @@ jobs:
   # build. Its own job so the ~1-2 min browser install runs alongside the other
   # gates instead of stacked after them.
   e2e:
+    # Skipped on the release re-dispatch (reason=release) — see the gate job. This
+    # also avoids the container image pull on those runs.
+    if: ${{ github.event.inputs.reason != 'release' }}
     runs-on: ubuntu-latest
     # Run inside the prebuilt CI image (.github/ci-image) — it already carries
     # Node 20 + Chrome + the browser system libraries, so this job pulls a ready
@@ -224,10 +237,21 @@ jobs:
         # Builds the production bundle, then plays it in the image's baked Chrome.
         run: npm run test:e2e
 
-  # ---- Deploy (only on push to main, and only after every gate is green). ----
+  # ---- Deploy (only on push to main, and only when no gate FAILED). ----
+  # `always()` lets this run even when the gates were SKIPPED — that happens on the
+  # release re-dispatch (reason=release), where re-testing the version-bump commit
+  # would be redundant (its code is identical to the merge commit the gates already
+  # passed on). The result checks still block the deploy if any gate actually FAILED
+  # or was cancelled, so a red gate never ships.
   deploy:
     needs: [gate, api, e2e]
-    if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    if: >-
+      ${{ always()
+      && github.ref == 'refs/heads/main'
+      && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      && needs.gate.result != 'failure' && needs.gate.result != 'cancelled'
+      && needs.api.result != 'failure' && needs.api.result != 'cancelled'
+      && needs.e2e.result != 'failure' && needs.e2e.result != 'cancelled' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
