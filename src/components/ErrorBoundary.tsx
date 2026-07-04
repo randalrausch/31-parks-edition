@@ -7,6 +7,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { elog } from "../game/debug";
 import { activeBackend } from "../game/backend";
+import { clearSolo, clearSoloResuming, soloResumeCrashed } from "../game/soloPersist";
 import "./ErrorBoundary.css";
 
 interface State {
@@ -23,6 +24,14 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, St
   componentDidCatch(error: Error, info: ErrorInfo): void {
     elog("ui", "render crashed", error);
     if (info?.componentStack) console.error(info.componentStack);
+    // If the crash happened while a solo save was being resumed (the board never
+    // mounted to clear the guard), quarantine that save so the Reload below can't
+    // reload the same poison and crash again. Scoped to an in-flight resume, so a
+    // crash unrelated to persistence never discards a healthy game.
+    if (soloResumeCrashed()) {
+      clearSolo();
+      clearSoloResuming();
+    }
     // Best-effort off-device report so a production crash isn't invisible. Only
     // when an online backend is configured; solo/pass-and-play stays local.
     try {

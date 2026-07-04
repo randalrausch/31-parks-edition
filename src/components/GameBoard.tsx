@@ -8,7 +8,7 @@
  * pieces live in BoardParts; this file owns the solo-only bits (AI "thinking"
  * view, pass-the-device cover, deal/game-over overlays).
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CardBack from "./CardBack";
 import HelpPanel from "./HelpPanel";
 import CoverScreen from "./CoverScreen";
@@ -28,9 +28,16 @@ import {
 } from "./BoardParts";
 import { bestSuit, bestHandScore, isAlive, roundNo, type GameState } from "../game/engine";
 import type { SoloGameApi } from "../game/useGame";
+import { clearSoloResuming } from "../game/soloPersist";
 import "./GameBoard.css";
 
 export default function GameBoard({ game }: { game: SoloGameApi }) {
+  // Reaching a mounted board means a resumed save rendered without crashing, so
+  // clear the resume guard (a save that DID crash never gets here, so its guard
+  // survives the reload and the next resume discards it). No-op for fresh games.
+  useEffect(() => {
+    clearSoloResuming();
+  }, []);
   const [helpOpen, setHelpOpen] = useState(false);
   const [parksOpen, setParksOpen] = useState(false);
   // Whether the live action feed is shown on the table. Defaults to on, and

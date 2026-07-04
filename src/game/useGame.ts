@@ -24,7 +24,15 @@ import { LocalTransport, type Transport } from "./transport";
 import { aiTurnActions } from "./authority";
 import type { GameAction, NewGamePlayer } from "./actions";
 import { sndShuffle, sndDeal, sndKnock, sndCoin } from "./sound";
-import { saveSolo, loadSolo, clearSolo } from "./soloPersist";
+import { elog } from "./debug";
+import {
+  saveSolo,
+  loadSolo,
+  clearSolo,
+  soloResumeCrashed,
+  markSoloResuming,
+  clearSoloResuming,
+} from "./soloPersist";
 
 export interface PlayerConfig {
   name: string;
@@ -362,16 +370,40 @@ export function useGame(): SoloGameApi {
     if (authRef.current) return false; // a game is already in progress
     const saved = loadSolo();
     if (!saved) return false;
-    clearTimers();
-    presRef.current = freshPres();
-    const t = new LocalTransport();
-    transportRef.current = t;
-    t.load(saved);
-    authRef.current = t.getState();
-    advance();
+    // A resume guard left over from before a reload means the last attempt to
+    // restore THIS save crashed the app before the board could mount — the save
+    // is poison. Discard it rather than reload it into an endless crash loop.
+    if (soloResumeCrashed()) {
+      clearSolo();
+      clearSoloResuming();
+      elog("solo", "discarded a saved game that crashed on resume");
+      return false;
+    }
+    markSoloResuming(); // cleared by GameBoard's mount effect once it renders OK
+    try {
+      clearTimers();
+      presRef.current = freshPres();
+      const t = new LocalTransport();
+      transportRef.current = t;
+      t.load(saved);
+      authRef.current = t.getState();
+      advance();
+    } catch (err) {
+      // A synchronous throw while restoring — clear the poison and reset so the
+      // app lands on a clean setup screen instead of a broken board.
+      clearSolo();
+      clearSoloResuming();
+      transportRef.current?.destroy();
+      transportRef.current = null;
+      authRef.current = null;
+      presRef.current = freshPres();
+      render();
+      elog("solo", "failed to resume a saved game; discarded it", err);
+      return false;
+    }
     return true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clearTimers, advance]);
+  }, [clearTimers, advance, render]);
 
   /* ── derive the view state from auth + presentation overlay ───────────── */
   const view = ((): GameState | null => {
