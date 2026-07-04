@@ -251,6 +251,37 @@ describe("handlers", () => {
     expect(asGuest.state.players[1]!.hand.some((c) => c.id !== HIDDEN_CARD.id)).toBe(true);
   });
 
+  it("rejects a prototype-chain seatToken cleanly instead of crashing", async () => {
+    const store = makeMemoryStore();
+    const { gameId, host } = await newGame(store);
+
+    // A crafted token like "__proto__"/"toString"/"constructor" resolves to an
+    // inherited Object.prototype member on the seat-token map. It must read as
+    // "no such seat" (a clean reject), never slip past the guard and 500 on
+    // players[idx], and never map to a real seat (no auth bypass).
+    for (const bad of ["__proto__", "toString", "constructor", "hasOwnProperty", "valueOf"]) {
+      const act = await handleAct(store, { gameId, seatToken: bad, action: { type: "drawDeck" } });
+      expect(act.status).toBe(403);
+      // start is host-only (seat 0); a bogus token is never the host.
+      const start = await handleStart(store, { gameId, seatToken: bad });
+      expect(start.status).toBe(403);
+    }
+
+    // state: a bogus token is treated as a tokenless spectator (200, no seat, and
+    // no revealed hand), not a 500.
+    await handleStart(store, { gameId, seatToken: host.seatToken });
+    const spec = await handleState(store, { gameId, seatToken: "__proto__" });
+    expect(spec.status).toBe(200);
+    const body = spec.body as {
+      seatIndex: number | null;
+      state: { players: { hand: { id: string }[] }[] };
+    };
+    expect(body.seatIndex).toBeNull();
+    for (const p of body.state.players) {
+      expect(p.hand.every((c) => c.id === HIDDEN_CARD.id)).toBe(true);
+    }
+  });
+
   it("version reports the given provider", () => {
     const b = handleVersion("Azure").body as {
       ok: boolean;

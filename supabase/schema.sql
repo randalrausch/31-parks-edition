@@ -194,3 +194,16 @@ select cron.schedule('reap-31-parks', '17 3 * * *', $$
   delete from public.games where updated_at < now() - interval '14 days';
   delete from public.rate_counters where created_at < now() - interval '2 days';
 $$);
+
+-- ── Defense-in-depth: strip default anon/authenticated table grants ──
+-- Supabase grants broad privileges to anon/authenticated on new public tables by
+-- default (the reason 20260701120000 had to revoke SELECT on games). The secret
+-- tables are guarded by "RLS enabled + no policy", but that's a SINGLE barrier;
+-- revoke the underlying grant too so anon stays denied even if RLS is ever turned
+-- off. The Edge Function (service-role) and the SECURITY DEFINER RPCs don't depend
+-- on these grants. `games` keeps its column-scoped anon SELECT (Realtime + lobby)
+-- and loses only writes. (See migration 20260704120000_revoke_default_table_grants.sql.)
+revoke all on public.game_secrets  from public, anon, authenticated;
+revoke all on public.game_codes    from public, anon, authenticated;
+revoke all on public.rate_counters from public, anon, authenticated;
+revoke insert, update, delete on public.games from public, anon, authenticated;

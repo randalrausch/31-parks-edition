@@ -177,4 +177,37 @@ begin
   reset role;
 end $$;
 
+\echo '== grants: anon/authenticated hold NO privilege on the secret tables, and cannot write games =='
+do $$
+declare
+  r text;
+  m text;
+begin
+  -- Defense-in-depth (20260704120000): the secret tables must stay unreachable by
+  -- anon/authenticated even if RLS were ever disabled — so they must hold NO table
+  -- privilege at all. This asserts the GRANT state directly, independent of the
+  -- RLS checks above (an RLS-only guard would still pass if the grant leaked back).
+  foreach r in array array['anon', 'authenticated'] loop
+    foreach m in array array['SELECT', 'INSERT', 'UPDATE', 'DELETE'] loop
+      if has_table_privilege(r, 'public.game_secrets', m) then
+        raise exception '% still has % on game_secrets (grant must be revoked)', r, m;
+      end if;
+      if has_table_privilege(r, 'public.game_codes', m) then
+        raise exception '% still has % on game_codes (grant must be revoked)', r, m;
+      end if;
+      if has_table_privilege(r, 'public.rate_counters', m) then
+        raise exception '% still has % on rate_counters (grant must be revoked)', r, m;
+      end if;
+    end loop;
+
+    -- games: writes must be revoked. SELECT stays (Realtime + lobby need it; the
+    -- RLS block above proves anon can still read the public lobby row).
+    foreach m in array array['INSERT', 'UPDATE', 'DELETE'] loop
+      if has_table_privilege(r, 'public.games', m) then
+        raise exception '% can still % public.games (write grant must be revoked)', r, m;
+      end if;
+    end loop;
+  end loop;
+end $$;
+
 \echo '== OK: real-Postgres contract passed =='

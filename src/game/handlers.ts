@@ -61,6 +61,22 @@ function bumped(rec: GameRecord, patch: Partial<GameRecord>): GameRecord {
   };
 }
 
+/**
+ * Resolve a client-supplied seat token to its seat index, or `undefined` when
+ * the token isn't a real seat credential. `seatTokens` is a plain JSON object,
+ * so a crafted token like "__proto__", "toString", or "constructor" would
+ * otherwise resolve to an inherited Object.prototype member — a value that is
+ * neither `undefined` nor a number, letting it slip past a bare
+ * `seatTokens[token]` check and then crash on `players[idx]`. Only an OWN,
+ * numeric mapping is a valid seat; anything else reads as "no such seat".
+ */
+function seatIndexFor(seatTokens: Record<string, number>, token: unknown): number | undefined {
+  if (typeof token !== "string") return undefined;
+  if (!Object.prototype.hasOwnProperty.call(seatTokens, token)) return undefined;
+  const idx = seatTokens[token];
+  return typeof idx === "number" ? idx : undefined;
+}
+
 /* ─────────────────────────── create ─────────────────────────── */
 
 export async function handleCreate(
@@ -116,6 +132,10 @@ export async function handleJoin(
   const game = await store.getGame(gameId);
   const secret = await store.getSecret(gameId);
   if (!game || !secret) return fail(404, "No game with that code.");
+  // Same schema guard as start/act/state: refuse an old-build lobby game with a
+  // clear message instead of letting seatHumanPlayer crash the op with a 500.
+  const joinIncompat = incompatibleState(secret.state);
+  if (joinIncompat) return joinIncompat;
   if (game.rec.status !== "lobby") return fail(409, "That game has already started.");
 
   const seats = game.rec.seats;
@@ -160,7 +180,7 @@ export async function handleStart(
   if (!game || !secret) return fail(404, "That game no longer exists.");
   const startIncompat = incompatibleState(secret.state);
   if (startIncompat) return startIncompat;
-  if (secret.seatTokens[String(body.seatToken)] !== 0)
+  if (seatIndexFor(secret.seatTokens, body.seatToken) !== 0)
     return fail(403, "Only the host can start the game.");
   if (game.rec.status !== "lobby") return fail(409, "The game has already started.");
 
@@ -199,7 +219,7 @@ export async function handleAct(
   if (!game || !secret) return fail(404, "That game no longer exists.");
   const actIncompat = incompatibleState(secret.state);
   if (actIncompat) return actIncompat;
-  const idx = secret.seatTokens[String(body.seatToken)];
+  const idx = seatIndexFor(secret.seatTokens, body.seatToken);
   if (idx === undefined) return fail(403, "Your seat is no longer valid for this game.");
   if (typeof body.action !== "object" || body.action === null)
     return fail(400, "That move wasn't understood.");
@@ -234,8 +254,7 @@ export async function handleState(
   if (!game || !secret) return fail(404, "That game no longer exists.");
   const stateIncompat = incompatibleState(secret.state);
   if (stateIncompat) return stateIncompat;
-  const tok = body.seatToken;
-  const idx = typeof tok === "string" ? secret.seatTokens[tok] : undefined;
+  const idx = seatIndexFor(secret.seatTokens, body.seatToken);
   const seatId =
     idx !== undefined
       ? (secret.state as GameState & { players: { id: string }[] }).players[idx]!.id

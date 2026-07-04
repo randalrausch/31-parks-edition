@@ -478,7 +478,7 @@ var seatPlayerId = (idx) => `p${idx}`;
 var TRAIT_KEYS = ["bluff", "memory", "patience", "aggression", "risk"];
 var clampName = (s, fallback) => (typeof s === "string" ? s.trim().slice(0, 40) : "") || fallback;
 var clampKey = (s, fallback) => typeof s === "string" && /^[a-z0-9-]{1,32}$/.test(s) ? s : fallback;
-var clampImage = (s) => typeof s === "string" && s.length <= 512 ? s : void 0;
+var clampImage = (s) => typeof s === "string" && s.length <= 512 && /^\/(?!\/)[A-Za-z0-9._~/-]*$/.test(s) ? s : void 0;
 function clampTraits(t) {
   if (!t || typeof t !== "object") return void 0;
   const src = t;
@@ -514,7 +514,8 @@ function buildCreateSetup(config) {
       filled: isCreator
     });
   }
-  ai.forEach((c, j) => {
+  ai.forEach((entry, j) => {
+    const c = entry && typeof entry === "object" ? entry : {};
     const idx = humans + j;
     const aiName = clampName(c.name, `Bot ${j + 1}`);
     const avatar = clampKey(c.avatarKey, "ranger");
@@ -580,6 +581,12 @@ function bumped(rec, patch) {
     expiresAt: expiry()
   };
 }
+function seatIndexFor(seatTokens, token) {
+  if (typeof token !== "string") return void 0;
+  if (!Object.prototype.hasOwnProperty.call(seatTokens, token)) return void 0;
+  const idx = seatTokens[token];
+  return typeof idx === "number" ? idx : void 0;
+}
 async function handleCreate(store, body) {
   const { players, seats, options } = buildCreateSetup(body.config ?? {});
   const state = createGameState(players, options);
@@ -616,6 +623,8 @@ async function handleJoin(store, body) {
   const game = await store.getGame(gameId);
   const secret = await store.getSecret(gameId);
   if (!game || !secret) return fail(404, "No game with that code.");
+  const joinIncompat = incompatibleState(secret.state);
+  if (joinIncompat) return joinIncompat;
   if (game.rec.status !== "lobby") return fail(409, "That game has already started.");
   const seats = game.rec.seats;
   const seat = seats.find((s) => !s.isAI && !s.filled) ?? seats.find((s) => s.isAI);
@@ -645,7 +654,7 @@ async function handleStart(store, body) {
   if (!game || !secret) return fail(404, "That game no longer exists.");
   const startIncompat = incompatibleState(secret.state);
   if (startIncompat) return startIncompat;
-  if (secret.seatTokens[String(body.seatToken)] !== 0)
+  if (seatIndexFor(secret.seatTokens, body.seatToken) !== 0)
     return fail(403, "Only the host can start the game.");
   if (game.rec.status !== "lobby") return fail(409, "The game has already started.");
   const seats = game.rec.seats;
@@ -674,7 +683,7 @@ async function handleAct(store, body) {
   if (!game || !secret) return fail(404, "That game no longer exists.");
   const actIncompat = incompatibleState(secret.state);
   if (actIncompat) return actIncompat;
-  const idx = secret.seatTokens[String(body.seatToken)];
+  const idx = seatIndexFor(secret.seatTokens, body.seatToken);
   if (idx === void 0) return fail(403, "Your seat is no longer valid for this game.");
   if (typeof body.action !== "object" || body.action === null)
     return fail(400, "That move wasn't understood.");
@@ -697,8 +706,7 @@ async function handleState(store, body) {
   if (!game || !secret) return fail(404, "That game no longer exists.");
   const stateIncompat = incompatibleState(secret.state);
   if (stateIncompat) return stateIncompat;
-  const tok = body.seatToken;
-  const idx = typeof tok === "string" ? secret.seatTokens[tok] : void 0;
+  const idx = seatIndexFor(secret.seatTokens, body.seatToken);
   const seatId = idx !== void 0 ? secret.state.players[idx].id : null;
   return ok({
     status: game.rec.status,

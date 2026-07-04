@@ -47,9 +47,26 @@ export const clampName = (s: unknown, fallback: string): string =>
 export const clampKey = (s: unknown, fallback: string): string =>
   typeof s === "string" && /^[a-z0-9-]{1,32}$/.test(s) ? s : fallback;
 
-/** Bound an optional image URL length (undefined if absent/oversized). */
+/**
+ * Bound + origin-restrict an optional character-portrait URL. The official client
+ * only ever sends a same-origin, root-relative asset path (Vite resolves the
+ * bundled portrait to `/assets/chars/<hash>.webp`). But this value is untrusted:
+ * it's persisted in the game state and rendered as `<img src>` in EVERY other
+ * player's browser (authority.ts keeps all non-hand player fields in the redacted
+ * view). A hostile client that set an absolute URL like
+ * `https://attacker/pixel.gif?game=…` would turn each opponent's browser into a
+ * beacon leaking their IP / User-Agent / timing — a real deanonymization vector
+ * in a game where players are otherwise never connected to each other.
+ *
+ * So accept ONLY a root-relative path: it must start with a single `/` (no scheme,
+ * no `//host` authority) and contain nothing but safe path characters (which rules
+ * out backslashes, whitespace, tabs/newlines, `:` schemes, and `@` userinfo used
+ * in cross-origin bypass tricks). The deployed CSP `img-src 'self' data:` also
+ * blocks external images, but this stops relying on the CSP always being present
+ * and correct (e.g. a host that ignores the header files).
+ */
 export const clampImage = (s: unknown): string | undefined =>
-  typeof s === "string" && s.length <= 512 ? s : undefined;
+  typeof s === "string" && s.length <= 512 && /^\/(?!\/)[A-Za-z0-9._~/-]*$/.test(s) ? s : undefined;
 
 /** Coerce client traits into 1–5 integers, defaulting missing ones to 3. */
 export function clampTraits(t: unknown): Record<string, number> | undefined {
@@ -114,7 +131,12 @@ export function buildCreateSetup(config: CreateConfigInput): CreateSetup {
       filled: isCreator,
     });
   }
-  ai.forEach((c, j) => {
+  ai.forEach((entry, j) => {
+    // Each entry is untrusted: a client can send `ai: [null]` (a valid JSON
+    // array), so coerce a non-object entry to {} before reading fields rather
+    // than dereferencing null and crashing the create op with a 500. Mirrors the
+    // non-object guards already in clampTraits/sanitizeOptions.
+    const c = (entry && typeof entry === "object" ? entry : {}) as typeof entry;
     const idx = humans + j;
     const aiName = clampName(c.name, `Bot ${j + 1}`);
     const avatar = clampKey(c.avatarKey, "ranger");
