@@ -183,6 +183,14 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      # Inside a container job the workspace is owned by a different UID than the
+      # one git runs as, so git aborts with "detected dubious ownership". checkout
+      # scopes its own safe.directory to a temporary HOME, which doesn't carry over
+      # to later steps — so paths-filter's git diff (on push events; PRs use the API
+      # and dodge this) fails without it. Mark the workspace trusted for all
+      # subsequent git calls (paths-filter, and the version lookup in the build).
+      - name: Trust the workspace for git (container job)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       # Same safe-set gate as the api job: a docs/meta-only diff can't change the
       # built app, so skip the Playwright run. `every` + all-negation errs toward
       # RUNNING.
