@@ -8,6 +8,7 @@
 import { describe, it, expect } from "vitest";
 import { makeSupabaseStore, makeSupabaseRateLimiter } from "./supabaseStore";
 import { StateTooLargeError, type GameRecord, type SecretRecord } from "./store";
+import { runStoreContract } from "./storeContract";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Row = Record<string, unknown>;
@@ -243,4 +244,12 @@ describe("SupabaseGameStore", () => {
     expect(await rl.allowCreate("2.2.2.2", T)).toBe(true);
     expect(await rl.allowCreate("3.3.3.3", T)).toBe(false); // global cap of 2 hit
   });
+});
+
+// The same behavioral contract every adapter is held to (MemoryGameStore and
+// TableGameStore-on-Azurite run it too). Wiring it here — against a fresh fake
+// per test — closes the gap where "the two backends behave identically" was a
+// test for Table Storage but only a review assertion for Supabase.
+describe("SupabaseGameStore — shared store contract", () => {
+  runStoreContract(() => makeSupabaseStore(makeFake().client));
 });
