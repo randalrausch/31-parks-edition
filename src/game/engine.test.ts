@@ -139,12 +139,12 @@ describe("AI trait → behaviour mappings", () => {
     }
   });
   it("makes greedy chasers hold out for a strong hand", () => {
-    expect(aiKnockTarget(CHARACTERS_BY_ID["half-dome-hank"].traits)).toBeGreaterThanOrEqual(26);
-    expect(aiKnockTarget(CHARACTERS_BY_ID["summit-sam"].traits)).toBeGreaterThanOrEqual(26);
+    expect(aiKnockTarget(CHARACTERS_BY_ID["half-dome-hank"]!.traits)).toBeGreaterThanOrEqual(26);
+    expect(aiKnockTarget(CHARACTERS_BY_ID["summit-sam"]!.traits)).toBeGreaterThanOrEqual(26);
   });
   it("makes patient builders hold out too", () => {
-    expect(aiKnockTarget(CHARACTERS_BY_ID["paula-pine"].traits)).toBeGreaterThanOrEqual(26);
-    expect(aiKnockTarget(CHARACTERS_BY_ID["bison-bill"].traits)).toBeGreaterThanOrEqual(26);
+    expect(aiKnockTarget(CHARACTERS_BY_ID["paula-pine"]!.traits)).toBeGreaterThanOrEqual(26);
+    expect(aiKnockTarget(CHARACTERS_BY_ID["bison-bill"]!.traits)).toBeGreaterThanOrEqual(26);
   });
   it("scales bluff and sloppiness with their traits", () => {
     expect(

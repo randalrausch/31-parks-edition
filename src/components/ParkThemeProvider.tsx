@@ -10,7 +10,7 @@ import { DEFAULT_THEME_ID, THEMES_BY_ID, PLAYABLE_THEMES } from "../themes";
 /** Pick a random playable park so each new session opens on a different theme. */
 function randomPlayableId(): string {
   if (PLAYABLE_THEMES.length === 0) return DEFAULT_THEME_ID;
-  return PLAYABLE_THEMES[Math.floor(Math.random() * PLAYABLE_THEMES.length)].id;
+  return PLAYABLE_THEMES[Math.floor(Math.random() * PLAYABLE_THEMES.length)]!.id;
 }
 
 interface ThemeContextValue {
@@ -23,7 +23,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ParkThemeProvider({ children }: { children: ReactNode }) {
   const [themeId, setThemeIdState] = useState(randomPlayableId);
-  const theme = THEMES_BY_ID[themeId] ?? THEMES_BY_ID[DEFAULT_THEME_ID];
+  const theme = THEMES_BY_ID[themeId] ?? THEMES_BY_ID[DEFAULT_THEME_ID]!;
 
   const setThemeId = useCallback((id: string) => {
     const next = THEMES_BY_ID[id];

@@ -52,7 +52,7 @@ describe("redactState", () => {
     const s = dealMidDeal(mixed(["h0"], 2));
     const v = redactState(s, "h0");
     expect(v.players.find((p) => p.id === "h0")!.hand.map((c) => c.id)).toEqual(
-      s.players[0].hand.map((c) => c.id),
+      s.players[0]!.hand.map((c) => c.id),
     );
     expect(hidden(v.players.find((p) => p.id === "a0")!.hand)).toBe(true);
     expect(v.players.find((p) => p.id === "a0")!.hand.length).toBe(3); // count preserved
@@ -73,14 +73,14 @@ describe("redactState", () => {
     });
     let guard = 0;
     while (s.phase !== "dealEnd" && guard++ < 500) {
-      s = s.players[s.cur].isAI
+      s = s.players[s.cur]!.isAI
         ? advanceAuthority(s)
-        : applyPlayerAction(s, s.players[s.cur].id, { type: "knock" });
+        : applyPlayerAction(s, s.players[s.cur]!.id, { type: "knock" });
     }
     expect(s.phase).toBe("dealEnd");
     const v = redactState(s, "h0");
     expect(
-      v.players.every((p, i) => p.hand.every((c, j) => c.id === s.players[i].hand[j].id)),
+      v.players.every((p, i) => p.hand.every((c, j) => c.id === s.players[i]!.hand[j]!.id)),
     ).toBe(true);
   });
 });
@@ -90,7 +90,7 @@ describe("applyPlayerAction (authority)", () => {
     const s = applyAction(createGameState(mixed(["h0", "h1"], 0), DEFAULT_OPTIONS), {
       type: "deal",
     });
-    const wrong = s.players[(s.cur + 1) % 2].id;
+    const wrong = s.players[(s.cur + 1) % 2]!.id;
     expect(applyPlayerAction(s, wrong, { type: "drawDeck" })).toBe(s); // unchanged
   });
 
@@ -98,7 +98,7 @@ describe("applyPlayerAction (authority)", () => {
     const s = applyAction(createGameState(mixed(["h0", "h1"], 0), DEFAULT_OPTIONS), {
       type: "deal",
     });
-    const after = applyPlayerAction(s, s.players[s.cur].id, {
+    const after = applyPlayerAction(s, s.players[s.cur]!.id, {
       type: "drawDeck",
     });
     expect(after.phase).toBe("discarding");
@@ -112,7 +112,7 @@ describe("applyPlayerAction (authority)", () => {
       type: "deal",
     });
     expect(s.phase).toBe("drawing");
-    const after = applyPlayerAction(s, s.players[s.cur].id, {
+    const after = applyPlayerAction(s, s.players[s.cur]!.id, {
       type: "discard",
       cardId: "no-such-card",
     });
@@ -124,7 +124,7 @@ describe("applyPlayerAction (authority)", () => {
       type: "deal",
     });
     const before = JSON.stringify(s);
-    const after = applyPlayerAction(s, s.players[s.cur].id, {
+    const after = applyPlayerAction(s, s.players[s.cur]!.id, {
       type: "deal",
     } as unknown as GameAction);
     expect(JSON.stringify(after)).toBe(before);
@@ -168,7 +168,7 @@ describe("advanceAuthority", () => {
       { type: "deal" },
     );
     const settled = advanceAuthority(s);
-    const restsOnHuman = !settled.players[settled.cur].isAI;
+    const restsOnHuman = !settled.players[settled.cur]!.isAI;
     expect(restsOnHuman || settled.phase === "dealEnd" || settled.phase === "gameOver").toBe(true);
   });
 });
@@ -208,12 +208,12 @@ describe("full async games (only human actions submitted)", () => {
         expect(cardCount(s)).toBe(52);
         if (s.phase === "dealEnd") {
           const h = s.players.find((p) => !p.isAI) ?? s.players[0];
-          s = applyPlayerAction(s, h.id, { type: "nextDeal" });
+          s = applyPlayerAction(s, h!.id, { type: "nextDeal" });
           continue;
         }
         // Authority should always rest on a human turn here.
-        expect(s.players[s.cur].isAI).toBe(false);
-        const id = s.players[s.cur].id;
+        expect(s.players[s.cur]!.isAI).toBe(false);
+        const id = s.players[s.cur]!.id;
         if (s.phase === "drawing") {
           const act: GameAction = Math.random() < 0.3 ? { type: "knock" } : { type: "drawDeck" };
           const ns = applyPlayerAction(s, id, act);
@@ -221,7 +221,7 @@ describe("full async games (only human actions submitted)", () => {
         } else {
           s = applyPlayerAction(s, id, {
             type: "discard",
-            cardId: s.players[s.cur].hand[0].id,
+            cardId: s.players[s.cur]!.hand[0]!.id,
           });
         }
       }

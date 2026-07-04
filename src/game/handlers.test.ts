@@ -92,7 +92,7 @@ describe("handlers", () => {
     };
     expect(st.status).toBe("lobby");
     expect(st.seatIndex).toBe(0);
-    expect(st.seats[0].filled).toBe(true);
+    expect(st.seats[0]!.filled).toBe(true);
   });
 
   it("create retries with a fresh code past a collision", async () => {
@@ -162,7 +162,7 @@ describe("handlers", () => {
     // the deal instantly to 'dealEnd' — a rare but valid start outcome. Either
     // way the game is playing and cards were dealt.
     expect(["drawing", "discarding", "dealEnd"]).toContain(st.state.phase);
-    expect(st.state.players[0].hand.length).toBeGreaterThan(0);
+    expect(st.state.players[0]!.hand.length).toBeGreaterThan(0);
   });
 
   it("act: valid move bumps version; out-of-turn move is a no-op", async () => {
@@ -208,18 +208,18 @@ describe("handlers", () => {
       state: { players: { hand: { id: string }[] }[] };
     };
     // Opponent (seat 1) hand is fully hidden in the host's view, count preserved.
-    const oppHand = asHost.state.players[1].hand;
+    const oppHand = asHost.state.players[1]!.hand;
     expect(oppHand.length).toBeGreaterThan(0);
     expect(oppHand.every((c) => c.id === HIDDEN_CARD.id)).toBe(true);
     // The host's own hand is real (not all hidden).
-    expect(asHost.state.players[0].hand.some((c) => c.id !== HIDDEN_CARD.id)).toBe(true);
+    expect(asHost.state.players[0]!.hand.some((c) => c.id !== HIDDEN_CARD.id)).toBe(true);
 
     // From the guest's view, the relationship flips.
     const asGuest = (await handleState(store, { gameId, seatToken: guest.seatToken })).body as {
       state: { players: { hand: { id: string }[] }[] };
     };
-    expect(asGuest.state.players[0].hand.every((c) => c.id === HIDDEN_CARD.id)).toBe(true);
-    expect(asGuest.state.players[1].hand.some((c) => c.id !== HIDDEN_CARD.id)).toBe(true);
+    expect(asGuest.state.players[0]!.hand.every((c) => c.id === HIDDEN_CARD.id)).toBe(true);
+    expect(asGuest.state.players[1]!.hand.some((c) => c.id !== HIDDEN_CARD.id)).toBe(true);
   });
 
   it("version reports the given provider", () => {
@@ -264,7 +264,7 @@ describe("handlers", () => {
       });
       expect(res.status).toBe(200);
       expect((res.body as { ok: boolean }).ok).toBe(true);
-      const line = warn.mock.calls[0][0] as string;
+      const line = warn.mock.calls[0]![0] as string;
       expect(line.startsWith("client-error ")).toBe(true);
       const logged = JSON.parse(line.replace(/^client-error /, "")) as { message: string };
       expect(logged.message.length).toBe(500); // clamped

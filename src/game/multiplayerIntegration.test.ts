@@ -101,12 +101,12 @@ describe("online multiplayer (NetworkTransport over the shared handlers)", () =>
       const g = guestT.getState()!;
 
       // Host sees its own hand; the opponent's is fully hidden (count preserved).
-      expect(h.players[0].hand.some((c) => c.id !== HIDDEN_CARD.id)).toBe(true);
-      expect(h.players[1].hand.length).toBeGreaterThan(0);
-      expect(h.players[1].hand.every((c) => c.id === HIDDEN_CARD.id)).toBe(true);
+      expect(h.players[0]!.hand.some((c) => c.id !== HIDDEN_CARD.id)).toBe(true);
+      expect(h.players[1]!.hand.length).toBeGreaterThan(0);
+      expect(h.players[1]!.hand.every((c) => c.id === HIDDEN_CARD.id)).toBe(true);
       // From the guest's seat, the relationship flips.
-      expect(g.players[1].hand.some((c) => c.id !== HIDDEN_CARD.id)).toBe(true);
-      expect(g.players[0].hand.every((c) => c.id === HIDDEN_CARD.id)).toBe(true);
+      expect(g.players[1]!.hand.some((c) => c.id !== HIDDEN_CARD.id)).toBe(true);
+      expect(g.players[0]!.hand.every((c) => c.id === HIDDEN_CARD.id)).toBe(true);
     } finally {
       hostT.destroy();
       guestT.destroy();

@@ -26,9 +26,6 @@ or an issue.
   when `supabase/**` changes. The contract already runs against the Supabase fake,
   the memory store, and real Azurite; adding a real-Postgres run closes the last
   gap where a migration edit to the `commit_game` SQL could pass CI.
-- **Adopt `noUncheckedIndexedAccess`.** Pervasive array indexing is guarded by
-  `!` and manual bounds checks today; enabling this strictness would catch a real
-  bug class, but it's noisy to adopt and is its own focused change.
 
 ## Later / maybe
 

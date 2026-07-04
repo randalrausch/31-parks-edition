@@ -22,7 +22,7 @@ export interface HeaderGetter {
 /** Strip a trailing `:port` from `IPv4:port` and `[IPv6]:port`; leave bare IPs. */
 function stripPort(s: string): string {
   const bracketed = s.match(/^\[(.+)\]:\d+$/); // [::1]:443 → ::1
-  if (bracketed) return bracketed[1];
+  if (bracketed) return bracketed[1]!; // capture group present on a match
   if (/^\d{1,3}(\.\d{1,3}){3}:\d+$/.test(s)) return s.slice(0, s.lastIndexOf(":")); // 1.2.3.4:56
   return s; // bare IPv4, or bare IPv6 (which legitimately contains colons)
 }
@@ -49,7 +49,7 @@ export function clientIp(headers: HeaderGetter, trustedHeaders: string[] = []): 
       .split(",")
       .map((h) => stripPort(h.trim()))
       .filter(Boolean);
-    if (hops.length) return hops[hops.length - 1]; // right-most = added by infra
+    if (hops.length) return hops[hops.length - 1]!; // right-most = added by infra
   }
   return "unknown";
 }

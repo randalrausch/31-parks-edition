@@ -197,9 +197,9 @@ describe("router", () => {
       post({ op: "create", config: { creatorName: "R", humans: 2, ai: [], options: {} } }),
     );
     expect(events).toHaveLength(1);
-    expect(events[0].event).toBe("request");
-    expect(events[0].data).toMatchObject({ op: "create", status: 200 });
-    expect(typeof events[0].data.ms).toBe("number");
+    expect(events[0]!.event).toBe("request");
+    expect(events[0]!.data).toMatchObject({ op: "create", status: 200 });
+    expect(typeof events[0]!.data.ms).toBe("number");
 
     // A healthy read probe is NOT logged (kept out of the volume/cost path).
     await route(post({ op: "version" }));
@@ -207,6 +207,6 @@ describe("router", () => {
 
     // A failure IS logged even for a non-mutating op.
     await route(post({ op: "nope" }));
-    expect(events[events.length - 1].data).toMatchObject({ op: "nope", status: 400 });
+    expect(events[events.length - 1]!.data).toMatchObject({ op: "nope", status: 400 });
   });
 });

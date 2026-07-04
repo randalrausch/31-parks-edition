@@ -55,11 +55,11 @@ class Server {
   }
   /** What seat `i` is allowed to see (what the wire would carry to that client). */
   view(i: number): GameState {
-    return redactState(this.state, this.state.players[i].id);
+    return redactState(this.state, this.state.players[i]!.id);
   }
   /** Submit an action as seat `i`; returns whether it changed anything. */
   act(i: number, action: GameAction): boolean {
-    const seatId = this.state.players[i].id;
+    const seatId = this.state.players[i]!.id;
     const next = applyPlayerAction(this.state, seatId, action);
     const applied = next !== this.state;
     this.state = next;
@@ -89,14 +89,14 @@ describe("online multiplayer integration", () => {
 
     for (let viewer = 0; viewer < 5; viewer++) {
       const v = server.view(viewer);
-      const realHand = server.state.players[viewer].hand.map((c) => c.id);
+      const realHand = server.state.players[viewer]!.hand.map((c) => c.id);
       // Your own hand is real.
-      expect(v.players[viewer].hand.map((c) => c.id)).toEqual(realHand);
+      expect(v.players[viewer]!.hand.map((c) => c.id)).toEqual(realHand);
       // Everyone else's hand is hidden, but the count is preserved.
       for (let other = 0; other < 5; other++) {
         if (other === viewer) continue;
-        expect(hidden(v.players[other].hand)).toBe(true);
-        expect(v.players[other].hand.length).toBe(server.state.players[other].hand.length);
+        expect(hidden(v.players[other]!.hand)).toBe(true);
+        expect(v.players[other]!.hand.length).toBe(server.state.players[other]!.hand.length);
       }
       // The deck is never revealed; the discard pile is public.
       expect(hidden(v.deck)).toBe(true);
@@ -118,7 +118,7 @@ describe("online multiplayer integration", () => {
       grace: v.players.map((p) => p.grace),
       log: v.log.map((e) => `${e.actor}:${e.kind}`),
     });
-    const first = JSON.stringify(publicFacts(views[0]));
+    const first = JSON.stringify(publicFacts(views[0]!));
     for (const v of views.slice(1)) {
       expect(JSON.stringify(publicFacts(v))).toBe(first);
     }
@@ -142,13 +142,13 @@ describe("online multiplayer integration", () => {
           if (d.phase === "discarding")
             server.act(d.cur, {
               type: "discard",
-              cardId: d.players[d.cur].hand[0].id,
+              cardId: d.players[d.cur]!.hand[0]!.id,
             });
         }
       } else {
         server.act(cur, {
           type: "discard",
-          cardId: s.players[cur].hand[0].id,
+          cardId: s.players[cur]!.hand[0]!.id,
         });
       }
     }
@@ -156,8 +156,8 @@ describe("online multiplayer integration", () => {
     for (let viewer = 0; viewer < 3; viewer++) {
       const v = server.view(viewer);
       for (let p = 0; p < 3; p++) {
-        expect(v.players[p].hand.map((c) => c.id)).toEqual(
-          server.state.players[p].hand.map((c) => c.id),
+        expect(v.players[p]!.hand.map((c) => c.id)).toEqual(
+          server.state.players[p]!.hand.map((c) => c.id),
         );
       }
     }
@@ -197,7 +197,7 @@ describe("online multiplayer integration", () => {
           continue;
         }
         // It must be a human's turn here (AI are auto-run by the authority).
-        expect(s.players[s.cur].isAI).toBe(false);
+        expect(s.players[s.cur]!.isAI).toBe(false);
         const cur = s.cur;
         if (s.phase === "drawing") {
           if (s.knocker === null && Math.random() < 0.3) {
@@ -205,16 +205,16 @@ describe("online multiplayer integration", () => {
           } else {
             server.act(cur, { type: "drawDeck" });
             if (server.state.phase === "discarding") {
-              const h = server.state.players[server.state.cur].hand;
+              const h = server.state.players[server.state.cur]!.hand;
               server.act(server.state.cur, {
                 type: "discard",
-                cardId: h[rnd(h.length)].id,
+                cardId: h[rnd(h.length)]!.id,
               });
             }
           }
         } else {
-          const h = s.players[cur].hand;
-          server.act(cur, { type: "discard", cardId: h[rnd(h.length)].id });
+          const h = s.players[cur]!.hand;
+          server.act(cur, { type: "discard", cardId: h[rnd(h.length)]!.id });
         }
       }
       expect(server.state.phase).toBe("gameOver");

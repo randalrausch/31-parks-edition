@@ -58,11 +58,11 @@ describe("createGameState + deal", () => {
     let s = applyAction(createGameState(players, DEFAULT_OPTIONS), { type: "deal" });
     const cur = s.cur;
     s = applyAction(s, { type: "drawDeck" });
-    s = applyAction(s, { type: "discard", cardId: s.players[cur].hand[0].id });
+    s = applyAction(s, { type: "discard", cardId: s.players[cur]!.hand[0]!.id });
     // Every log entry's actorSeat points at the player whose name it recorded.
     for (const e of s.log) {
       expect(e.actorSeat).toBeTypeOf("number");
-      expect(s.players[e.actorSeat].name).toBe(e.actor);
+      expect(s.players[e.actorSeat]!.name).toBe(e.actor);
     }
     // The moves we just made were the first player's, at their seat.
     expect(s.log.every((e) => e.actorSeat === cur)).toBe(true);
@@ -72,18 +72,18 @@ describe("createGameState + deal", () => {
 describe("lobby seat transitions (join / start helpers)", () => {
   it("seatHumanPlayer converts an AI seat to a human, clearing AI-only fields", () => {
     const s0 = createGameState(aiPlayers(3), DEFAULT_OPTIONS);
-    expect(s0.players[1].isAI).toBe(true);
-    expect(s0.players[1].traits).toBeDefined();
+    expect(s0.players[1]!.isAI).toBe(true);
+    expect(s0.players[1]!.traits).toBeDefined();
 
     const s1 = seatHumanPlayer(s0, 1, "Randy");
     // New player is a human with no AI residue.
-    expect(s1.players[1].isAI).toBe(false);
-    expect(s1.players[1].name).toBe("Randy");
-    expect(s1.players[1].avatarKey).toBe("ranger");
-    expect(s1.players[1].traits).toBeUndefined();
-    expect(s1.players[1].emoji).toBeUndefined();
+    expect(s1.players[1]!.isAI).toBe(false);
+    expect(s1.players[1]!.name).toBe("Randy");
+    expect(s1.players[1]!.avatarKey).toBe("ranger");
+    expect(s1.players[1]!.traits).toBeUndefined();
+    expect(s1.players[1]!.emoji).toBeUndefined();
     // Pure: the input is untouched, and other seats are unchanged.
-    expect(s0.players[1].isAI).toBe(true);
+    expect(s0.players[1]!.isAI).toBe(true);
     expect(s1.players[0]).toEqual(s0.players[0]);
     expect(s1.players[2]).toEqual(s0.players[2]);
   });
@@ -94,9 +94,9 @@ describe("lobby seat transitions (join / start helpers)", () => {
     s = seatHumanPlayer(s, 1, "Human A");
     s = seatHumanPlayer(s, 2, "Human B");
     const filled = fillSeatsWithAI(s, [2]);
-    expect(filled.players[1].isAI).toBe(false); // untouched
-    expect(filled.players[2].isAI).toBe(true); // converted
-    expect(s.players[2].isAI).toBe(false); // input untouched
+    expect(filled.players[1]!.isAI).toBe(false); // untouched
+    expect(filled.players[2]!.isAI).toBe(true); // converted
+    expect(s.players[2]!.isAI).toBe(false); // input untouched
   });
 });
 
@@ -137,7 +137,7 @@ describe("turn actions", () => {
     });
     const after = applyAction(s, { type: "drawDeck" });
     expect(after.phase).toBe("discarding");
-    expect(after.players[after.cur].hand.length).toBe(4);
+    expect(after.players[after.cur]!.hand.length).toBe(4);
   });
 
   it("discard returns to a 3-card hand and passes the turn", () => {
@@ -158,7 +158,7 @@ describe("turn actions", () => {
     // be a natural 31 — a random 31 resolves the deal instead of passing the
     // turn (actions.ts: discard → resolveDeal vs endTurn), which made this test
     // flake on unlucky shuffles.
-    drew.players[cur].hand = [
+    drew.players[cur]!.hand = [
       { id: "2-clubs", rank: "2", suit: "clubs" },
       { id: "3-clubs", rank: "3", suit: "clubs" },
       { id: "4-diamonds", rank: "4", suit: "diamonds" },
@@ -166,9 +166,9 @@ describe("turn actions", () => {
     ];
     const discarded = applyAction(drew, {
       type: "discard",
-      cardId: drew.players[cur].hand[0].id,
+      cardId: drew.players[cur]!.hand[0]!.id,
     });
-    expect(discarded.players[cur].hand.length).toBe(3);
+    expect(discarded.players[cur]!.hand.length).toBe(3);
     expect(discarded.cur).not.toBe(cur);
   });
 
@@ -232,18 +232,18 @@ describe("invariants over many random full games", () => {
                 Math.random() < 0.5 ? { type: "drawDeck" } : { type: "takeDiscard" },
               );
               if (s.phase === "discarding") {
-                const h = s.players[s.cur].hand;
+                const h = s.players[s.cur]!.hand;
                 s = applyAction(s, {
                   type: "discard",
-                  cardId: h[rnd(h.length)].id,
+                  cardId: h[rnd(h.length)]!.id,
                 });
               }
             }
           } else {
-            const h = s.players[s.cur].hand;
+            const h = s.players[s.cur]!.hand;
             s = applyAction(s, {
               type: "discard",
-              cardId: h[rnd(h.length)].id,
+              cardId: h[rnd(h.length)]!.id,
             });
           }
         }

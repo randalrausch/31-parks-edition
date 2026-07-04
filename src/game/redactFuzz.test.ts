@@ -51,7 +51,7 @@ const allHidden = (hand: { id: string }[]) => hand.every((c) => c.id === HIDDEN_
 
 /** Assert redactState leaks nothing for a given viewer of the real state. */
 function assertNoLeak(real: GameState, viewer: number | null) {
-  const seatId = viewer === null ? null : real.players[viewer].id;
+  const seatId = viewer === null ? null : real.players[viewer]!.id;
   const v = redactState(real, seatId);
   // The showdown is revealed only to SEATED viewers; a null spectator never sees
   // another player's hand, even at deal end / game over.
@@ -65,8 +65,8 @@ function assertNoLeak(real: GameState, viewer: number | null) {
   expect(v.discard.map((c) => c.id)).toEqual(real.discard.map((c) => c.id));
 
   for (let p = 0; p < real.players.length; p++) {
-    const view = v.players[p].hand;
-    const truth = real.players[p].hand;
+    const view = v.players[p]!.hand;
+    const truth = real.players[p]!.hand;
     expect(view.length).toBe(truth.length); // count always preserved
     if (revealed || p === viewer) {
       // Your own hand (any time) and everyone's at reveal are the real cards.
@@ -105,22 +105,22 @@ describe("redactState never leaks (fuzz)", () => {
         states++;
         if (state.phase === "dealEnd") {
           const alive = state.players.findIndex(isAlive);
-          state = applyPlayerAction(state, state.players[alive >= 0 ? alive : 0].id, {
+          state = applyPlayerAction(state, state.players[alive >= 0 ? alive : 0]!.id, {
             type: "nextDeal",
           });
           continue;
         }
         const cur = state.cur;
-        const seatId = state.players[cur].id;
+        const seatId = state.players[cur]!.id;
         let action: GameAction;
         if (state.phase === "drawing") {
           action =
             state.knocker === null && rand() < 0.3 ? { type: "knock" } : { type: "drawDeck" };
         } else {
-          const hand = state.players[cur].hand;
+          const hand = state.players[cur]!.hand;
           action = {
             type: "discard",
-            cardId: hand[Math.floor(rand() * hand.length)].id,
+            cardId: hand[Math.floor(rand() * hand.length)]!.id,
           };
         }
         state = applyPlayerAction(state, seatId, action);

@@ -161,7 +161,7 @@ function randomInt(n: number): number {
   let x: number;
   do {
     crypto.getRandomValues(buf);
-    x = buf[0];
+    x = buf[0]!; // length-1 array, always present
   } while (x >= limit);
   return x % n;
 }
@@ -170,7 +170,7 @@ export function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = randomInt(i + 1);
-    [a[i], a[j]] = [a[j], a[i]];
+    [a[i], a[j]] = [a[j]!, a[i]!]; // i and j are both in-bounds
   }
   return a;
 }
@@ -184,13 +184,10 @@ export function makeDeck(): CardModel[] {
 /** Best single-suit total (or 30½ for three of a kind when enabled). */
 export function scoreHand(hand: CardModel[], opts: GameOptions): number {
   if (hand.length === 0) return 0;
-  if (
-    opts.threeOfAKind &&
-    hand.length === 3 &&
-    hand[0].rank === hand[1].rank &&
-    hand[1].rank === hand[2].rank
-  )
-    return 30.5;
+  if (opts.threeOfAKind && hand.length === 3) {
+    const [c0, c1, c2] = hand;
+    if (c0 && c1 && c2 && c0.rank === c1.rank && c1.rank === c2.rank) return 30.5;
+  }
   let best = 0;
   for (const suit of SUITS) {
     const t = hand.filter((c) => c.suit === suit).reduce((n, c) => n + cardValue(c.rank), 0);
@@ -307,7 +304,7 @@ export function aiGrabsHighDiscard(t: AITraits): boolean {
 
 /** Decide an AI's action for the draw phase (before any deck draw). */
 export function planAITurn(state: GameState): AIPlan {
-  const p = state.players[state.cur];
+  const p = state.players[state.cur]!; // current seat is always in-bounds
   const t = p.traits ?? DEFAULT_TRAITS;
   const hand = p.hand;
   const sc = scoreHand(hand, state.options);
