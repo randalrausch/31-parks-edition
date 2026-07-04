@@ -85,6 +85,12 @@ jobs:
       - name: Unit + fuzz tests
         run: npm test
 
+      - name: CI image is in sync with @playwright/test
+        # Fails loudly (with the exact fix) if the prebuilt CI image's pinned
+        # Playwright version drifts from the lockfile — so a Playwright bump can't
+        # silently outrun the image the e2e job runs in.
+        run: node scripts/check-ci-image.mjs
+
       - name: Edge bundle is in sync with the engine source
         run: |
           npm run build:edge
