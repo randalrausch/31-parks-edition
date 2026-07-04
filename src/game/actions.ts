@@ -26,6 +26,7 @@ import {
   isEliminated,
   takeDamage,
 } from "./engine";
+import { STATE_VERSION } from "./version";
 
 export type GameAction =
   | { type: "deal" } // start the next deal (deal cards to all living players)
@@ -306,6 +307,7 @@ export function createGameState(
     scoreHistory: [],
     log: [],
     winnerId: null,
+    stateVersion: STATE_VERSION,
   };
 }
 

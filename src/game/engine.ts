@@ -108,6 +108,9 @@ export interface GameState {
   /** Public action log for the current deal (most recent last). */
   log: LogEntry[];
   winnerId: string | null;
+  /** Persisted-state schema version (see STATE_VERSION). Optional so states from
+   * before versioning read as version 1; createGameState stamps the current one. */
+  stateVersion?: number;
 }
 
 /** A publicly-visible action — what everyone would see at a real table. */

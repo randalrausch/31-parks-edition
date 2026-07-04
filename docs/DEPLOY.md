@@ -216,11 +216,14 @@ Things to know before you revert:
   schema are forward-only. Reverting the app code does **not** undo a migration —
   write a new migration to reverse it if needed. Prefer additive, backward-
   compatible migrations so a code revert is always safe on its own.
-- **Never roll back across a `PROTOCOL_VERSION` bump.** Once the backend has
-  served a higher protocol, connected clients have been told to refresh to it.
-  Reverting the backend below that protocol would tell freshly-refreshed clients
-  they're *ahead* of the server, with no clean recovery. If a release that bumped
-  the protocol is bad, **roll forward** with a fix at the same-or-higher protocol.
+- **Never roll back across a `PROTOCOL_VERSION` or `STATE_VERSION` bump.** Once
+  the backend has served a higher protocol, connected clients have been told to
+  refresh to it; reverting below that protocol tells freshly-refreshed clients
+  they're *ahead* of the server, with no clean recovery. Likewise, once a game has
+  been persisted at a higher `STATE_VERSION`, an older engine can't read it and
+  will fail those games with "started on an older version" (410). If a release
+  that bumped either version is bad, **roll forward** with a fix at the
+  same-or-higher version.
 - **Redeploy a specific past version** by dispatching the deploy workflow against
   an older ref: in Actions → the deploy workflow → *Run workflow* → pick the tag
   or branch. Both deploy jobs are guarded to only run on `main`, so use a

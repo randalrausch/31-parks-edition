@@ -154,6 +154,11 @@ function aiDiscardIndex(hand, opts, playRandom) {
   return worst;
 }
 
+// src/game/version.ts
+var APP_VERSION = "0.7.5";
+var PROTOCOL_VERSION = 1;
+var STATE_VERSION = 1;
+
 // src/game/actions.ts
 var curPlayer = (s) => s.players[s.cur];
 function applyAction(state, action) {
@@ -371,7 +376,8 @@ function createGameState(players, options) {
     result: null,
     scoreHistory: [],
     log: [],
-    winnerId: null
+    winnerId: null,
+    stateVersion: STATE_VERSION
   };
 }
 function seatHumanPlayer(state, idx, name, avatarKey = "ranger") {
@@ -454,10 +460,6 @@ function redactState(state, viewerId) {
     )
   };
 }
-
-// src/game/version.ts
-var APP_VERSION = "0.7.5";
-var PROTOCOL_VERSION = 1;
 
 // src/game/config.ts
 var TRAIT_KEYS = ["bluff", "memory", "patience", "aggression", "risk"];
@@ -559,6 +561,14 @@ var fail = (status, error) => ({
 });
 var nowIso = () => (/* @__PURE__ */ new Date()).toISOString();
 var expiry = () => new Date(Date.now() + TTL_MS).toISOString();
+function incompatibleState(state) {
+  const v = state.stateVersion ?? 1;
+  if (v === STATE_VERSION) return null;
+  return fail(
+    410,
+    "This game was started on an older version and can't be continued. Please start a new game."
+  );
+}
 function bumped(rec, patch) {
   const now = nowIso();
   return {
@@ -632,6 +642,8 @@ async function handleStart(store, body) {
   const game = await store.getGame(gameId);
   const secret = await store.getSecret(gameId);
   if (!game || !secret) return fail(404, "That game no longer exists.");
+  const startIncompat = incompatibleState(secret.state);
+  if (startIncompat) return startIncompat;
   if (secret.seatTokens[String(body.seatToken)] !== 0)
     return fail(403, "Only the host can start the game.");
   if (game.rec.status !== "lobby") return fail(409, "The game has already started.");
@@ -659,6 +671,8 @@ async function handleAct(store, body) {
   const game = await store.getGame(gameId);
   const secret = await store.getSecret(gameId);
   if (!game || !secret) return fail(404, "That game no longer exists.");
+  const actIncompat = incompatibleState(secret.state);
+  if (actIncompat) return actIncompat;
   const idx = secret.seatTokens[String(body.seatToken)];
   if (idx === void 0) return fail(403, "Your seat is no longer valid for this game.");
   if (typeof body.action !== "object" || body.action === null)
@@ -680,6 +694,8 @@ async function handleState(store, body) {
   const game = await store.getGame(gameId);
   const secret = await store.getSecret(gameId);
   if (!game || !secret) return fail(404, "That game no longer exists.");
+  const stateIncompat = incompatibleState(secret.state);
+  if (stateIncompat) return stateIncompat;
   const tok = body.seatToken;
   const idx = typeof tok === "string" ? secret.seatTokens[tok] : void 0;
   const seatId = idx !== void 0 ? secret.state.players[idx].id : null;

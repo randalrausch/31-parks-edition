@@ -117,6 +117,13 @@ state shape, seat‑token semantics). A client on a different protocol than the 
 backend is asked to refresh. Bumping it (or any `src/game/` change) needs
 `npm run build:edge` re‑run and committed.
 
+`STATE_VERSION` (also in `version.ts`) is a sibling manual bump: raise it **only**
+when a change to the `GameState` shape makes an older serialized game unreadable
+by the current engine. The server stamps it into every new game and rejects a
+stored game whose version doesn't match (a clear "started on an older version"
+message instead of a crash), so in‑flight games can't silently break across such a
+deploy. A pure additive field usually does **not** need a bump.
+
 ## Reporting bugs / requesting features
 
 Use the issue templates. For a new theme idea, the **New theme** issue template

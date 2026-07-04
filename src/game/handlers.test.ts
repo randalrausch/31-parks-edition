@@ -124,6 +124,35 @@ describe("handlers", () => {
     expect(res.status).toBe(503);
   });
 
+  it("a fresh game reads at the current state version (200)", async () => {
+    const store = makeMemoryStore();
+    const c = (await handleCreate(store, CONFIG)).body as { gameId: string; seatToken: string };
+    const res = await handleState(store, { gameId: c.gameId, seatToken: c.seatToken });
+    expect(res.status).toBe(200);
+  });
+
+  it("rejects a stored state from an incompatible schema version (410)", async () => {
+    const store = makeMemoryStore();
+    const c = (await handleCreate(store, CONFIG)).body as { gameId: string; seatToken: string };
+    // Simulate a game persisted by an incompatible (older/newer) engine build.
+    const g = (await store.getGame(c.gameId))!;
+    const sec = (await store.getSecret(c.gameId))!;
+    (sec.state as { stateVersion?: number }).stateVersion = 999;
+    await store.update(c.gameId, g.etag, g.rec, sec);
+
+    for (const res of [
+      await handleState(store, { gameId: c.gameId, seatToken: c.seatToken }),
+      await handleAct(store, {
+        gameId: c.gameId,
+        seatToken: c.seatToken,
+        action: { type: "drawDeck" },
+      }),
+      await handleStart(store, { gameId: c.gameId, seatToken: c.seatToken }),
+    ]) {
+      expect(res.status).toBe(410);
+    }
+  });
+
   it("join seats a second human with a distinct token/index", async () => {
     const store = makeMemoryStore();
     const { host, guest } = await newGame(store);
