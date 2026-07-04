@@ -94,15 +94,15 @@ jobs:
             package-lock.json
             api/package-lock.json
 
-      # ---- Quality gate (web + api) ----
+      # ---- Install + package for deploy (NOT a second quality gate) ----
+      # ci.yml runs typecheck/lint/unit/fuzz + the api CAS suite on this exact
+      # commit in parallel, and branch protection requires those checks on PRs — so
+      # re-running them here only duplicated work and gave a flaky test a second
+      # chance to block a real deploy. Keep only what's needed to build and package
+      # the artifacts; `npm run build` (tsc -b + vite build) still type-checks the app.
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm test
       - run: npm run api:install
-      - run: npm run api:typecheck
-      - run: npm run api:test
-      - run: npm run api:build
+      - run: npm run api:build # bundles api/ into the Function App package deployed below
 
       # ---- Build the SPA pointed at the Azure Function ----
       - name: Build web (VITE_API_BASE -> Azure Functions)
