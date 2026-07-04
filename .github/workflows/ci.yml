@@ -237,6 +237,61 @@ jobs:
         # Builds the production bundle, then plays it in the image's baked Chrome.
         run: npm run test:e2e
 
+  # ---- Real-Postgres contract: boot a REAL local Supabase stack
+  # (`supabase start`) and assert the SQL directly with psql — the commit_game
+  # CAS, the create_game atomicity/collision, the anon EXECUTE revokes on the
+  # SECURITY DEFINER RPCs, and the RLS that hides game_secrets and the join code.
+  # This closes the gap where a migration edit could pass the fake-backed suite.
+  #
+  # Why psql and not the supabase-js store contract: Supabase CLI 2.71.1+ signs
+  # the local stack's JWTs with ES256 (asymmetric), which the local PostgREST
+  # doesn't verify for supabase-js — so no key (service_role JWT or the new
+  # sb_secret) authenticates as service_role locally (supabase/cli#4524, closed
+  # not-planned). Asserting the SQL over psql sidesteps the whole key/JWT layer,
+  # needs no pinned/legacy CLI, and tests exactly what a bad migration would
+  # break. The adapter code itself stays covered by the fake-backed
+  # runStoreContract in src/game/supabaseStore.test.ts.
+  #
+  # Docker-heavy, so it only spins up the stack when supabase/** actually changed;
+  # otherwise it no-ops green in seconds. Runs in parallel with the other gates.
+  supabase-contract:
+    # Skipped on the release re-dispatch (reason=release) — see the gate job.
+    if: ${{ github.event.inputs.reason != 'release' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - name: Did the backend (supabase/**) change?
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
+        id: changes
+        with:
+          filters: |
+            backend:
+              - 'supabase/**'
+      - name: Install Supabase CLI
+        if: steps.changes.outputs.backend == 'true'
+        uses: supabase/setup-cli@df56b21da46c98abb12a9804e4fb1f657773e333 # v2
+        with:
+          version: latest
+      # `supabase start` boots the local stack AND applies the migrations/ folder
+      # against real Postgres — so the SQL under test is exactly what `db push`
+      # ships. `db reset` re-applies from scratch for a deterministic schema.
+      - name: Start Supabase (real Postgres) and apply migrations
+        if: steps.changes.outputs.backend == 'true'
+        run: |
+          supabase start
+          supabase db reset
+      - name: Assert the SQL contract against real Postgres
+        if: steps.changes.outputs.backend == 'true'
+        run: |
+          # DB_URL is the local superuser connection string (postgres). psql is
+          # preinstalled on ubuntu runners. ON_ERROR_STOP turns any RAISE in the
+          # checks into a non-zero exit, failing the job.
+          DB_URL="$(supabase status -o json | jq -r '.DB_URL')"
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/contract.sql
+      - name: Stop Supabase
+        if: ${{ always() && steps.changes.outputs.backend == 'true' }}
+        run: supabase stop --no-backup || true
+
   # ---- Deploy (only on push to main, and only when no gate FAILED). ----
   # `always()` lets this run even when the gates were SKIPPED — that happens on the
   # release re-dispatch (reason=release), where re-testing the version-bump commit
@@ -244,14 +299,15 @@ jobs:
   # passed on). The result checks still block the deploy if any gate actually FAILED
   # or was cancelled, so a red gate never ships.
   deploy:
-    needs: [gate, api, e2e]
+    needs: [gate, api, e2e, supabase-contract]
     if: >-
       ${{ always()
       && github.ref == 'refs/heads/main'
       && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
       && needs.gate.result != 'failure' && needs.gate.result != 'cancelled'
       && needs.api.result != 'failure' && needs.api.result != 'cancelled'
-      && needs.e2e.result != 'failure' && needs.e2e.result != 'cancelled' }}
+      && needs.e2e.result != 'failure' && needs.e2e.result != 'cancelled'
+      && needs['supabase-contract'].result != 'failure' && needs['supabase-contract'].result != 'cancelled' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7

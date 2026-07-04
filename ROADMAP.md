@@ -16,13 +16,6 @@ or an issue.
 - **AI opponents** — a name, a catchphrase, and five trait numbers in
   `src/game/aiCharacters.ts`.
 
-## Near term
-
-- **Run the shared store contract against real Postgres in CI** (`supabase start`)
-  when `supabase/**` changes. The contract already runs against the Supabase fake,
-  the memory store, and real Azurite; adding a real-Postgres run closes the last
-  gap where a migration edit to the `commit_game` SQL could pass CI.
-
 ## Later / maybe
 
 - Persisted per-game state versioning with a migration path (so an engine change
