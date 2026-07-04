@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.4 — 2026-07-04
+
+### Fixes
+
+- revoke EXECUTE on the SECURITY DEFINER RPCs from anon (#59)
+
 All notable changes are recorded here. From v0.2.0 onward this file is
 maintained automatically by the release workflow from
 [Conventional Commits](https://www.conventionalcommits.org/) — see
