@@ -12,14 +12,16 @@
 # carries just Chrome, roughly halving the image and the pull.
 FROM node:20-bookworm-slim
 
-# `playwright install --with-deps chrome` downloads Google Chrome and apt-installs
-# its shared-library dependencies. ca-certificates is required for the HTTPS
-# download on the slim base; the rest of the OS libs come from --with-deps. Pin the
-# CLI to the repo's @playwright/test version (package.json) so the baked browser
-# matches the test runner — the gate's check-ci-image guard fails the build if these
-# drift. Clean apt lists to keep the layer small.
+# git is needed by actions/checkout (to build a real local repo rather than a
+# git-less REST download) and by dorny/paths-filter on push events; the full
+# Playwright base bundled it, but a slim Node base does not. ca-certificates is
+# required for the HTTPS Chrome download. `playwright install --with-deps chrome`
+# then downloads Google Chrome and apt-installs its shared libraries. Pin the CLI to
+# the repo's @playwright/test version (package.json) so the baked browser matches
+# the test runner — the gate's check-ci-image guard fails the build if these drift.
+# Clean apt lists to keep the layer small.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
+    && apt-get install -y --no-install-recommends ca-certificates git \
     && npx -y playwright@1.61.1 install --with-deps chrome \
     && rm -rf /var/lib/apt/lists/*
 
