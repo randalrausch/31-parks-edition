@@ -251,6 +251,16 @@ export function isAlive(p: GamePlayer): boolean {
 export function roundNo(s: GameState): number {
   return s.dealPlayers > 0 ? Math.max(1, Math.ceil(s.turnInDeal / s.dealPlayers)) : 1;
 }
+
+/**
+ * How many recent action-log entries the on-table feed shows before the
+ * "Full Action History" expander: up to two per living player (a draw + a
+ * discard), so it scales with table size instead of clipping mid-round. Shared
+ * by both boards so the window can't drift between the solo and online views.
+ */
+export function recentLogLimit(aliveCount: number): number {
+  return aliveCount * 2;
+}
 export function isEliminated(p: GamePlayer): boolean {
   return !isAlive(p);
 }

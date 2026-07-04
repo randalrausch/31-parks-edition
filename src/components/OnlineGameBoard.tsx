@@ -21,7 +21,14 @@ import {
   BoardFrame,
   SwitchParkModal,
 } from "./BoardParts";
-import { bestSuit, bestHandScore, isAlive, roundNo, type GameState } from "../game/engine";
+import {
+  bestSuit,
+  bestHandScore,
+  isAlive,
+  roundNo,
+  recentLogLimit,
+  type GameState,
+} from "../game/engine";
 import type { NetworkGameApi } from "../game/useNetworkGame";
 import { useTurnReplay } from "./useTurnReplay";
 import { sndShuffle, sndDeal, sndKnock, sndCoin } from "../game/sound";
@@ -152,7 +159,7 @@ export default function OnlineGameBoard({
   // host's "Full Action History" house rule is on, players may expand it to
   // the whole deal. We still gate by the paced-replay cursor so unrevealed
   // moves stay hidden.
-  const RECENT_LOG = aliveCount * 2;
+  const RECENT_LOG = recentLogLimit(aliveCount);
   const visibleLog = s.log.filter((e) => e.id <= replay.logThrough);
   const logExpandable = s.options.fullHistory && visibleLog.length > RECENT_LOG;
   const logShowingAll = logExpandable && showAllLog;
