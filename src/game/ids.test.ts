@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { makeCode, newToken } from "./ids";
 
 describe("ids", () => {
-  it("makeCode is 5 chars from the no-ambiguous alphabet", () => {
-    const allowed = /^[A-HJ-NP-Z2-9]{5}$/; // excludes I, O, 0, 1
+  it("makeCode is 6 chars from the no-ambiguous alphabet", () => {
+    const allowed = /^[A-HJ-NP-Z2-9]{6}$/; // excludes I, O, 0, 1
     const seen = new Set<string>();
     for (let i = 0; i < 1000; i++) {
       const c = makeCode();

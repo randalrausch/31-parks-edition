@@ -66,6 +66,11 @@ export async function fetchBackendInfo(): Promise<BackendInfo | null> {
       method: "POST",
       headers,
       body: JSON.stringify({ op: "version" }),
+      // Without a timeout a half-open connection during this preflight would
+      // hang the "Creating game…" panel forever (the create path gates on the
+      // compat probe). A null result is treated as "compatible", matching the
+      // existing unreachable-backend behavior, so a timeout degrades gracefully.
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) return null;
     const d = (await res.json()) as Partial<BackendInfo>;

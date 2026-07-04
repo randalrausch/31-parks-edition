@@ -1,7 +1,8 @@
 /**
  * 31 game engine — pure, framework-agnostic logic. No React, no DOM. The same
- * rules run client-side (local play) and server-side (the Supabase Edge
- * Function authority), which is what keeps online play tamper-resistant.
+ * rules run client-side (local play) and server-side on both authority backends
+ * (the Supabase Edge Function and the Azure Functions app), which is what keeps
+ * online play tamper-resistant.
  */
 import type { CardModel, Rank, Suit } from "../types";
 import { cardValue } from "../types";
@@ -112,7 +113,11 @@ export interface GameState {
 /** A publicly-visible action — what everyone would see at a real table. */
 export interface LogEntry {
   id: number;
+  /** Display name of the acting player (may be duplicated across seats). */
   actor: string;
+  /** Seat index of the acting player — the stable identity to match on, since
+   * display names aren't unique (two players can both be "Sam"). */
+  actorSeat: number;
   /** deck = drew a hidden card; takeDiscard / discard reveal the card. */
   kind: "deck" | "takeDiscard" | "discard" | "knock";
   card: CardModel | null;

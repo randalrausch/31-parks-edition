@@ -44,8 +44,9 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, St
         <div className="errbound__panel">
           <h1 className="errbound__title">Something went wrong</h1>
           <p className="errbound__msg">
-            The game hit an unexpected error. Reloading usually fixes it — your saved games are
-            unaffected.
+            The game hit an unexpected error. Reloading usually fixes it — an in-progress game picks
+            up where it left off (online games resume from the server; a solo game from its last
+            turn).
           </p>
           <p className="errbound__detail">{this.state.error.message}</p>
           <button className="errbound__btn" type="button" onClick={() => window.location.reload()}>

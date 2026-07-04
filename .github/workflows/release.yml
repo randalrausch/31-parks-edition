@@ -12,7 +12,12 @@ name: Release
 # A release updates src/game/version.ts (the single version source both backends
 # and the frontend read), regenerates the edge bundle, prepends CHANGELOG.md,
 # commits `chore(release): vX.Y.Z [skip ci]`, tags it, and publishes a GitHub
-# Release. The bot's push uses GITHUB_TOKEN, which does not re-trigger workflows.
+# Release. The bot's push uses GITHUB_TOKEN, which does NOT re-trigger push
+# workflows — so without help the release commit (new APP_VERSION + rebuilt
+# engine.mjs) would never deploy, and the live backends would keep reporting the
+# old version. To close that skew, the last step explicitly dispatches the deploy
+# workflows on main (GITHUB_TOKEN *can* trigger workflow_dispatch), so the
+# freshly-released commit is what actually ships.
 
 on:
   push:
@@ -21,6 +26,7 @@ on:
 permissions:
   contents: write
   issues: write
+  actions: write # dispatch the deploy workflows after a release (see final step)
 
 concurrency:
   group: release
@@ -84,6 +90,19 @@ jobs:
           gh release create "${{ steps.decide.outputs.tag }}" \
             --title "${{ steps.decide.outputs.tag }}" \
             --notes-file .release-notes.md
+
+      - name: Deploy the released commit
+        if: ${{ steps.decide.outputs.status == 'released' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # The release commit was pushed with GITHUB_TOKEN + [skip ci], so no
+          # push-triggered deploy ran. Dispatch the deploy workflows on main so
+          # the new APP_VERSION + rebuilt engine.mjs actually ship. Each workflow
+          # still gates its own deploy on the DEPLOY_* repo variables, so this is
+          # a no-op for any stack that isn't enabled.
+          gh workflow run ci.yml --ref main
+          gh workflow run azure.yml --ref main
 
       - name: Ask a human when the bump is ambiguous
         if: ${{ steps.decide.outputs.status == 'needs-input' }}

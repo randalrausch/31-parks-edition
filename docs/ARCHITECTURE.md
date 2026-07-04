@@ -28,7 +28,7 @@ the Azure path.
 
 ## Layers
 
-```bash
+```text
             ┌─────────────────────────────────────────────┐
             │  Pure core (src/game) — no React/DOM/net     │
             │                                             │
@@ -40,13 +40,29 @@ the Azure path.
                             │                 │
          ┌──────────────────┘                 └───────────────────┐
    Solo (in-browser)                       Online (server-authoritative)
-   useGame.ts                              Edge Function `supabase/functions/game`
-     drives applyAction + presentation       runs applyPlayerAction on shared core
-     (deal animation, AI pauses, cover,       NetworkTransport ◄─ Realtime pings
-      sound) via LocalTransport               useNetworkGame → redacted snapshots
-                            │                 │
+   useGame.ts                              Shared op layer (src/game):
+     drives applyAction + presentation       handlers.ts (5 ops) · router.ts
+     (deal animation, AI pauses, cover,       (dispatch/CORS/rate limit) ·
+      sound) via LocalTransport               store.ts · config.ts · ids.ts
+                            │                          │
+                            │              ┌───────────┴────────────┐
+                            │        GameStore adapter        GameStore adapter
+                            │        supabaseStore.ts         tableStore.ts (api/)
+                            │        (Postgres, Edge Fn)      (Table Storage, Azure Fn)
+                            │                          │
+                            │              NetworkTransport ◄─ change pings
+                            │              useNetworkGame → redacted snapshots
                             └──────► React UI (src/components) ◄───┘
 ```
+
+**The shared op layer is the key structural feature.** Both backends run the
+*same* `handlers.ts` (the five ops), `router.ts` (op dispatch + CORS + per-IP
+rate limiting), `store.ts` (the `GameStore` compare-and-set contract), plus
+`config.ts`/`ids.ts`/`clientIp.ts` — on top of the rules engine. Each backend
+supplies only a `GameStore` + rate-limiter **adapter** and a ~65-line entry shim
+that marshals its native request into the router. Supabase bundles this layer
+into `_shared/engine.mjs` (`npm run build:edge`); Azure imports it directly. So
+the two servers can't drift — only their storage adapter differs.
 
 ### The pure core (`src/game`)
 
@@ -97,11 +113,15 @@ another player's cards — the UI literally cannot show what it never received.
 
 ## Multiplayer model (online)
 
-Server‑authoritative and async. State lives in Postgres; the Edge Function is the
-only writer. A player's secret **seat token** authorizes their actions; only the
-current player can act; after a human acts the server auto‑plays any AI turns and
-persists, so the game waits patiently for the next human whenever they return.
-The web client and the backend deploy independently.
+Server‑authoritative and async. Authoritative state lives in the backend's
+datastore — Postgres (`game_secrets`) on Supabase, Table Storage (a per-game
+`secret` row) on Azure — and the server is the only writer. A player's secret
+**seat token** authorizes their actions; only the current player can act; after a
+human acts the server auto‑plays any AI turns and persists, so the game waits
+patiently for the next human whenever they return. Every write is an atomic
+compare-and-set gated by the game's version/ETag, so two racing writers can't
+half-commit (a loser gets a 409 "retry"). The web client and the backend deploy
+independently.
 
 ## Testing
 
@@ -109,7 +129,12 @@ The web client and the backend deploy independently.
 AI, plus fuzz tests that play hundreds of random games asserting invariants
 (52‑card conservation, clean elimination, monotonic tokens, termination, exactly
 one winner — or a draw on simultaneous final elimination) and redaction
-correctness. The Azure backend's op layer has HTTP-level handler tests
-(`api/src/game/handlers.test.ts`). A real-browser Playwright suite
-(`e2e/game.spec.ts`) runs the solo path in CI on every push; the online
-multiplayer path across two devices is still verified manually.
+correctness. The shared op layer has its own contract tests against
+`MemoryGameStore` with the real engine (`src/game/handlers.test.ts`,
+`router.test.ts`), and each backend adapter is exercised directly — Supabase via
+a fake client (`supabaseStore.test.ts`), Azure against Azurite in CI
+(`api/src/game/tableStore.test.ts`). A real-browser Playwright suite runs the
+solo path (`e2e/game.spec.ts`) and a **two-browser online round**
+(`e2e/deployment.spec.ts`: create → join → start → act, proving per-seat
+redaction) against a live deployment. See [TESTING.md](TESTING.md) for the full
+layering.

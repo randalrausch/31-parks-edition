@@ -53,7 +53,9 @@ const allHidden = (hand: { id: string }[]) => hand.every((c) => c.id === HIDDEN_
 function assertNoLeak(real: GameState, viewer: number | null) {
   const seatId = viewer === null ? null : real.players[viewer].id;
   const v = redactState(real, seatId);
-  const revealed = real.phase === "dealEnd" || real.phase === "gameOver";
+  // The showdown is revealed only to SEATED viewers; a null spectator never sees
+  // another player's hand, even at deal end / game over.
+  const revealed = viewer !== null && (real.phase === "dealEnd" || real.phase === "gameOver");
 
   // Conservation holds in every redacted view.
   expect(cardCount(v)).toBe(52);

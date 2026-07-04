@@ -41,6 +41,6 @@ export default defineConfig({
   // Vitest: pure game logic runs in Node; UI integration is tested separately.
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts", "scripts/**/*.test.mjs"],
+    include: ["src/**/*.test.ts", "scripts/**/*.test.mjs", "supabase/**/*.test.ts"],
   },
 });

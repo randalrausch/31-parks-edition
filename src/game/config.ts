@@ -9,7 +9,7 @@
  *
  * Everything here is pure and framework-free, exactly like the rest of the core.
  */
-import type { GameOptions } from "./engine";
+import { DEFAULT_OPTIONS, type GameOptions } from "./engine";
 import type { NewGamePlayer } from "./actions";
 
 /** Public, client-visible seat summary written to the lobby record (no cards). */
@@ -37,8 +37,6 @@ export interface CreateConfigInput {
 }
 
 const TRAIT_KEYS = ["bluff", "memory", "patience", "aggression", "risk"] as const;
-/** Boolean options that default to false — an explicit `true` turns them on. */
-const BOOL_OPTS = ["threeOfAKind", "grace", "knockPenalty", "sound", "fullHistory"] as const;
 
 /** Trim + cap a client string; fall back when empty/absent. */
 export const clampName = (s: unknown, fallback: string): string =>
@@ -66,13 +64,19 @@ export function clampTraits(t: unknown): Record<string, number> | undefined {
 
 /**
  * Whitelist client options into a full, trusted GameOptions. Unknown fields are
- * dropped; the action feed shows by default (only an explicit `false` hides it).
+ * dropped, and each option is defaulted from DEFAULT_OPTIONS: an option whose
+ * default is TRUE stays on unless the client explicitly sends `false` (e.g.
+ * grace, sound, showLog); an option whose default is FALSE stays off unless the
+ * client explicitly sends `true`. Deriving from DEFAULT_OPTIONS keeps a raw API
+ * caller's game identical to the app's, and means a newly-added option can't
+ * silently get the wrong default here.
  */
 export function sanitizeOptions(o: unknown): GameOptions {
   const src = (o && typeof o === "object" ? o : {}) as Record<string, unknown>;
-  const out: Record<string, boolean> = {};
-  for (const k of BOOL_OPTS) out[k] = src[k] === true;
-  out.showLog = src.showLog !== false;
+  const out = {} as Record<string, boolean>;
+  for (const k of Object.keys(DEFAULT_OPTIONS) as (keyof GameOptions)[]) {
+    out[k] = DEFAULT_OPTIONS[k] ? src[k] !== false : src[k] === true;
+  }
   return out as unknown as GameOptions;
 }
 

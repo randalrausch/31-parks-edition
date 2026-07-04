@@ -28,7 +28,9 @@ concurrency:
 
 jobs:
   deploy:
-    if: ${{ vars.DEPLOY_AZURE == 'true' }}
+    # Only ever deploy main. Without the ref guard, a workflow_dispatch on a
+    # feature branch would ship that branch straight to production.
+    if: ${{ github.ref == 'refs/heads/main' && vars.DEPLOY_AZURE == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7

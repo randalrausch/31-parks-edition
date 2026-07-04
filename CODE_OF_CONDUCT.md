@@ -24,8 +24,10 @@ conduct which could reasonably be considered inappropriate.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the project maintainers. All complaints will be reviewed and
-investigated promptly and fairly. Maintainers are obligated to respect the
+reported to the project maintainer at **randy.rausch@4ir.cloud**, or by opening a
+[private security advisory](https://github.com/randalrausch/31-parks-edition/security/advisories/new)
+if you'd prefer to report through GitHub. All complaints will be reviewed and
+investigated promptly and fairly. The maintainer is obligated to respect the
 privacy and security of the reporter of any incident.
 
 ## Attribution

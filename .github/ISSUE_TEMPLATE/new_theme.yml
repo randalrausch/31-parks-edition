@@ -1,0 +1,58 @@
+name: New park theme
+description: Propose (or contribute) a new national park theme
+title: "[theme] "
+labels: [theme, good first issue]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Adding a theme is a great first contribution! See
+        [docs/THEMES.md](../../docs/THEMES.md) for the full how-to. Use this issue
+        to plan it.
+  - type: input
+    id: park
+    attributes:
+      label: Park
+      description: Which national park?
+      placeholder: e.g. Yosemite
+    validations:
+      required: true
+  - type: input
+    id: palette
+    attributes:
+      label: Palette
+      description: 6–9 hex colors (base, surface, primary, secondary, soft, cream, gold, ember, draw). See an existing theme in src/themes.ts for the shape.
+      placeholder: "#123456, #234567, …"
+    validations:
+      required: false
+  - type: input
+    id: tagline
+    attributes:
+      label: Tagline
+      description: A one-line WPA-poster tagline.
+    validations:
+      required: false
+  - type: checkboxes
+    id: art-plan
+    attributes:
+      label: Art plan
+      options:
+        - label: Table scene image (landscape, ~1600×1000) or an SVG scene
+        - label: Card-back artwork (portrait) or an SVG emblem
+        - label: Avatars (reuse existing or new)
+  - type: input
+    id: victory
+    attributes:
+      label: Victory line
+      description: A celebratory one-liner for the winner.
+    validations:
+      required: false
+  - type: dropdown
+    id: contributing
+    attributes:
+      label: Are you contributing the implementation?
+      options:
+        - "Yes — I'll open a PR"
+        - "No — proposing it for someone else to pick up"
+    validations:
+      required: true

@@ -100,7 +100,7 @@ defaults):
 | Var | Default | Effect |
 |-----|---------|--------|
 | `ALLOWED_ORIGIN` | `*` | Comma-separated origin allow-list for CORS (mirrors the Azure backend). Set it to your site's origin(s) to stop other sites calling the function. |
-| `MAX_GAMES_PER_DAY` | `500` | Hard global cap on games created per day (durable, cross-instance). |
+| `MAX_GAMES_PER_DAY` | `2000` | Hard global cap on games created per day (durable, cross-instance). |
 | `MAX_GAMES_PER_IP_PER_HOUR` | `20` | Per-IP games/hour cap. |
 
 The two caps are enforced by a durable Postgres counter (`rate_counters` +
@@ -115,6 +115,32 @@ re‑bundle and redeploy:
 ```bash
 npm run build:edge && supabase functions deploy game
 ```
+
+## Verify lobby-code privacy after deploy (recommended)
+
+Anon clients get row-level SELECT on `public.games` (Realtime change pings need
+it), but the invite `code` column is hidden from them by a column grant
+(`20260701120000_restrict_lobby_code_select.sql`). Supabase Realtime's
+`postgres_changes` is expected to honor that column privilege and omit `code`
+from the broadcast payload — but this is version-dependent, so **verify it once
+after deploying**. With the anon (publishable) key, subscribe to changes on
+`public.games` and create a game in another tab; the change event's `new` record
+must NOT contain `code`:
+
+```js
+const c = supabase
+  .channel("verify")
+  .on("postgres_changes", { event: "*", schema: "public", table: "games" }, (p) =>
+    console.assert(!("code" in (p.new ?? {})), "LEAK: code present in Realtime payload"),
+  )
+  .subscribe();
+```
+
+If `code` ever appears, treat lobby codes as non-private until fixed (e.g. move
+`code` to a table that isn't in the `supabase_realtime` publication). The game
+itself stays safe regardless — no card data is ever in `games` (it lives in
+`game_secrets`, fully denied to anon) — only the invite code's secrecy is at
+stake.
 
 ## Deploying the web app with multiplayer
 

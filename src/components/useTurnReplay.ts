@@ -59,7 +59,7 @@ interface Shown {
   discard: CardModel[];
 }
 
-export function useTurnReplay(snap: NetworkSnapshot | null, viewerName: string | null): ReplayView {
+export function useTurnReplay(snap: NetworkSnapshot | null, viewerSeat: number | null): ReplayView {
   const [view, setView] = useState<ReplayView>(IDLE);
   const shownRef = useRef<Shown | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -94,20 +94,29 @@ export function useTurnReplay(snap: NetworkSnapshot | null, viewerName: string |
       return;
     }
 
+    // Seat index of a log entry's actor. Prefer the explicit actorSeat; fall
+    // back to matching by name for snapshots from an older server that predates
+    // the field. Matching on seat (not name) is what makes two same-named
+    // players replay correctly.
+    const seatOf = (e: LogEntry): number =>
+      typeof e.actorSeat === "number"
+        ? e.actorSeat
+        : s.players.findIndex((p) => p.name === e.actor);
+
     // New public actions since last shown, in chronological order.
     const fresh = s.log.filter((e) => e.id > shown.lastLogId);
-    const hasOpponent = fresh.some((e) => e.actor !== viewerName);
+    const hasOpponent = fresh.some((e) => seatOf(e) !== viewerSeat);
     if (fresh.length === 0 || !hasOpponent) {
       clear();
       settleNow();
       return;
     }
 
-    // One beat per player turn: group consecutive entries by the same actor.
+    // One beat per player turn: group consecutive entries by the same seat.
     const groups: LogEntry[][] = [];
     for (const e of fresh) {
       const g = groups[groups.length - 1];
-      if (g && g[0].actor === e.actor) g.push(e);
+      if (g && seatOf(g[0]) === seatOf(e)) g.push(e);
       else groups.push([e]);
     }
 
@@ -124,9 +133,9 @@ export function useTurnReplay(snap: NetworkSnapshot | null, viewerName: string |
     const running = [...shown.discard];
     let t = 0;
     for (const g of groups) {
-      const actor = g[0].actor;
-      const mine = actor === viewerName;
-      const seat = s.players.findIndex((p) => p.name === actor);
+      const actor = g[0].actor; // display name (fine for the recap text)
+      const seat = seatOf(g[0]);
+      const mine = seat === viewerSeat;
       for (const e of g) {
         if (e.kind === "discard" && e.card) running.push(e.card);
         else if (e.kind === "takeDiscard") running.pop();
@@ -154,7 +163,7 @@ export function useTurnReplay(snap: NetworkSnapshot | null, viewerName: string |
     timers.current.push(setTimeout(settleNow, t + SETTLE_MS));
 
     return clear;
-  }, [snap, viewerName]);
+  }, [snap, viewerSeat]);
 
   return view;
 }

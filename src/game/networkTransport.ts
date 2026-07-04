@@ -122,7 +122,7 @@ export class NetworkTransport {
       this.fetching = false;
       if (this.refetchQueued) {
         this.refetchQueued = false;
-        void this.refresh();
+        this.refresh().catch(() => {});
       }
     }
   }
@@ -135,14 +135,14 @@ export class NetworkTransport {
     // we refetch to catch anything missed.
     this.unsubscribe = this.backend.subscribe(
       this.gameId,
-      () => void this.refresh(),
+      () => this.refresh().catch(() => {}),
       (live) => {
         this.setLink(live);
-        if (live) void this.refresh();
+        if (live) this.refresh().catch(() => {});
       },
     );
     // Safety-net poll in case a change event is dropped (or push isn't offered).
-    this.pollTimer = setInterval(() => void this.refresh(), NetworkTransport.POLL_MS);
+    this.pollTimer = setInterval(() => this.refresh().catch(() => {}), NetworkTransport.POLL_MS);
   }
 
   async act(action: GameAction): Promise<void> {

@@ -1,13 +1,18 @@
 # 31 · National Parks Edition
 
+[![Play now](https://img.shields.io/badge/▶_play_now-play31.fun-2e7d32)](https://play31.fun)
+[![CI](https://github.com/randalrausch/31-parks-edition/actions/workflows/ci.yml/badge.svg)](https://github.com/randalrausch/31-parks-edition/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/randalrausch/31-parks-edition?sort=semver)](https://github.com/randalrausch/31-parks-edition/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 **31** is the classic push-your-luck card game: draw, discard, and build the
 highest hand you can in a single suit before someone knocks. This is a free,
 open-source implementation you can play solo against AI opponents, pass around
 one device with friends, or host online — themed for America's national
 parks, with ten AI opponents who each have their own personality.
 
-No installs, no accounts, no ads — clone it and you're playing in under a
-minute.
+**▶ [Play it now at play31.fun](https://play31.fun)** — or clone it and you're
+playing locally in under a minute. No installs, no accounts, no ads.
 
 <p align="center">
   <img src="docs/images/board-glacier.jpg" alt="A hand mid-round at Glacier National Park: three cards on the felt in front of a mountain-lake backdrop, with a discard pile and three AI opponents seated around the table." width="820">
@@ -86,7 +91,7 @@ online for friends who aren't in the room.
 Requires Node 20+.
 
 ```bash
-git clone git@github.com:randalrausch/31-parks-edition.git
+git clone https://github.com/randalrausch/31-parks-edition.git
 cd 31-parks-edition
 npm install
 npm run dev          # http://localhost:5173
@@ -185,6 +190,8 @@ docs/              Architecture, theming, backend, and deployment guides
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how the pure engine, reducer,
   transports, and authority fit together, and how hidden information is
   enforced.
+- [docs/TESTING.md](docs/TESTING.md) — the test layering (unit/fuzz → local E2E
+  → live-site deployment smoke) and what each layer covers.
 - [docs/THEMES.md](docs/THEMES.md) — how to add your own national park theme.
 - [docs/AZURE.md](docs/AZURE.md) — the optional **Azure** backend (Functions +
   Table Storage + Static Web Apps) via one `azd up`; scales to zero and
@@ -193,6 +200,8 @@ docs/              Architecture, theming, backend, and deployment guides
   (Edge Function + Postgres) with a one-command helper script.
 - [docs/DEPLOY.md](docs/DEPLOY.md) — deploy the static build to any host.
 - [CONTRIBUTING.md](CONTRIBUTING.md) — dev workflow, tests, and conventions.
+- [ROADMAP.md](ROADMAP.md) — where the project is headed (and easy first tasks).
+- [SUPPORT.md](SUPPORT.md) — where to get help or report a problem.
 
 ### Scripts
 
@@ -268,9 +277,11 @@ serializable TypeScript shared by the client and the server.
 
 ## Credits and license
 
-Original artwork is inspired by the public-domain visual language of 1930s
-WPA national-park posters; no copyrighted poster art is used. The bundled
-sound effects are CC0/public-domain samples (with a synthesized fallback);
-any replacements should also be CC0 (see `src/assets/sfx/README.md`).
+All original artwork in `src/assets/` and `docs/images/` (park scenes, opponent
+portraits, card backs, emblems) is created for this project and released under
+the same [MIT License](LICENSE) as the code. It's inspired by the public-domain
+visual language of 1930s WPA national-park posters; no copyrighted poster art is
+used. The bundled sound effects are CC0/public-domain samples (with a synthesized
+fallback); any replacements should also be CC0 (see `src/assets/sfx/README.md`).
 
 Licensed under the [MIT License](LICENSE).

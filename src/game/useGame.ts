@@ -24,6 +24,7 @@ import { LocalTransport, type Transport } from "./transport";
 import { aiTurnActions } from "./authority";
 import type { GameAction, NewGamePlayer } from "./actions";
 import { sndShuffle, sndDeal, sndKnock, sndCoin } from "./sound";
+import { saveSolo, loadSolo, clearSolo } from "./soloPersist";
 
 export interface PlayerConfig {
   name: string;
@@ -43,6 +44,8 @@ export interface GameConfig {
 export interface SoloGameApi {
   state: GameState | null;
   startGame: (config: GameConfig) => void;
+  /** Restore a persisted solo game if one exists; returns whether it did. */
+  resumeSolo: () => boolean;
   drawDeck: () => void;
   drawDiscard: () => void;
   selectCard: (idx: number) => void;
@@ -125,6 +128,9 @@ export function useGame(): SoloGameApi {
         pres.viewPhase = multipleHumans() ? "cover" : null;
         pres.status =
           a.knocker !== null ? `${a.players[a.knocker].name} knocked — your last hand` : "";
+        // Rest point: the game is now waiting on a human. Snapshot it so a
+        // reload/crash resumes here (never mid-animation or mid-AI-turn).
+        saveSolo(a);
         render();
       }
     } else if (a.phase === "dealEnd") {
@@ -132,8 +138,10 @@ export function useGame(): SoloGameApi {
       const rows = a.result?.rows ?? [];
       const maxDrop = rows.reduce((m, r) => Math.max(m, r.livesLost), 0);
       for (let c = 0; c < maxDrop; c++) after(c * 280, () => beep(sndCoin));
+      saveSolo(a); // rest point: waiting on the human to start the next deal
       render();
     } else {
+      if (a.phase === "gameOver") clearSolo(); // nothing left to resume
       pres.viewPhase = null;
       render();
     }
@@ -228,6 +236,7 @@ export function useGame(): SoloGameApi {
   const startGame = useCallback(
     (config: GameConfig) => {
       clearTimers();
+      clearSolo(); // a fresh game replaces any prior save
       presRef.current = freshPres();
       const players: NewGamePlayer[] = config.players.map((c, i) => ({
         id: `p${i}`,
@@ -337,12 +346,32 @@ export function useGame(): SoloGameApi {
 
   const newGame = useCallback(() => {
     clearTimers();
+    clearSolo();
     transportRef.current?.destroy();
     transportRef.current = null;
     authRef.current = null;
     presRef.current = freshPres();
     render();
   }, [clearTimers, render]);
+
+  // Restore a persisted solo game (only at app start, before any game is
+  // active). We only ever saved a human-rest or deal-end state, so advance()
+  // lands directly on the board / deal-end screen and waits — no re-deal
+  // animation, and never a stranded AI turn.
+  const resumeSolo = useCallback((): boolean => {
+    if (authRef.current) return false; // a game is already in progress
+    const saved = loadSolo();
+    if (!saved) return false;
+    clearTimers();
+    presRef.current = freshPres();
+    const t = new LocalTransport();
+    transportRef.current = t;
+    t.load(saved);
+    authRef.current = t.getState();
+    advance();
+    return true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clearTimers, advance]);
 
   /* ── derive the view state from auth + presentation overlay ───────────── */
   const view = ((): GameState | null => {
@@ -383,6 +412,7 @@ export function useGame(): SoloGameApi {
   return {
     state: view,
     startGame,
+    resumeSolo,
     drawDeck,
     drawDiscard,
     selectCard,

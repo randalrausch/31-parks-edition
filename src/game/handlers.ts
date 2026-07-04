@@ -19,7 +19,7 @@ import type { CreateConfigInput } from "./config";
 import { APP_VERSION, PROTOCOL_VERSION } from "./version";
 import type { GameState } from "./engine";
 import { makeCode, newToken } from "./ids";
-import type { GameRecord, GameStore, SecretRecord } from "./store";
+import { CodeCollisionError, type GameRecord, type GameStore, type SecretRecord } from "./store";
 
 const TTL_MS = 14 * 24 * 60 * 60 * 1000; // games expire 14 days after last activity
 
@@ -56,23 +56,36 @@ export async function handleCreate(
   const { players, seats, options } = buildCreateSetup(body.config ?? {});
 
   const state = createGameState(players, options);
-  const code = makeCode();
   const creatorToken = newToken();
   const gameId = crypto.randomUUID();
   const now = nowIso();
-  const rec: GameRecord = {
-    gameId,
-    code,
-    status: "lobby",
-    version: 0,
-    seats,
-    createdAt: now,
-    updatedAt: now,
-    expiresAt: expiry(),
-  };
   const secret: SecretRecord = { state, seatTokens: { [creatorToken]: 0 } };
-  await store.createGame(rec, secret);
-  return ok({ gameId, code, seatIndex: 0, seatToken: creatorToken });
+
+  // Generate a fresh code per attempt. A collision is astronomically unlikely at
+  // 32^6, but if the code already belongs to another game the store raises
+  // CodeCollisionError so we regenerate instead of clobbering a live lobby. The
+  // gameId is only ever persisted on the winning attempt, so it's safe to reuse.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = makeCode();
+    const rec: GameRecord = {
+      gameId,
+      code,
+      status: "lobby",
+      version: 0,
+      seats,
+      createdAt: now,
+      updatedAt: now,
+      expiresAt: expiry(),
+    };
+    try {
+      await store.createGame(rec, secret);
+      return ok({ gameId, code, seatIndex: 0, seatToken: creatorToken });
+    } catch (e) {
+      if (e instanceof CodeCollisionError) continue;
+      throw e;
+    }
+  }
+  return fail(503, "Couldn't allocate a unique game code — please try again.");
 }
 
 /* ──────────────────────────── join ──────────────────────────── */

@@ -4,7 +4,7 @@
  * a monotonic integer ETag per game; update() succeeds only if the caller's ETag
  * is current. Deep-clones on read/write so callers can't mutate stored state.
  */
-import type { GameRecord, GameStore, SecretRecord } from "./store";
+import { CodeCollisionError, type GameRecord, type GameStore, type SecretRecord } from "./store";
 
 interface Entry {
   rec: GameRecord;
@@ -20,7 +20,9 @@ export function makeMemoryStore(): GameStore {
 
   return {
     async createGame(rec, secret) {
-      codes.set(rec.code.toUpperCase(), rec.gameId);
+      const code = rec.code.toUpperCase();
+      if (codes.has(code)) throw new CodeCollisionError(rec.code);
+      codes.set(code, rec.gameId);
       games.set(rec.gameId, {
         rec: clone(rec),
         secret: clone(secret),

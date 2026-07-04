@@ -41,6 +41,26 @@ describe("router", () => {
     expect((res.body as { provider: string }).provider).toBe("Supabase");
   });
 
+  it("rejects a mismatched protocol with 426, but exempts version/health", async () => {
+    const route = makeRouter(makeMemoryStore(), {});
+    // A create with a stale protocol → 426 (client should refresh).
+    const bad = await route(
+      post({ op: "create", protocol: 999, config: { creatorName: "R", humans: 2, ai: [] } }),
+    );
+    expect(bad.status).toBe(426);
+    // version/health stay reachable so the client can discover the mismatch.
+    expect((await route(post({ op: "version", protocol: 999 }))).status).toBe(200);
+    expect((await route(post({ op: "health", protocol: 999 }))).status).toBe(200);
+  });
+
+  it("accepts a request with no protocol field (backward compatible)", async () => {
+    const route = makeRouter(makeMemoryStore(), {});
+    const res = await route(
+      post({ op: "create", config: { creatorName: "R", humans: 2, ai: [] } }),
+    );
+    expect(res.status).toBe(200);
+  });
+
   it("reflects the request origin when ALLOWED_ORIGIN lists several", async () => {
     const route = makeRouter(makeMemoryStore(), {
       allowedOrigin: "https://a.app, https://b.app",
@@ -87,7 +107,7 @@ describe("router", () => {
       }),
     );
     expect(res.status).toBe(200);
-    expect((res.body as { code: string }).code).toMatch(/^[A-HJ-NP-Z2-9]{5}$/);
+    expect((res.body as { code: string }).code).toMatch(/^[A-HJ-NP-Z2-9]{6}$/);
   });
 
   it("enforces the durable rate limiter on create (global/per-IP cap)", async () => {

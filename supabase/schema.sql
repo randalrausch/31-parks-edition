@@ -55,6 +55,38 @@ alter publication supabase_realtime add table public.games;
 -- Helpful index for joining by code.
 create index if not exists games_code_idx on public.games (code);
 
+-- ── Atomic create ──
+-- Inserts the public row AND the secret row in ONE transaction so a game can
+-- never half-exist (an orphan `games` row squatting a join code). Returns true
+-- on success, false if the code (or id) is already taken so the caller can
+-- regenerate the code and retry. Service-role only (see the revoke below).
+create or replace function public.create_game(
+  p_id uuid,
+  p_code text,
+  p_status text,
+  p_seats jsonb,
+  p_state jsonb,
+  p_seat_tokens jsonb
+) returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.games (id, code, status, version, seats)
+    values (p_id, p_code, p_status, 0, p_seats);
+  insert into public.game_secrets (game_id, state, seat_tokens)
+    values (p_id, p_state, p_seat_tokens);
+  return true;
+exception
+  when unique_violation then
+    return false;  -- code/id already exists — caller retries with a new code
+end;
+$$;
+
+revoke execute on function public.create_game(uuid, text, text, jsonb, jsonb, jsonb)
+  from public, anon, authenticated;
+
 -- ── Atomic optimistic-concurrency commit ──
 -- Bumps games.version (iff unchanged) AND writes the secret state in ONE
 -- transaction, so the public row and the secret row can never half-commit.
@@ -93,6 +125,14 @@ begin
 end;
 $$;
 
+-- SECURITY: this is a SECURITY DEFINER function in the PostgREST-exposed `public`
+-- schema, so Postgres' default EXECUTE-to-PUBLIC grant would let any anon caller
+-- invoke it over /rest/v1/rpc and forge authoritative state. It must ONLY be
+-- callable by the service-role Edge Function (which bypasses grants). Revoke the
+-- default grant. (See migration 20260703000000_revoke_rpc_execute.sql.)
+revoke execute on function public.commit_game(uuid, integer, text, jsonb, jsonb, jsonb)
+  from public, anon, authenticated;
+
 -- ── Durable, cross-instance rate-limit counter (for the `create` op) ──
 create table if not exists public.rate_counters (
   bucket     text        not null,
@@ -126,6 +166,11 @@ begin
   return v_count is not null;
 end;
 $$;
+
+-- SECURITY: service-role only (see the note on commit_game above). Without this,
+-- an anon caller could poison the durable rate counters to deny `create` globally.
+revoke execute on function public.incr_if_below(text, text, integer)
+  from public, anon, authenticated;
 
 -- ── Deterministic reaping (pg_cron) ──
 -- A daily job reaps abandoned games (14 days idle; cascades to game_secrets) and

@@ -19,6 +19,7 @@ import {
 } from "./handlers";
 import { StateTooLargeError, type GameStore } from "./store";
 import type { RateLimiter } from "./rateLimit";
+import { PROTOCOL_VERSION } from "./version";
 
 export interface RawRequest {
   method: string;
@@ -126,6 +127,21 @@ export function makeRouter(
     }
 
     op = String(body?.op ?? "");
+
+    // Wire-protocol gate. Clients tag each request with their PROTOCOL_VERSION;
+    // if it's present and doesn't match this server's, the client is stale
+    // across a breaking deploy — tell it to refresh (426) rather than letting it
+    // misparse a changed response shape. `version`/`health` are exempt so the
+    // client can still discover the mismatch. A missing field is allowed
+    // (older clients / manual callers), so this is backward compatible.
+    if (
+      typeof body?.protocol === "number" &&
+      body.protocol !== PROTOCOL_VERSION &&
+      op !== "version" &&
+      op !== "health"
+    )
+      return reply(426, { error: "A new version is available — please refresh the page." });
+
     if (op === "version") return reply(200, handleVersion(provider).body);
     if (op === "health") {
       const r = await handleHealth(store, provider);
@@ -176,8 +192,11 @@ export function makeRouter(
         });
       }
       // Log the real cause server-side (App Insights captures console.error);
-      // the client only ever sees a generic message.
-      console.error(`game op=${op} failed:`, (e as Error)?.stack ?? e);
+      // the client only ever sees a generic message. Include the gameId so a
+      // single stuck game's errors can be correlated (e.g. a persisted state that
+      // an engine change can no longer read — see handlers' engine guard).
+      const gid = typeof body?.gameId === "string" ? body.gameId : "-";
+      console.error(`game op=${op} game=${gid} failed:`, (e as Error)?.stack ?? e);
       return reply(500, {
         error: "Something went wrong on our end. Please try again.",
       });

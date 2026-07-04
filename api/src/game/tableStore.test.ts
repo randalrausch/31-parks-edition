@@ -29,6 +29,18 @@ async function azuriteReachable(): Promise<boolean> {
 let up = false;
 beforeAll(async () => {
   up = await azuriteReachable();
+  // Honesty gate: if a connection string is configured (CI sets TABLES_CONNECTION)
+  // but the emulator can't be reached, FAIL rather than silently skip — otherwise
+  // the entire Azure CAS/atomicity guarantee could rot undetected behind a green
+  // build. Only a completely unset TABLES_CONNECTION (plain local unit runs)
+  // legitimately skips.
+  if (CONN && !up) {
+    throw new Error(
+      "TABLES_CONNECTION is set but Azurite is unreachable. The Table Storage " +
+        "CAS suite must run when a connection is configured (CI). Start Azurite " +
+        "(`npx azurite`) or unset TABLES_CONNECTION for a plain unit run.",
+    );
+  }
   if (!up) console.warn("Azurite not reachable — skipping TableGameStore suite.");
 });
 
@@ -130,3 +142,17 @@ describe("TableGameStore (Azurite)", () => {
     expect(await store.getGame(live.rec.gameId)).not.toBeNull();
   });
 });
+
+// The shared cross-adapter contract (create/collision/CAS), run against the real
+// Table Storage adapter under Azurite. Registered only when a connection is
+// configured; if it's set but the emulator is down, these fail (matching the
+// honesty gate above) rather than silently skipping. Same suite runs against
+// MemoryGameStore in src/game/storeContract.test.ts, so a drift between adapters
+// surfaces as a failing test.
+if (CONN) {
+  const { makeTableStore } = await import("./tableStore.js");
+  const { runStoreContract } = await import("../../../src/game/storeContract");
+  describe("GameStore contract — TableGameStore (Azurite)", () => {
+    runStoreContract(() => makeTableStore());
+  });
+}

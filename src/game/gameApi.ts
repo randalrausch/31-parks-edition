@@ -18,6 +18,8 @@ export class BackendError extends Error {
     message: string,
     readonly status?: number,
     readonly conflict = false,
+    /** HTTP 426: the client's PROTOCOL_VERSION no longer matches the server. */
+    readonly outdated = false,
   ) {
     super(message);
     this.name = "BackendError";

@@ -58,9 +58,9 @@ export default function JoinModal({
             className="join__input join__input--code"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
-            maxLength={5}
+            maxLength={6}
             autoCapitalize="characters"
-            placeholder="ABCDE"
+            placeholder="ABCDEF"
           />
         </label>
         <label className="join__label">

@@ -11,7 +11,13 @@
  * module bundles into engine.mjs without pulling the SDK into the bundle.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { StateTooLargeError, type GameRecord, type GameStore, type SecretRecord } from "./store";
+import {
+  CodeCollisionError,
+  StateTooLargeError,
+  type GameRecord,
+  type GameStore,
+  type SecretRecord,
+} from "./store";
 import { makeLimiter, type Counter, type RateLimiter } from "./rateLimit";
 
 // Mirrors the Azure Table Storage cap so a game behaves identically on either
@@ -54,35 +60,42 @@ export function makeSupabaseStore(admin: SupabaseClient): GameStore {
   return {
     async createGame(rec, secret) {
       guardSize(secret.state);
-      // Supply the id explicitly (handlers.ts generates it client-side) rather
-      // than letting the column default generate one.
-      const { error: gErr } = await admin.from("games").insert({
-        id: rec.gameId,
-        code: rec.code,
-        status: rec.status,
-        version: 0,
-        seats: rec.seats,
+      // create_game inserts the public row and the secret row in ONE
+      // transaction (no orphan-row window) and returns false on a code/id
+      // collision so the caller can retry with a fresh code — mirroring the
+      // Azure store's collision-safe create.
+      const { data, error } = await admin.rpc("create_game", {
+        p_id: rec.gameId,
+        p_code: rec.code,
+        p_status: rec.status,
+        p_seats: rec.seats,
+        p_state: secret.state,
+        p_seat_tokens: secret.seatTokens,
       });
-      if (gErr) throw new Error(`createGame(games): ${gErr.message}`);
-      const { error: sErr } = await admin.from("game_secrets").insert({
-        game_id: rec.gameId,
-        state: secret.state,
-        seat_tokens: secret.seatTokens,
-      });
-      if (sErr) throw new Error(`createGame(secret): ${sErr.message}`);
+      if (error) throw new Error(`createGame(create_game): ${error.message}`);
+      if (data === false) throw new CodeCollisionError(rec.code);
     },
 
+    // Reads MUST distinguish "row absent" from "DB error". With maybeSingle(),
+    // a missing row is { data: null, error: null }; a transient failure is
+    // { data: null, error }. Swallowing the error and returning null would make
+    // a blip look like a permanent 404 — the handler then tells the player the
+    // game no longer exists (they may leave and lose their seat token), and the
+    // health probe reports 200 while the DB is unreachable. So rethrow on error
+    // and let the router surface a 500 the client treats as "reconnecting".
     async getByCode(code) {
-      const { data } = await admin
+      const { data, error } = await admin
         .from("games")
         .select("id")
         .eq("code", code.toUpperCase())
         .maybeSingle();
+      if (error) throw new Error(`getByCode: ${error.message}`);
       return (data?.id as string | undefined) ?? null;
     },
 
     async getGame(gameId) {
-      const { data } = await admin.from("games").select("*").eq("id", gameId).maybeSingle();
+      const { data, error } = await admin.from("games").select("*").eq("id", gameId).maybeSingle();
+      if (error) throw new Error(`getGame: ${error.message}`);
       if (!data) return null;
       const rec = toRecord(data);
       // The client-visible version doubles as the optimistic-concurrency token.
@@ -90,11 +103,12 @@ export function makeSupabaseStore(admin: SupabaseClient): GameStore {
     },
 
     async getSecret(gameId) {
-      const { data } = await admin
+      const { data, error } = await admin
         .from("game_secrets")
         .select("*")
         .eq("game_id", gameId)
         .maybeSingle();
+      if (error) throw new Error(`getSecret: ${error.message}`);
       if (!data) return null;
       return {
         state: data.state as SecretRecord["state"],

@@ -14,14 +14,19 @@ threats we design against, and how:
 
 - **Cheating / seeing hidden cards.** All authoritative state lives server-side;
   the wire only ever carries a per-seat *redacted* view (`redactState`). A
-  property/fuzz test (`src/game/redactFuzz.test.ts`) asserts no seat (and no
-  spectator) ever receives another player's cards or the deck.
+  property/fuzz test (`src/game/redactFuzz.test.ts`) asserts no seat ever receives
+  another player's cards or the deck. The end-of-deal showdown is revealed only to
+  **seated** players; a tokenless caller (no valid seat token) never sees another
+  player's hand even at reveal, so a game isn't exposed just because its id is
+  guessable.
 - **Seat hijacking.** Each seat is bound to an unguessable per-seat **token**
   (UUID v4) issued on create/join and stored only in the secret record. Actions
   are authorized by token, not by client-supplied seat index.
-- **Guessing game codes.** Join codes are 5 chars from a 32-symbol alphabet
-  (no I/O/0/1) drawn from a CSPRNG (~33.5M combinations). Combined with the
-  create-rate cap and the 14-day game TTL, the window for brute force is small.
+- **Guessing game codes.** Join codes are 6 chars from a 32-symbol alphabet
+  (no I/O/0/1) drawn from a CSPRNG (~1.07B combinations). Combined with the
+  per-IP request cap and the 14-day game TTL, the window for brute force is
+  small. Codes are allocated collision-safely on both backends (a duplicate is
+  regenerated, never allowed to clobber a live lobby).
 - **Floods / abuse / cost-runaway.** Anonymous endpoints are defended in layers so
   no attack, bug, or spike can drive up a cloud bill: a cheap per-instance limiter
   (a per-IP request rate, plus a **per-seat cap on `act`** so a single seat token —
@@ -35,8 +40,12 @@ threats we design against, and how:
   are reaped, bounding storage growth. See `docs/AZURE.md → Cost protection`.
 - **Backend data access.** On Azure, game data in Table Storage is reached via the
   Function App's **managed identity** (no data connection string). On Supabase,
-  the secret table is service-role only (RLS denies anon access). The browser only
-  ever holds client-safe values (publishable/anon key, or the public API URL).
+  the secret table is service-role only (RLS denies anon access), and the
+  `SECURITY DEFINER` RPCs (`commit_game`, `incr_if_below`) have `EXECUTE`
+  **revoked from anon/authenticated** so they can't be called over PostgREST to
+  bypass the Edge Function — a CI test (`supabase/schema.grants.test.ts`) enforces
+  that every definer RPC is revoked. The browser only ever holds client-safe
+  values (publishable/anon key, or the public API URL).
 
 ### Explicit non-goals
 

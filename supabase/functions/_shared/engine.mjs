@@ -15,6 +15,14 @@ var DEFAULT_TRAITS = {
   aggression: 3,
   risk: 3
 };
+var DEFAULT_OPTIONS = {
+  threeOfAKind: false,
+  grace: true,
+  knockPenalty: false,
+  sound: true,
+  showLog: true,
+  fullHistory: false
+};
 function randomInt(n) {
   const limit = Math.floor(4294967295 / n) * n;
   const buf = new Uint32Array(1);
@@ -332,7 +340,7 @@ function reshuffle(s) {
 }
 function log(s, kind, card) {
   const id = s.log.length === 0 ? 0 : s.log[s.log.length - 1].id + 1;
-  s.log.push({ id, actor: s.players[s.cur].name, kind, card });
+  s.log.push({ id, actor: s.players[s.cur].name, actorSeat: s.cur, kind, card });
   if (s.log.length > 30) s.log.shift();
 }
 function createGameState(players, options) {
@@ -418,7 +426,7 @@ function settledOrSame(state, next) {
   return JSON.stringify(next) === JSON.stringify(state) ? state : next;
 }
 function redactState(state, viewerId) {
-  const revealAll = state.phase === "dealEnd" || state.phase === "gameOver";
+  const revealAll = viewerId !== null && (state.phase === "dealEnd" || state.phase === "gameOver");
   return {
     ...state,
     deck: state.deck.map(() => HIDDEN_CARD),
@@ -434,7 +442,6 @@ var PROTOCOL_VERSION = 1;
 
 // src/game/config.ts
 var TRAIT_KEYS = ["bluff", "memory", "patience", "aggression", "risk"];
-var BOOL_OPTS = ["threeOfAKind", "grace", "knockPenalty", "sound", "fullHistory"];
 var clampName = (s, fallback) => (typeof s === "string" ? s.trim().slice(0, 40) : "") || fallback;
 var clampKey = (s, fallback) => typeof s === "string" && /^[a-z0-9-]{1,32}$/.test(s) ? s : fallback;
 var clampImage = (s) => typeof s === "string" && s.length <= 512 ? s : void 0;
@@ -451,8 +458,9 @@ function clampTraits(t) {
 function sanitizeOptions(o) {
   const src = o && typeof o === "object" ? o : {};
   const out = {};
-  for (const k of BOOL_OPTS) out[k] = src[k] === true;
-  out.showLog = src.showLog !== false;
+  for (const k of Object.keys(DEFAULT_OPTIONS)) {
+    out[k] = DEFAULT_OPTIONS[k] ? src[k] !== false : src[k] === true;
+  }
   return out;
 }
 function buildCreateSetup(config) {
@@ -499,14 +507,29 @@ function buildCreateSetup(config) {
 
 // src/game/ids.ts
 var CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+var CODE_LENGTH = 6;
 function makeCode() {
-  const bytes = new Uint8Array(5);
+  const bytes = new Uint8Array(CODE_LENGTH);
   crypto.getRandomValues(bytes);
   let c = "";
-  for (let i = 0; i < 5; i++) c += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
+  for (let i = 0; i < CODE_LENGTH; i++) c += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
   return c;
 }
 var newToken = () => crypto.randomUUID();
+
+// src/game/store.ts
+var StateTooLargeError = class extends Error {
+  constructor(bytes) {
+    super(`Game state too large to persist: ${bytes} bytes`);
+    this.name = "StateTooLargeError";
+  }
+};
+var CodeCollisionError = class extends Error {
+  constructor(code) {
+    super(`Join code already in use: ${code}`);
+    this.name = "CodeCollisionError";
+  }
+};
 
 // src/game/handlers.ts
 var TTL_MS = 14 * 24 * 60 * 60 * 1e3;
@@ -530,23 +553,31 @@ function bumped(rec, patch) {
 async function handleCreate(store, body) {
   const { players, seats, options } = buildCreateSetup(body.config ?? {});
   const state = createGameState(players, options);
-  const code = makeCode();
   const creatorToken = newToken();
   const gameId = crypto.randomUUID();
   const now = nowIso();
-  const rec = {
-    gameId,
-    code,
-    status: "lobby",
-    version: 0,
-    seats,
-    createdAt: now,
-    updatedAt: now,
-    expiresAt: expiry()
-  };
   const secret = { state, seatTokens: { [creatorToken]: 0 } };
-  await store.createGame(rec, secret);
-  return ok({ gameId, code, seatIndex: 0, seatToken: creatorToken });
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = makeCode();
+    const rec = {
+      gameId,
+      code,
+      status: "lobby",
+      version: 0,
+      seats,
+      createdAt: now,
+      updatedAt: now,
+      expiresAt: expiry()
+    };
+    try {
+      await store.createGame(rec, secret);
+      return ok({ gameId, code, seatIndex: 0, seatToken: creatorToken });
+    } catch (e) {
+      if (e instanceof CodeCollisionError) continue;
+      throw e;
+    }
+  }
+  return fail(503, "Couldn't allocate a unique game code \u2014 please try again.");
 }
 async function handleJoin(store, body) {
   const code = typeof body.code === "string" ? body.code : "";
@@ -679,14 +710,6 @@ function handleClientError(body) {
   return ok({ ok: true });
 }
 
-// src/game/store.ts
-var StateTooLargeError = class extends Error {
-  constructor(bytes) {
-    super(`Game state too large to persist: ${bytes} bytes`);
-    this.name = "StateTooLargeError";
-  }
-};
-
 // src/game/router.ts
 var OPS = {
   create: handleCreate,
@@ -743,6 +766,8 @@ function makeRouter(store, opts = {}) {
       return reply(400, { error: "We couldn't read that request." });
     }
     op = String(body?.op ?? "");
+    if (typeof body?.protocol === "number" && body.protocol !== PROTOCOL_VERSION && op !== "version" && op !== "health")
+      return reply(426, { error: "A new version is available \u2014 please refresh the page." });
     if (op === "version") return reply(200, handleVersion(provider).body);
     if (op === "health") {
       const r = await handleHealth(store, provider);
@@ -776,7 +801,8 @@ function makeRouter(store, opts = {}) {
           error: "This game has grown too large to continue. Please start a new one."
         });
       }
-      console.error(`game op=${op} failed:`, e?.stack ?? e);
+      const gid = typeof body?.gameId === "string" ? body.gameId : "-";
+      console.error(`game op=${op} game=${gid} failed:`, e?.stack ?? e);
       return reply(500, {
         error: "Something went wrong on our end. Please try again."
       });
@@ -791,8 +817,8 @@ function makeLimiter(counter, maxPerDay, maxPerIpHour) {
     async allowCreate(ip, nowIso2) {
       const day = nowIso2.slice(0, 10);
       const hour = nowIso2.slice(0, 13);
-      if (!await counter.incrIfBelow("global", `d:${day}`, maxPerDay)) return false;
-      return counter.incrIfBelow("ip", `${safe(ip)}:${hour}`, maxPerIpHour);
+      if (!await counter.incrIfBelow("ip", `${safe(ip)}:${hour}`, maxPerIpHour)) return false;
+      return counter.incrIfBelow("global", `d:${day}`, maxPerDay);
     }
   };
 }
@@ -822,33 +848,39 @@ function makeSupabaseStore(admin) {
   return {
     async createGame(rec, secret) {
       guardSize(secret.state);
-      const { error: gErr } = await admin.from("games").insert({
-        id: rec.gameId,
-        code: rec.code,
-        status: rec.status,
-        version: 0,
-        seats: rec.seats
+      const { data, error } = await admin.rpc("create_game", {
+        p_id: rec.gameId,
+        p_code: rec.code,
+        p_status: rec.status,
+        p_seats: rec.seats,
+        p_state: secret.state,
+        p_seat_tokens: secret.seatTokens
       });
-      if (gErr) throw new Error(`createGame(games): ${gErr.message}`);
-      const { error: sErr } = await admin.from("game_secrets").insert({
-        game_id: rec.gameId,
-        state: secret.state,
-        seat_tokens: secret.seatTokens
-      });
-      if (sErr) throw new Error(`createGame(secret): ${sErr.message}`);
+      if (error) throw new Error(`createGame(create_game): ${error.message}`);
+      if (data === false) throw new CodeCollisionError(rec.code);
     },
+    // Reads MUST distinguish "row absent" from "DB error". With maybeSingle(),
+    // a missing row is { data: null, error: null }; a transient failure is
+    // { data: null, error }. Swallowing the error and returning null would make
+    // a blip look like a permanent 404 — the handler then tells the player the
+    // game no longer exists (they may leave and lose their seat token), and the
+    // health probe reports 200 while the DB is unreachable. So rethrow on error
+    // and let the router surface a 500 the client treats as "reconnecting".
     async getByCode(code) {
-      const { data } = await admin.from("games").select("id").eq("code", code.toUpperCase()).maybeSingle();
+      const { data, error } = await admin.from("games").select("id").eq("code", code.toUpperCase()).maybeSingle();
+      if (error) throw new Error(`getByCode: ${error.message}`);
       return data?.id ?? null;
     },
     async getGame(gameId) {
-      const { data } = await admin.from("games").select("*").eq("id", gameId).maybeSingle();
+      const { data, error } = await admin.from("games").select("*").eq("id", gameId).maybeSingle();
+      if (error) throw new Error(`getGame: ${error.message}`);
       if (!data) return null;
       const rec = toRecord(data);
       return { rec, etag: String(rec.version) };
     },
     async getSecret(gameId) {
-      const { data } = await admin.from("game_secrets").select("*").eq("game_id", gameId).maybeSingle();
+      const { data, error } = await admin.from("game_secrets").select("*").eq("game_id", gameId).maybeSingle();
+      if (error) throw new Error(`getSecret: ${error.message}`);
       if (!data) return null;
       return {
         state: data.state,
@@ -894,6 +926,29 @@ function makeSupabaseRateLimiter(admin, maxPerDay, maxPerIpHour) {
   };
   return makeLimiter(counter, maxPerDay, maxPerIpHour);
 }
+
+// src/game/clientIp.ts
+function stripPort(s) {
+  const bracketed = s.match(/^\[(.+)\]:\d+$/);
+  if (bracketed) return bracketed[1];
+  if (/^\d{1,3}(\.\d{1,3}){3}:\d+$/.test(s)) return s.slice(0, s.lastIndexOf(":"));
+  return s;
+}
+function clientIp(headers, trustedHeaders = []) {
+  for (const name of trustedHeaders) {
+    const v = headers.get(name);
+    if (v) {
+      const ip = stripPort(v.trim());
+      if (ip) return ip;
+    }
+  }
+  const xff = headers.get("x-forwarded-for");
+  if (xff) {
+    const hops = xff.split(",").map((h) => stripPort(h.trim())).filter(Boolean);
+    if (hops.length) return hops[hops.length - 1];
+  }
+  return "unknown";
+}
 export {
   APP_VERSION,
   PROTOCOL_VERSION,
@@ -903,6 +958,7 @@ export {
   buildCreateSetup,
   clampKey,
   clampName,
+  clientIp,
   createGameState,
   makeRouter,
   makeSupabaseRateLimiter,

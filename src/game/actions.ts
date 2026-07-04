@@ -257,7 +257,7 @@ function reshuffle(s: GameState): void {
 
 function log(s: GameState, kind: LogEntry["kind"], card: CardModel | null): void {
   const id = s.log.length === 0 ? 0 : s.log[s.log.length - 1].id + 1;
-  s.log.push({ id, actor: s.players[s.cur].name, kind, card });
+  s.log.push({ id, actor: s.players[s.cur].name, actorSeat: s.cur, kind, card });
   if (s.log.length > 30) s.log.shift();
 }
 
