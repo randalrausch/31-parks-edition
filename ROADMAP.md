@@ -18,10 +18,10 @@ or an issue.
 
 ## Near term
 
-- **Component/hook tests + accessibility.** The solo presentation flow is now a
-  pure, unit-tested state machine (`presentation.ts`); the remaining gap is
-  hook-level tests for `useNetworkGame` and an automated accessibility (axe) pass
-  in E2E.
+- **Hook-level tests for `useNetworkGame`.** The solo presentation flow is now a
+  pure, unit-tested state machine (`presentation.ts`), and E2E runs an automated
+  accessibility (axe) scan of the setup screen and board; the remaining gap is
+  hook-level tests for the online binding.
 - **Run the shared store contract against real Postgres in CI** (`supabase start`)
   when `supabase/**` changes. The contract already runs against the Supabase fake,
   the memory store, and real Azurite; adding a real-Postgres run closes the last
