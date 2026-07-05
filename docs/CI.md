@@ -67,3 +67,62 @@ A `feat:`/`fix:` merge deploys once, at the version-bump commit: `release.yml`
 re-dispatches `ci.yml` with `reason=release` (gate jobs skip; the deploy jobs ship
 the correctly-versioned commit). A manual **Run workflow** on `ci.yml` with a
 `deploy_ref` redeploys/rolls back all enabled targets.
+
+## Release automation (extra setup beyond `git clone`)
+
+Releases are cut automatically by [`release.yml`](../.github/workflows/release.yml)
+on every push to `main`: a `feat:`/`fix:` commit bumps `src/game/version.ts`,
+regenerates the edge bundle, updates the changelog, commits
+`chore(release): vX.Y.Z [skip ci]`, tags it, publishes a GitHub Release, and
+dispatches the deploy.
+
+That version-bump commit is pushed **directly to `main`** — and because `main`
+requires status checks on every push (see [Required status checks](#required-status-checks-set-this-in-repo-settings)),
+the default `GITHUB_TOKEN` **cannot** push it: GitHub rejects it with
+_"N of N required status checks are expected."_ So the push authenticates as a
+**GitHub App** that sits on the ruleset's **bypass list**. Wiring that App up is
+the one thing a fork or self-host must do — beyond cloning — for releases to work.
+
+### One-time setup (repo owner)
+
+1. **Create a GitHub App** at <https://github.com/settings/apps> → _New GitHub App_.
+   - Name it anything (e.g. `<your-repo>-release-bot`); Homepage URL can be the repo.
+   - **Uncheck** _Webhook → Active_ (this App needs no webhook).
+   - **Repository permissions → Contents: Read and write** — the _only_ permission
+     it needs (it just pushes the version-bump commit + tag). Leave the rest at
+     _No access_.
+   - _Where can this App be installed?_ → **Only on this account**.
+   - Create it, then **Generate a private key** (downloads a `.pem`).
+2. **Install the App** on this repo: the App's page → _Install App_ → your account →
+   _Only select repositories_ → pick this repo.
+3. **Add two repository secrets** (Settings → Secrets and variables → Actions):
+   - `RELEASE_APP_ID` — the App's numeric _App ID_ (from its _General_ page).
+   - `RELEASE_APP_PRIVATE_KEY` — the **entire** `.pem` contents, including the
+     `-----BEGIN…`/`-----END…` lines.
+4. **Add the App to the `main` ruleset's bypass list**: Settings → Rules → Rulesets
+   → open the ruleset targeting `main` → _Bypass list_ → _Add bypass_ → select your
+   App → mode **Always** → Save.
+
+The next `feat:`/`fix:` merge then releases and deploys on its own.
+
+Under the hood, `release.yml` mints a short-lived installation token from those two
+secrets via [`actions/create-github-app-token`](https://github.com/actions/create-github-app-token)
+and uses it **only** for the push to `main`. The tag push, the GitHub Release, the
+"ask a human" issue, and the deploy dispatch all keep using the built-in
+`GITHUB_TOKEN` (none of those are blocked by the branch rule). Nothing long-lived
+is stored except the App's private key, and the token itself lives only for the
+length of one job.
+
+### Alternative: bypass with the built-in Actions token
+
+If you'd rather not create an App, add the built-in **GitHub Actions** actor to the
+`main` ruleset's bypass list instead and skip the two secrets. `release.yml` falls
+back to `GITHUB_TOKEN` when `RELEASE_APP_ID` is unset, and that push then bypasses.
+Whether the plain Actions token is selectable as a bypass actor depends on your
+plan/ruleset UI — if it isn't offered, use the App above.
+
+### No branch rule? No setup needed
+
+If your fork's `main` has **no** required-status-checks rule, releases work with
+zero extra setup — the fallback `GITHUB_TOKEN` push isn't blocked. The App is only
+needed because this repo protects `main` with required checks.

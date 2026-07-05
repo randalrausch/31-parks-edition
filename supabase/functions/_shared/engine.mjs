@@ -541,6 +541,7 @@ function buildCreateSetup(config) {
 }
 
 // src/game/store.ts
+var MAX_STATE_BYTES = 32e3;
 var StateTooLargeError = class extends Error {
   constructor(bytes) {
     super(`Game state too large to persist: ${bytes} bytes`);
@@ -872,7 +873,6 @@ function makeLimiter(counter, maxPerDay, maxPerIpHour, maxJoinsPerIpHour = 120) 
 }
 
 // src/game/supabaseStore.ts
-var MAX_STATE_BYTES = 6e4;
 var TTL_MS2 = 14 * 24 * 60 * 60 * 1e3;
 function guardSize(state) {
   const size = JSON.stringify(state).length;

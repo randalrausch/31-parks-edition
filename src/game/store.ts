@@ -56,7 +56,23 @@ export interface GameStore {
   deleteExpired(nowIso: string): Promise<number>;
 }
 
-/** Thrown when a serialized state would exceed the Table Storage property cap. */
+/**
+ * Max serialized-state size (in UTF-16 code units — JS string `.length`) both
+ * stores accept before rejecting with StateTooLargeError. Bound by the TIGHTER
+ * backend: an Azure Table Storage String property caps at 64 KB = 32,768 UTF-16
+ * units, so cap below that with margin. Postgres `jsonb` has no such limit, but
+ * both stores share this constant so a game behaves identically on either backend
+ * (an oversized state fails the same 507 on both) and an unbounded row can't
+ * become a DoS/cost vector. Realistic states are a few KB (the log is capped at
+ * 30 entries), so this is generous headroom.
+ *
+ * NB: this is a character count, not a byte count — the guard compares it against
+ * `JSON.stringify(state).length`, and Table Storage's 64 KB limit is on the
+ * UTF-16 encoding, i.e. 32,768 code units.
+ */
+export const MAX_STATE_BYTES = 32_000;
+
+/** Thrown when a serialized state would exceed the persistence size cap. */
 export class StateTooLargeError extends Error {
   constructor(bytes: number) {
     super(`Game state too large to persist: ${bytes} bytes`);
