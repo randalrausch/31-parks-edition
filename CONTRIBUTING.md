@@ -106,7 +106,12 @@ and both backends. On every push to `main`, `.github/workflows/release.yml`:
 - bumps the version from the Conventional Commits since the last tag
   (`feat` → minor, `fix`/`perf` → patch, breaking → major; a breaking change
   while pre‑1.0 bumps the minor, so you never hit `1.0.0` by accident),
-- prepends `CHANGELOG.md`, tags `vX.Y.Z`, and publishes a GitHub Release.
+- prepends `CHANGELOG.md`, opens a `chore(release): vX.Y.Z` PR with that change,
+  waits for it to go green, merges it, then tags `vX.Y.Z` and publishes a
+  GitHub Release. Going through a PR (rather than pushing straight to `main`)
+  is what lets this work under ordinary branch protection — a required status
+  check can only ever pass for a commit GitHub already knows about, which rules
+  out a bare `git push` of a brand-new commit.
 
 If it can't tell what bump your commits imply, it opens an issue asking you to
 decide rather than guessing. Preview locally with `node scripts/release.mjs --dry`.
