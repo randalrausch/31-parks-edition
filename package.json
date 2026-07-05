@@ -15,13 +15,16 @@
     "url": "https://github.com/randalrausch/31-parks-edition/issues"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "postbuild": "node scripts/patch-swa-csp.mjs && node scripts/stamp-sw-cache.mjs",
     "preview": "vite preview",
+    "check": "npm run format:check && npm run typecheck && npm run lint && npm test && npm run build",
+    "check:all": "npm run check && npm run api:typecheck && npm run api:test && npm run edge:check && npm run test:e2e",
+    "edge:check": "npm run build:edge && git diff --exit-code supabase/functions/_shared/engine.mjs",
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -29,7 +32,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "test:e2e": "vite build && playwright test",
+    "test:e2e": "vite build --mode e2e && playwright test",
+    "e2e:server": "esbuild e2e/localServer.ts --bundle --platform=node --format=esm --outfile=e2e/.build/localServer.mjs --log-level=warning && node e2e/.build/localServer.mjs",
     "build:edge": "esbuild src/game/edgeEntry.ts --bundle --format=esm --platform=neutral --outfile=supabase/functions/_shared/engine.mjs",
     "api:install": "npm --prefix api install",
     "api:typecheck": "npm --prefix api run typecheck",

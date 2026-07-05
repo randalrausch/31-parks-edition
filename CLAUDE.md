@@ -61,6 +61,11 @@ Options are stored inside the serialized game state (JSON), not as DB columns �
 no migration needed for a new option.
 
 ## Checks before committing
+
+`npm run check` runs the whole fast gate in order — the SAME set CI's `gate`
+job runs. The pieces, if you need one at a time:
+
+- `npm run format:check` (Prettier; CI fails on drift — `npm run format` fixes)
 - `npm run typecheck` (app) and `cd api && npm run typecheck` (the Azure package
   has pre-existing `@azure/*` "module not found" errors when its deps aren't
   installed — ignore those, but no other new errors).
@@ -69,16 +74,20 @@ no migration needed for a new option.
 - `npm run test` (full vitest suite)
 - `npm run build` (production build)
 
-The `/precommit` command runs all of the above plus an edge-bundle sync check in
-one step.
+The `/precommit` command runs all of the above plus an edge-bundle sync check
+(`npm run edge:check`) in one step; `npm run check:all` is the same gate as a
+single npm script (it adds the api suite and the E2E run).
 
 ## Testing layers
 
 - **Unit / fuzz** — `npm test` (Vitest). Co-located `*.test.ts`. This is where
   rules-engine, redaction, store-adapter, and reconnect logic are pinned.
 - **E2E (local build)** — `npm run test:e2e` (Playwright). Builds and serves the
-  production bundle, then plays a real browser through solo flows and dialogs.
-  Specs live in `e2e/` (ignored by tsc/vitest).
+  production bundle, then plays a real browser through solo flows and dialogs, an
+  axe accessibility scan, and a two-browser online round against a local
+  in-memory backend (`e2e/localServer.ts` — the shared op layer over
+  `makeMemoryStore`, so online regressions fail at PR time). Specs live in
+  `e2e/` (ignored by tsc/vitest).
 - **Deployment smoke (live site)** — `npm run test:e2e:deploy` with
   `E2E_BASE_URL=<url>`. Drives a real browser against a *deployed* site and
   actually plays it: boots + version, a solo turn, and a two-browser online round

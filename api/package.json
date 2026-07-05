@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "description": "Azure Functions backend (the authority) for 31: National Parks Edition.",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

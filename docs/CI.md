@@ -5,9 +5,9 @@ as **four parallel jobs** (plus a deploy job that waits on them):
 
 | Job | What it runs | Runs on |
 | --- | --- | --- |
-| `gate` | typecheck · format · lint · unit/fuzz tests · edge-bundle sync · CI-image sync · build | every push & PR |
+| `gate` | typecheck · format · lint · workflow lint (actionlint) · unit/fuzz tests (with a coverage summary on `main`) · edge-bundle sync · CI-image sync · build | every push & PR |
 | `api` | Azure Functions typecheck + Table Storage (Azurite) CAS suite + build | every push & PR |
-| `e2e` | real-browser Playwright, inside the prebuilt CI image | every push & PR |
+| `e2e` | real-browser Playwright inside the prebuilt CI image: solo flow, axe accessibility scan, and a two-browser online round against a local in-memory backend (`e2e/localServer.ts`) | every push & PR |
 | `supabase-contract` | boots a real local Postgres (`supabase start`) and asserts the SQL contract with psql — `commit_game` CAS, `create_game` atomicity, anon RPC-EXECUTE revokes, and the RLS hiding `game_secrets` / the join code | every push & PR |
 | `deploy` | builds with secrets, ships enabled targets, runs the post-deploy smoke | push to `main` only |
 
@@ -67,6 +67,11 @@ A `feat:`/`fix:` merge deploys once, at the version-bump commit: `release.yml`
 re-dispatches `ci.yml` with `reason=release` (gate jobs skip; the deploy jobs ship
 the correctly-versioned commit). A manual **Run workflow** on `ci.yml` with a
 `deploy_ref` redeploys/rolls back all enabled targets.
+
+> **Rollback caveat:** SQL migrations roll **forward only** — redeploying an
+> older `deploy_ref` reships that commit's code but does not (and cannot)
+> un-apply migrations the newer deploy already ran. Keep migrations
+> backward-compatible with the previous release so a code rollback stays safe.
 
 ## Release automation (extra setup beyond `git clone`)
 

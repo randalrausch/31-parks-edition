@@ -55,6 +55,8 @@ supabase/.branches/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+# esbuild output of the local E2E game server (e2e/localServer.ts)
+/e2e/.build/
 
 # Superpowers-generated planning docs (kept local, not tracked)
 /docs/superpowers/plans/
