@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.0 — 2026-07-05
+
+### Features
+
+- let the host rename lobby seats in online games (#86)
+
 ## v0.8.1 — 2026-07-05
 
 ### Fixes
