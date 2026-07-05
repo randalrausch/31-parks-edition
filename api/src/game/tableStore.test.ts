@@ -8,6 +8,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { TableServiceClient } from "@azure/data-tables";
 import { createGameState } from "../../../src/game/actions";
+import { StateTooLargeError } from "../../../src/game/store";
 import type { GameRecord, SecretRecord } from "../../../src/game/store";
 
 const CONN = process.env.TABLES_CONNECTION;
@@ -124,6 +125,21 @@ describe("TableGameStore (Azurite)", () => {
     const lost = await store.update(rec.gameId, stale, { ...r0, version: 99 }, secret);
     expect(lost).toBe(false);
     expect((await store.getGame(rec.gameId))?.rec.version).toBe(1);
+  });
+
+  it("rejects a state over the shared size cap with StateTooLargeError", async ({ skip }) => {
+    if (!up) return skip();
+    const { makeTableStore } = await import("./tableStore.js");
+    const store = makeTableStore();
+    const { rec, secret } = fixtures();
+    // Inflate the serialized state past MAX_STATE_BYTES (32,000 UTF-16 units, the
+    // shared cap sized to the Table Storage String-property limit). guardSize must
+    // reject it BEFORE the write, as the same StateTooLargeError Supabase raises —
+    // so the router returns a clean 507, not a generic 500 that strands the game.
+    (secret.state as unknown as Record<string, unknown>).bloat = "x".repeat(40_000);
+    await expect(store.createGame(rec, secret)).rejects.toBeInstanceOf(StateTooLargeError);
+    // The oversized create must not leave its claimed join code behind.
+    expect(await store.getByCode(rec.code)).toBeNull();
   });
 
   it("deleteExpired removes past-expiry games and their code index", async ({ skip }) => {

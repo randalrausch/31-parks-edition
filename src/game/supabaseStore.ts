@@ -13,6 +13,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   CodeCollisionError,
+  MAX_STATE_BYTES,
   StateTooLargeError,
   type GameRecord,
   type GameStore,
@@ -20,10 +21,10 @@ import {
 } from "./store";
 import { makeLimiter, type Counter, type RateLimiter } from "./rateLimit";
 
-// Mirrors the Azure Table Storage cap so a game behaves identically on either
-// provider (Postgres jsonb has no hard limit, but an unbounded row is a DoS/cost
-// vector). A state over this fails with the same 507 the shared router returns.
-const MAX_STATE_BYTES = 60_000;
+// State-size cap is the shared MAX_STATE_BYTES (see store.ts) — bound by the
+// tighter Azure limit so a game behaves identically on either backend. Postgres
+// jsonb has no hard limit, but an unbounded row is a DoS/cost vector, and a state
+// over this fails with the same 507 the shared router returns on both backends.
 // Games are reaped 14 days after their last write — matches the Azure TTL.
 const TTL_MS = 14 * 24 * 60 * 60 * 1000;
 

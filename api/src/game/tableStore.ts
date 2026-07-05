@@ -20,6 +20,7 @@ import {
 import { DefaultAzureCredential } from "@azure/identity";
 import {
   CodeCollisionError,
+  MAX_STATE_BYTES,
   StateTooLargeError,
   type GameRecord,
   type GameStore,
@@ -28,7 +29,15 @@ import {
 } from "../../../src/game/store";
 import type { GameState } from "../../../src/game/engine";
 
-const MAX_STATE_BYTES = 60_000; // Table Storage string property cap is 64 KB.
+// MAX_STATE_BYTES (shared, see store.ts) is sized to the Table Storage String
+// property cap (64 KB = 32,768 UTF-16 units), so `guardSize` rejects an oversized
+// state as a clean 507 BEFORE the write. `isTooLarge` is the backstop: if a write
+// is still rejected as too large (e.g. total entity size), surface it as the same
+// StateTooLargeError instead of a generic 500 that would strand the game.
+const isTooLarge = (e: unknown): boolean =>
+  e instanceof RestError &&
+  e.statusCode === 400 &&
+  (e.code === "PropertyValueTooLarge" || e.code === "EntityTooLarge");
 
 function connString(): string | undefined {
   const c = process.env.TABLES_CONNECTION || process.env.AzureWebJobsStorage;
@@ -156,6 +165,7 @@ export function makeTableStore(): GameStore {
         } catch {
           /* leave it for the reaper */
         }
+        if (isTooLarge(e)) throw new StateTooLargeError(JSON.stringify(secret.state).length);
         throw e;
       }
     },
@@ -207,6 +217,9 @@ export function makeTableStore(): GameStore {
         return true;
       } catch (e) {
         if (is(e, 412)) return false; // ETag mismatch — lost the CAS race
+        // An oversized write (guardSize's backstop) → same clean 507 as Supabase,
+        // not a generic 500 that would strand the game on every retry.
+        if (isTooLarge(e)) throw new StateTooLargeError(JSON.stringify(secret.state).length);
         throw e;
       }
     },

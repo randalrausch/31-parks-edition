@@ -207,3 +207,29 @@ revoke all on public.game_secrets  from public, anon, authenticated;
 revoke all on public.game_codes    from public, anon, authenticated;
 revoke all on public.rate_counters from public, anon, authenticated;
 revoke insert, update, delete on public.games from public, anon, authenticated;
+
+-- ── Defense-in-depth: FORCE row-level security (applies RLS to the table owner
+-- too, not just to anon/authenticated). Safe because the service-role key and the
+-- SECURITY DEFINER RPC owner both bypass RLS; asserted + fail-closed here so a
+-- stack where the RPC owner can't bypass fails at apply time rather than breaking
+-- writes at runtime. (See migration 20260705000000_force_row_level_security.sql.)
+do $$
+declare
+  unsafe text;
+begin
+  select string_agg(p.proname, ', ' order by p.proname)
+    into unsafe
+  from pg_proc p
+  join pg_roles r on r.oid = p.proowner
+  where p.pronamespace = 'public'::regnamespace
+    and p.proname in ('create_game', 'commit_game', 'incr_if_below')
+    and not (r.rolbypassrls or r.rolsuper);
+  if unsafe is not null then
+    raise exception
+      'Refusing to FORCE row-level security: the owner of % lacks BYPASSRLS/superuser (would break the SECURITY DEFINER writes). Grant BYPASSRLS to that owner and re-run.', unsafe;
+  end if;
+end $$;
+alter table public.games         force row level security;
+alter table public.game_codes    force row level security;
+alter table public.game_secrets  force row level security;
+alter table public.rate_counters force row level security;

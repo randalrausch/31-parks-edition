@@ -210,4 +210,23 @@ begin
   end loop;
 end $$;
 
+\echo '== RLS is enabled AND forced on every game table =='
+do $$
+declare
+  t text;
+begin
+  -- 20260705000000: RLS must be ENABLED (guards the rows) and FORCED (so even the
+  -- table owner is subject to it). The successful create_game/commit_game calls at
+  -- the top of this file already prove the SECURITY DEFINER writes still work under
+  -- FORCE — this pins that the flags are actually set on all four tables.
+  foreach t in array array['games', 'game_codes', 'game_secrets', 'rate_counters'] loop
+    if not (select relrowsecurity from pg_class where oid = ('public.' || t)::regclass) then
+      raise exception 'row-level security is not enabled on public.%', t;
+    end if;
+    if not (select relforcerowsecurity from pg_class where oid = ('public.' || t)::regclass) then
+      raise exception 'row-level security is not FORCED on public.% (migration 20260705000000)', t;
+    end if;
+  end loop;
+end $$;
+
 \echo '== OK: real-Postgres contract passed =='
