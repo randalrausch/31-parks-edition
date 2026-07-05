@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.8.1 — 2026-07-05
+
+### Fixes
+
+- security-review follow-ups + a bypass-capable release pipeline
+- land release commits via PR instead of pushing straight to main (#84)
+- focus room-code field and clarify its placeholder on join (#82)
+- harden untrusted-input handling and add a defense-in-depth DB grant layer
+
 ## v0.8.0 — 2026-07-04
 
 ### Features

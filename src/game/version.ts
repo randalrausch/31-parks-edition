@@ -15,7 +15,7 @@
  */
 
 /** Human-facing semver. Maintained by the release workflow — do not hand-edit. */
-export const APP_VERSION = "0.8.0";
+export const APP_VERSION = "0.8.1";
 
 /** Wire-contract version. Bump ONLY on a breaking client↔server change. */
 export const PROTOCOL_VERSION = 1;
