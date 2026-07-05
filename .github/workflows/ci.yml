@@ -199,6 +199,7 @@ jobs:
           ./api/node_modules/.bin/azurite-table --silent --location "$RUNNER_TEMP/azurite" &
           for i in $(seq 1 30); do
             (exec 3<>/dev/tcp/127.0.0.1/10002) 2>/dev/null && { exec 3>&-; break; }
+            echo "Waiting for Azurite to accept connections ($i)…"
             sleep 1
           done
           npm run api:test
