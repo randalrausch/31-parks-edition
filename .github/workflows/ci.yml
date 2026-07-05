@@ -367,7 +367,12 @@ jobs:
   # and the frontend build runs ONLY when Netlify is on (Supabase is backend-only).
   deploy-supabase-netlify:
     needs: decide
-    if: ${{ needs.decide.outputs.should_ship == 'true' && (vars.DEPLOY_SUPABASE == 'true' || vars.DEPLOY_NETLIFY == 'true') }}
+    # `!cancelled()` is required, not cosmetic: on a reason=release re-dispatch the
+    # gate jobs are SKIPPED, and that skip propagates through `decide` (which runs via
+    # always()) to anything that `needs` it — so without a status function here the job
+    # inherits the skip and never evaluates its own condition. `decide.should_ship`
+    # already encodes "no gate failed", so guarding on !cancelled() is safe.
+    if: ${{ !cancelled() && needs.decide.outputs.should_ship == 'true' && (vars.DEPLOY_SUPABASE == 'true' || vars.DEPLOY_NETLIFY == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -447,7 +452,9 @@ jobs:
   # App backend. Self-contained; skips entirely unless DEPLOY_AZURE is on.
   deploy-azure:
     needs: decide
-    if: ${{ needs.decide.outputs.should_ship == 'true' && vars.DEPLOY_AZURE == 'true' }}
+    # See deploy-supabase-netlify: `!cancelled()` keeps this job from inheriting the
+    # gate-skip that propagates through `decide` on a reason=release re-dispatch.
+    if: ${{ !cancelled() && needs.decide.outputs.should_ship == 'true' && vars.DEPLOY_AZURE == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
