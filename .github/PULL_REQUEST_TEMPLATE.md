@@ -6,11 +6,7 @@ Describe the change and the reason for it.
 
 Run the same gate CI runs (see [CONTRIBUTING.md](../CONTRIBUTING.md#before-you-open-a-pr)):
 
-- [ ] `npm run format:check` (run `npm run format` to fix)
-- [ ] `npm run typecheck`
-- [ ] `npm run lint`
-- [ ] `npm test`
-- [ ] `npm run build`
+- [ ] `npm run check` (format check + typecheck + lint + unit tests + build, in one — run `npm run format` to fix formatting)
 - [ ] `npm run test:e2e` (real-browser Playwright — CI runs this too)
 - [ ] Manually tested (describe)
 

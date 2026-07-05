@@ -88,7 +88,7 @@ online for friends who aren't in the room.
 
 ### 1. Run it locally (no setup)
 
-Requires Node 20+.
+Requires Node 22+.
 
 ```bash
 git clone https://github.com/randalrausch/31-parks-edition.git
@@ -213,10 +213,11 @@ docs/              Architecture, theming, backend, and deployment guides
 | Script | What it does |
 |--------|--------------|
 | `npm run dev` | Start the dev server (solo/pass-and-play; online if env vars set) |
+| `npm run check` | **The whole fast gate in one:** format check + typecheck + lint + tests + build |
 | `npm run build` | Type-check and build a static bundle to `dist/` |
 | `npm run preview` | Serve the production build locally |
 | `npm test` | Run the unit + fuzz test suite (Vitest) |
-| `npm run test:e2e` | Real-browser E2E against a local production build (Playwright) |
+| `npm run test:e2e` | Real-browser E2E against a local production build (Playwright) — solo, a11y, and an online round vs. a local in-memory backend |
 | `npm run test:e2e:deploy` | Play a **live deployed** site end-to-end (`E2E_BASE_URL=…`) |
 | `npm run typecheck` | Type-check only |
 | **Azure backend** | |

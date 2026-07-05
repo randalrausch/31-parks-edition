@@ -9,7 +9,7 @@ installs.
 
 ## What's in it
 
-- **Node 20** (a slim `node:20-bookworm-slim` base).
+- **Node 22** (a slim `node:22-bookworm-slim` base).
 - **Google Chrome** and its system libraries (`playwright install --with-deps
   chrome`, pinned to the repo's `@playwright/test` version).
 
@@ -72,7 +72,8 @@ elsewhere:
   e2e:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/randalrausch/31-parks-edition/ci:latest
+      # Derived from the repo so a fork pulls its own image (see "Forks" below).
+      image: ghcr.io/${{ github.repository }}/ci:latest
       # Needed while the GHCR package is private; make it public to drop this.
       credentials:
         username: ${{ github.actor }}
@@ -86,6 +87,19 @@ elsewhere:
 
 This needs `packages: read` in the workflow's top-level `permissions` (already set)
 so the job can pull the image, or make the GHCR package public and drop `credentials`.
+
+## Forks
+
+The `container.image` reference in `ci.yml` is derived from `github.repository`,
+so a fork's CI pulls `ghcr.io/<your-fork>/ci:latest` — publish it once by running
+the **Build CI image** workflow manually (Actions → Build CI image → Run
+workflow); after that the weekly/on-change rebuilds keep it fresh. Two caveats:
+
+- GHCR image names must be **lowercase**. `github.repository` is used verbatim,
+  so an owner name with capitals must instead hardcode a lowercased image name
+  in `ci.yml`'s `container.image`.
+- PRs **into** the upstream repo are unaffected — they run in the upstream
+  context and pull the upstream image.
 
 **Still on the old path:** the deploy job's post-deploy "play the live deployment"
 step still runs `playwright install --with-deps chrome`. It only executes when

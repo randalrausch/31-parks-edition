@@ -1,11 +1,11 @@
 {
   "name": "31 National Parks Edition",
-  "image": "mcr.microsoft.com/devcontainers/typescript-node:20",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
   "features": {
     "ghcr.io/devcontainers/features/azure-cli:1": {},
     "ghcr.io/azure/azure-dev/azd:0": {}
   },
-  "postCreateCommand": "npm ci && npm run api:install && npm i -g azure-functions-core-tools@4 @azure/static-web-apps-cli",
+  "postCreateCommand": "npm ci && npm run api:install && npm i -g azure-functions-core-tools@4 @azure/static-web-apps-cli && sudo npx playwright install --with-deps chrome",
   "customizations": {
     "vscode": {
       "extensions": [

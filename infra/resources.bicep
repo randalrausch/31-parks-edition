@@ -115,7 +115,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
     serverFarmId: plan.id
     httpsOnly: true
     siteConfig: {
-      linuxFxVersion: 'Node|20'
+      linuxFxVersion: 'Node|22'
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
       // Cap peak concurrency so a flood can't fan out to hundreds of instances.

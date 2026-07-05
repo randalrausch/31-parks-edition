@@ -14,7 +14,7 @@ and the first request after weeks auto-cold-starts in a few seconds.
 | Piece | Service | Why |
 |-------|---------|-----|
 | Static site | **Azure Static Web Apps (Free)** | Global CDN, free TLS + custom domains |
-| Authority API | **Azure Functions (Consumption, Node 20)** | Scales to zero; auto-wakes on request — no pause |
+| Authority API | **Azure Functions (Consumption, Node 22)** | Scales to zero; auto-wakes on request — no pause |
 | Game state | **Azure Table Storage** | Always available; pennies; accessed via **managed identity (no secret)** |
 | Telemetry | **Application Insights** | Traces, errors, cold-start timing |
 
@@ -29,7 +29,7 @@ are tagged so the stack is easy to spot and filter in the portal:
 
 ## Prerequisites
 
-- **Node 20+**
+- **Node 22+**
 - An **Azure subscription** (the Free tier is enough)
 - **Azure CLI** (`az`) and **Azure Developer CLI** (`azd`)
   - macOS: `brew install azure-cli azd`

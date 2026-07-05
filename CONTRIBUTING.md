@@ -6,7 +6,7 @@ features, docs, and especially **new park themes** (see
 
 ## Getting started
 
-Requires **Node 20+** (see `.nvmrc`; `nvm use` picks it up).
+Requires **Node 22+** (see `.nvmrc`; `nvm use` picks it up).
 
 ```bash
 git clone https://github.com/randalrausch/31-parks-edition.git
@@ -26,28 +26,29 @@ and [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Before you open a PR
 
-Run the same checks CI runs:
+Run the same checks CI runs — one command covers the fast gate:
 
 ```bash
-npm run format:check # Prettier formatting (run `npm run format` to fix)
-npm run typecheck    # tsc, no errors
-npm run lint         # ESLint, no errors
-npm test             # unit + fuzz suite, all green
-npm run build        # production build succeeds
+npm run check        # format check + typecheck + lint + unit tests + build, in order
 npm run test:e2e     # real-browser Playwright suite (CI runs this on every PR)
 ```
 
+(`npm run check:all` runs everything at once: the fast gate plus the Azure api
+suite, the edge-bundle sync check, and the E2E suite.) Each piece is also its
+own script — `format:check` (run `npm run format` to fix), `typecheck`, `lint`,
+`test`, `build` — when you want just one.
+
 > `npm run test:e2e` drives your locally-installed Google Chrome
 > (`playwright.config.ts` uses the `chrome` channel). If you don't have it,
-> install it once with `npx playwright install chrome`.
+> install it once with `npx playwright install chrome` — or point
+> `PW_EXECUTABLE_PATH` at any Chromium binary.
 
 **If you changed anything under `src/game/`**, re‑bundle the shared Edge Function
 engine and commit the regenerated bundle — **CI rejects a stale bundle**, so this
 is required regardless of which backend (if any) you run:
 
 ```bash
-npm run build:edge
-git diff --exit-code supabase/functions/_shared/engine.mjs  # must be clean after committing
+npm run edge:check   # rebuilds engine.mjs and fails if it differs from the committed one
 ```
 
 Deploying the function (`supabase functions deploy game`) is a separate,

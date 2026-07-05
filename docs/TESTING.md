@@ -34,10 +34,22 @@ Run `npm run test:coverage` for a V8 coverage report.
 
 ## 2. E2E, local build — `npm run test:e2e` (Playwright)
 
-Builds and serves the production bundle, then plays a real browser through the
-solo flow and dialogs (`e2e/game.spec.ts`). Uses your installed Google Chrome
-(`playwright.config.ts` `channel: "chrome"`); install it with
-`npx playwright install chrome` if needed. Runs in CI on every push/PR.
+Builds and serves the production bundle, then plays a real browser through:
+
+- **the solo flow and dialogs** (`e2e/game.spec.ts`);
+- **an automated accessibility scan** (`e2e/a11y.spec.ts`) — axe-core against
+  WCAG 2.1 A/AA on the setup screen and the in-game board, failing on
+  `serious`/`critical` violations;
+- **a two-browser online round** (`e2e/online.spec.ts`) against a **local
+  in-memory backend** (`e2e/localServer.ts` — the same shared op layer both
+  production backends run, started automatically by Playwright). Host creates,
+  guest joins by code, host starts, a turn is taken — so online/board
+  regressions fail at PR time, not after a deploy. The `test:e2e` build uses
+  `--mode e2e`, which bakes the local server in as the backend (`.env.e2e`).
+
+Uses your installed Google Chrome (`playwright.config.ts` `channel: "chrome"`);
+install it with `npx playwright install chrome` if needed, or point
+`PW_EXECUTABLE_PATH` at any Chromium binary. Runs in CI on every push/PR.
 
 ## 3. Deployment smoke, live site — `npm run test:e2e:deploy`
 
@@ -57,22 +69,21 @@ network egress to the target host.
 
 ## What each layer deliberately does NOT cover
 
-- **Component/hook rendering.** `useGame` / `useNetworkGame` and the React
-  components have no unit tests today; their behavior is covered only through the
-  Playwright flows. Extracting the presentation sequencing into a framework-free
-  state machine (unit-testable with fake timers) is tracked as future work.
-- **Accessibility.** The E2E specs include some keyboard checks, but there is no
-  automated axe/a11y audit yet.
+- **Component/hook rendering.** `useGame` and most React components have no
+  unit tests today (`useNetworkGame` has hook-level tests); their behavior is
+  covered through the Playwright flows. Extracting the presentation sequencing
+  into a framework-free state machine (unit-testable with fake timers) is
+  tracked as future work.
 - **Load / soak.** There is no automated load test of the `act` path.
 
 ## Before you open a PR
 
 ```bash
-npm run format:check && npm run typecheck && npm run lint && npm test && npm run build
-npm run test:e2e
+npm run check      # format check + typecheck + lint + unit tests + build
+npm run test:e2e   # real-browser E2E (CI runs this on every PR)
 # If you touched src/game/, re-bundle the edge engine and commit it:
-npm run build:edge && git diff --exit-code supabase/functions/_shared/engine.mjs
+npm run edge:check
 ```
 
-The `/precommit` command runs the full gate plus an edge-bundle sync check in one
-step.
+`npm run check:all` runs all of the above plus the Azure api suite in one go.
+The `/precommit` command does the same and reports a pass/fail summary.

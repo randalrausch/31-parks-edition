@@ -1,6 +1,6 @@
 # CI runner image — bakes the slow-to-install toolchain the pipeline otherwise
 # reinstalls on a cold VM for every job of every run: Google Chrome plus all of its
-# system dependencies, on top of Node 20. Built + pushed to GHCR by
+# system dependencies, on top of Node 22. Built + pushed to GHCR by
 # .github/workflows/ci-image.yml (weekly, and whenever this file changes), so the
 # e2e job pulls a ready image instead of running `playwright install --with-deps
 # chrome` on a cold VM each time.
@@ -10,7 +10,7 @@
 # bundles Chromium, Firefox, and WebKit (~2GB) that this project never launches, so
 # it made the e2e job's cold image pull slower than the install it replaced. This
 # carries just Chrome, roughly halving the image and the pull.
-FROM node:20-bookworm-slim
+FROM node:22-bookworm-slim
 
 # git is needed by actions/checkout (to build a real local repo rather than a
 # git-less REST download) and by dorny/paths-filter on push events; the full
