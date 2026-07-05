@@ -3,10 +3,12 @@
  *
  * CC0 audio samples ship in `src/assets/sfx/` and are used by default. Each
  * effect loads `src/assets/sfx/<name>.{mp3,ogg,wav,m4a}` (e.g. deal.wav,
- * knock.mp3, coin.mp3) — replace those files with your own CC0 clips to
- * customize (see that folder's README). If a sample is absent the effect falls
- * back to a synthesized Web Audio version, tuned to be soft and realistic for
- * the deal and a solid wooden "tock" for the knock.
+ * knock.mp3, coin.mp3, and an optional shuffle.*) — replace those files with
+ * your own CC0 clips to customize (see that folder's README). If a sample is
+ * absent the effect falls back to a synthesized Web Audio version. The deal
+ * sound (played once per card, very frequently) is deliberately quiet and
+ * brief; the shuffle (played once before a new hand is dealt) is a distinct,
+ * fuller riffle texture rather than a repeated deal sound.
  */
 
 /* ── Optional sample overrides (build-time glob) ── */
@@ -64,12 +66,16 @@ if (typeof window !== "undefined") {
   window.addEventListener("touchstart", unlock);
 }
 
-/** Soft card-deal "swish" — low, brief, gentle (not tinny). */
+/**
+ * Soft card-deal "swish" — plays once per card dealt or drawn, so this needs
+ * to stay very quiet and brief or it becomes the dominant, grating sound of a
+ * whole game. Deliberately much quieter than the other cues.
+ */
 export function sndDeal() {
-  if (playSample("deal", 0.35)) return;
+  if (playSample("deal", 0.12)) return;
   const a = ac();
   if (!a) return;
-  const dur = 0.07;
+  const dur = 0.05;
   const buffer = a.createBuffer(1, Math.floor(a.sampleRate * dur), a.sampleRate);
   const data = buffer.getChannelData(0);
   for (let i = 0; i < data.length; i++) {
@@ -82,19 +88,56 @@ export function sndDeal() {
   // Band-limit to a papery mid band rather than a harsh high hiss.
   const bp = a.createBiquadFilter();
   bp.type = "bandpass";
-  bp.frequency.value = 1100;
+  bp.frequency.value = 1000;
   bp.Q.value = 0.8;
   const lp = a.createBiquadFilter();
   lp.type = "lowpass";
-  lp.frequency.value = 3200;
+  lp.frequency.value = 2600;
   const g = a.createGain();
-  g.gain.value = 0.07; // quiet
+  g.gain.value = 0.028; // very quiet — this fires constantly
   src.connect(bp).connect(lp).connect(g).connect(a.destination);
   src.start();
 }
 
+/**
+ * Distinct riffle-shuffle texture played once before a fresh hand is dealt.
+ * Unlike `sndDeal` this is a dense, sustained flutter of overlapping filtered
+ * noise bursts — a bed of soft "brrrrt" texture rather than a single flick —
+ * so it reads clearly as "the deck being shuffled", not as several deals in a
+ * row.
+ */
 export function sndShuffle() {
-  for (let i = 0; i < 9; i++) setTimeout(sndDeal, i * 55 + Math.random() * 20);
+  if (playSample("shuffle", 0.3)) return;
+  const a = ac();
+  if (!a) return;
+  const burstCount = 14;
+  for (let i = 0; i < burstCount; i++) {
+    const delay = i * 42 + Math.random() * 18;
+    setTimeout(() => {
+      const ctxNow = ac();
+      if (!ctxNow) return;
+      const dur = 0.09 + Math.random() * 0.05;
+      const buffer = ctxNow.createBuffer(1, Math.floor(ctxNow.sampleRate * dur), ctxNow.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let n = 0; n < data.length; n++) {
+        const env = Math.sin((Math.PI * n) / data.length);
+        data[n] = (Math.random() * 2 - 1) * env;
+      }
+      const src = ctxNow.createBufferSource();
+      src.buffer = buffer;
+      const bp = ctxNow.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.value = 1400 + Math.random() * 900;
+      bp.Q.value = 0.6;
+      const lp = ctxNow.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = 4200;
+      const g = ctxNow.createGain();
+      g.gain.value = 0.05;
+      src.connect(bp).connect(lp).connect(g).connect(ctxNow.destination);
+      src.start();
+    }, delay);
+  }
 }
 
 /** Solid knock on wood — a resonant low "tock" with a short transient, ×2. */

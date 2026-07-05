@@ -7,7 +7,8 @@ at build time:
 
 | File | Effect | Notes |
 |------|--------|-------|
-| `deal.mp3` | Card dealt / drawn | Short, soft single-card flick (~0.1–0.3 s). |
+| `deal.mp3` | Card dealt / drawn | Short, soft single-card flick (~0.1–0.3 s). Plays very often (every draw and every card of the opening deal), so keep it quiet and brief. |
+| `shuffle.mp3` | Shuffle before a new hand | A riffle/shuffle flutter (~0.5–1 s). Optional — falls back to a synthesized riffle texture if absent. |
 | `knock.mp3` | Knock | A solid double knock on wood. |
 | `coin.mp3` | Token lost | A coin clink / drop. |
 
@@ -34,3 +35,11 @@ Public Domain**, which needs no attribution):
 
 A good "card deal" is often labeled *card flick*, *card slide*, or *single card
 deal* — pick the softest, driest one (avoid reverb/echo).
+
+**Deck shuffle**
+- [Pixabay — card shuffle sound effects (no attribution)](https://pixabay.com/sound-effects/search/card%20shuffle/)
+- [Freesound — CC0 tag browse](https://freesound.org/browse/tags/cc0/)
+- [OpenGameArt — CC0 sound effects](https://opengameart.org/content/cc0-sound-effects)
+
+Look for *deck shuffle* or *riffle shuffle* — a short flutter, not a long
+casino-table loop.
