@@ -346,3 +346,11 @@ export function fillSeatsWithAI(state: GameState, seatIdxs: readonly number[]): 
   for (const i of seatIdxs) s.players[i]!.isAI = true;
   return s;
 }
+
+/** Set a seated player's display name (host rename in the lobby). Returns a new
+ * state; does not mutate the input. `idx` is a seat index the caller validated. */
+export function renamePlayer(state: GameState, idx: number, name: string): GameState {
+  const s: GameState = structuredClone(state);
+  s.players[idx]!.name = name;
+  return s;
+}

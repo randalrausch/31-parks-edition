@@ -11,10 +11,16 @@
  * Hidden info: `state` responses always run redactState(state, seatId) so the
  * wire never carries another seat's cards.
  */
-import { createGameState, applyAction, seatHumanPlayer, fillSeatsWithAI } from "./actions";
+import {
+  createGameState,
+  applyAction,
+  seatHumanPlayer,
+  fillSeatsWithAI,
+  renamePlayer,
+} from "./actions";
 import type { GameAction } from "./actions";
 import { applyPlayerAction, advanceAuthority, redactState } from "./authority";
-import { buildCreateSetup } from "./config";
+import { buildCreateSetup, clampName } from "./config";
 import type { CreateConfigInput } from "./config";
 import { APP_VERSION, PROTOCOL_VERSION, STATE_VERSION } from "./version";
 import type { GameState } from "./engine";
@@ -205,6 +211,55 @@ export async function handleStart(
   )
     return fail(409, "The game just changed — please try again.");
   return ok({ ok: true });
+}
+
+/* ─────────────────────────── rename ─────────────────────────── */
+
+/**
+ * Host renames a seat in the lobby — the fix for a joiner who took a seat
+ * without entering a name (or anyone who wants a different one). Host-only
+ * (seat 0) and lobby-only, so it can never rewrite names mid-game. Any occupied
+ * seat can be renamed (a joined human OR an AI), since the host set the roster
+ * up. Both the public lobby seat and the authoritative engine player are updated
+ * together, exactly like `join`, so the two views can't drift.
+ */
+export async function handleRename(
+  store: GameStore,
+  body: { gameId?: unknown; seatToken?: unknown; seatIndex?: unknown; name?: unknown },
+): Promise<OpResult> {
+  const gameId = String(body.gameId ?? "");
+  const game = await store.getGame(gameId);
+  const secret = await store.getSecret(gameId);
+  if (!game || !secret) return fail(404, "That game no longer exists.");
+  const renameIncompat = incompatibleState(secret.state);
+  if (renameIncompat) return renameIncompat;
+  if (seatIndexFor(secret.seatTokens, body.seatToken) !== 0)
+    return fail(403, "Only the host can rename players.");
+  if (game.rec.status !== "lobby") return fail(409, "Players can only be renamed in the lobby.");
+
+  const seats = game.rec.seats;
+  // The seat index is client-supplied: accept only an integer that names a real
+  // seat, and only one that's occupied (an empty "open" seat has no player to
+  // rename, and a joiner would overwrite its name anyway).
+  const idx = body.seatIndex;
+  if (typeof idx !== "number" || !Number.isInteger(idx) || idx < 0 || idx >= seats.length)
+    return fail(400, "No such seat.");
+  const seat = seats[idx]!;
+  if (!seat.filled) return fail(409, "That seat is empty.");
+
+  const name = clampName(body.name, `Player ${idx + 1}`);
+  seat.name = name; // public row (lobby display)
+  const nextState = renamePlayer(secret.state, idx, name); // authoritative player
+
+  const next = bumped(game.rec, { seats });
+  if (
+    !(await store.update(gameId, game.etag, next, {
+      state: nextState,
+      seatTokens: secret.seatTokens,
+    }))
+  )
+    return fail(409, "The game just changed — please try again.");
+  return ok({ ok: true, seatIndex: idx, name });
 }
 
 /* ───────────────────────────── act ──────────────────────────── */

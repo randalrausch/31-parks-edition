@@ -55,6 +55,9 @@ export interface GameApi {
     name: string,
   ): Promise<{ gameId: string; seatIndex: number; seatToken: string }>;
   start(gameId: string, seatToken: string): Promise<void>;
+  /** Host-only lobby rename of a seat (human or AI). No-ops off the happy path
+   * are surfaced as BackendError so the caller can show why it didn't take. */
+  rename(gameId: string, seatToken: string, seatIndex: number, name: string): Promise<void>;
   act(gameId: string, seatToken: string, action: GameAction): Promise<void>;
   state(
     gameId: string,
