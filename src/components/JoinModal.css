@@ -38,6 +38,15 @@
   text-align: center;
   color: var(--gold-bright);
 }
+/* The placeholder must read as a faint hint, never as letters to erase:
+   smaller, un-spaced, and dimmed so it can't be mistaken for a real code. */
+.join__input--code::placeholder {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  letter-spacing: normal;
+  text-transform: none;
+  color: color-mix(in srgb, var(--cream) 45%, transparent);
+}
 .join__error {
   color: var(--ember-bright);
   font-size: 0.85rem;

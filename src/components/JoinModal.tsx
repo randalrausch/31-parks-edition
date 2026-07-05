@@ -1,7 +1,7 @@
 /**
  * Join-by-code modal: enter a room code + your name to take an open seat.
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Modal from "./Modal";
 import { activeBackend } from "../game/backend";
 import { elog } from "../game/debug";
@@ -21,6 +21,16 @@ export default function JoinModal({
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const codeRef = useRef<HTMLInputElement>(null);
+
+  // Put the cursor in the code field the moment the dialog opens, so it's
+  // obvious that's where you type (rather than something you must clear first).
+  // A tiny delay lets Modal's own "focus the panel" effect run first.
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => codeRef.current?.focus(), 0);
+    return () => clearTimeout(t);
+  }, [open]);
 
   const join = async () => {
     if (!activeBackend || busy) return;
@@ -55,12 +65,18 @@ export default function JoinModal({
         <label className="join__label">
           Room Code
           <input
+            ref={codeRef}
             className="join__input join__input--code"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
+            onKeyDown={(e) => e.key === "Enter" && join()}
             maxLength={6}
             autoCapitalize="characters"
-            placeholder="ABCDEF"
+            autoCorrect="off"
+            spellCheck={false}
+            inputMode="text"
+            placeholder="type code here"
+            aria-label="Room code"
           />
         </label>
         <label className="join__label">
@@ -69,6 +85,7 @@ export default function JoinModal({
             className="join__input"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && join()}
             maxLength={14}
             placeholder="Your name"
           />
