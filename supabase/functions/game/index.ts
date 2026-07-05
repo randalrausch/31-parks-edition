@@ -3,16 +3,17 @@
  *
  * Thin Deno adapter: it marshals the incoming Request into the shared, tested
  * router (op dispatch + CORS + rate limiting) that ALSO powers the Azure backend,
- * backed by a Supabase GameStore. All authority logic — the five ops, hidden-info
+ * backed by a Supabase GameStore. All authority logic — the ops, hidden-info
  * redaction, atomic commits — lives in src/game/ and is bundled into
  * ../_shared/engine.mjs, so the two backends can never drift.
  *
  * Ops (POST JSON { op, ... }):
- *   create { config }                     → { gameId, code, seatIndex, seatToken }
- *   join   { code, name }                 → { gameId, seatIndex, seatToken }
- *   start  { gameId, seatToken }          → { ok }
- *   act    { gameId, seatToken, action }  → { ok }
- *   state  { gameId, seatToken? }         → { status, version, seats, seatIndex, state }
+ *   create { config }                         → { gameId, code, seatIndex, seatToken }
+ *   join   { code, name }                     → { gameId, seatIndex, seatToken }
+ *   rename { gameId, seatToken, seatIndex, name } → { ok, seatIndex, name }
+ *   start  { gameId, seatToken }              → { ok }
+ *   act    { gameId, seatToken, action }      → { ok }
+ *   state  { gameId, seatToken? }             → { status, version, seats, seatIndex, state }
  */
 // Pinned (not a floating `@2`) so the deployed function's SDK version is explicit
 // and reviewable — floating imports are outside Dependabot/CodeQL coverage.

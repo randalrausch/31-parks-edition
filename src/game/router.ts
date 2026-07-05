@@ -12,6 +12,7 @@ import {
   handleCreate,
   handleHealth,
   handleJoin,
+  handleRename,
   handleStart,
   handleState,
   handleVersion,
@@ -40,6 +41,7 @@ export interface RawResponse {
 const OPS: Record<string, (s: GameStore, body: Record<string, unknown>) => Promise<OpResult>> = {
   create: handleCreate,
   join: handleJoin,
+  rename: handleRename,
   start: handleStart,
   act: handleAct,
   state: handleState,
@@ -93,7 +95,7 @@ export function makeRouter(
   // Log the mutating ops always; skip successful high-frequency reads (state
   // polls, version/health probes) to keep log volume + cost sane. Failures
   // (4xx/5xx) are logged for every op regardless.
-  const LOGGED_OPS = new Set(["create", "join", "start", "act"]);
+  const LOGGED_OPS = new Set(["create", "join", "rename", "start", "act"]);
 
   const hits = new Map<string, { n: number; reset: number }>();
   const limited = (key: string, max: number, windowMs: number): boolean => {
@@ -202,6 +204,16 @@ export function makeRouter(
       const seatToken = typeof body.seatToken === "string" ? body.seatToken : "";
       if (seatToken && limited(`act:${seatToken}`, 30, 10_000))
         return reply(429, { error: "You're acting too quickly — please slow down." });
+    }
+
+    if (op === "rename") {
+      // Lobby-only, host-only op. It commits new state + a change ping like act,
+      // so cap it per seat token to keep a stuck/abusive client from hammering
+      // it. Generous for real use (a host tweaks a couple of names). Per-instance
+      // + fail-open, matching the other lightweight limiters.
+      const seatToken = typeof body.seatToken === "string" ? body.seatToken : "";
+      if (seatToken && limited(`rename:${seatToken}`, 30, 10_000))
+        return reply(429, { error: "You're renaming too quickly — please slow down." });
     }
 
     const fn = OPS[op];

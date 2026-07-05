@@ -55,6 +55,8 @@ export function makeGameApi(base: string): GameApi {
     create: (config) => call({ op: "create", config }),
     join: (code, name) => call({ op: "join", code: code.toUpperCase().trim(), name }),
     start: (gameId, seatToken) => call({ op: "start", gameId, seatToken }).then(() => undefined),
+    rename: (gameId, seatToken, seatIndex, name) =>
+      call({ op: "rename", gameId, seatToken, seatIndex, name }).then(() => undefined),
     act: (gameId, seatToken, action: GameAction) =>
       call({ op: "act", gameId, seatToken, action }).then(() => undefined),
     state: (gameId, seatToken) => call({ op: "state", gameId, seatToken }),

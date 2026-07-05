@@ -396,6 +396,11 @@ function fillSeatsWithAI(state, seatIdxs) {
   for (const i of seatIdxs) s.players[i].isAI = true;
   return s;
 }
+function renamePlayer(state, idx, name) {
+  const s = structuredClone(state);
+  s.players[idx].name = name;
+  return s;
+}
 
 // src/game/authority.ts
 var HIDDEN_CARD = {
@@ -677,6 +682,33 @@ async function handleStart(store, body) {
     return fail(409, "The game just changed \u2014 please try again.");
   return ok({ ok: true });
 }
+async function handleRename(store, body) {
+  const gameId = String(body.gameId ?? "");
+  const game = await store.getGame(gameId);
+  const secret = await store.getSecret(gameId);
+  if (!game || !secret) return fail(404, "That game no longer exists.");
+  const renameIncompat = incompatibleState(secret.state);
+  if (renameIncompat) return renameIncompat;
+  if (seatIndexFor(secret.seatTokens, body.seatToken) !== 0)
+    return fail(403, "Only the host can rename players.");
+  if (game.rec.status !== "lobby") return fail(409, "Players can only be renamed in the lobby.");
+  const seats = game.rec.seats;
+  const idx = body.seatIndex;
+  if (typeof idx !== "number" || !Number.isInteger(idx) || idx < 0 || idx >= seats.length)
+    return fail(400, "No such seat.");
+  const seat = seats[idx];
+  if (!seat.filled) return fail(409, "That seat is empty.");
+  const name = clampName(body.name, `Player ${idx + 1}`);
+  seat.name = name;
+  const nextState = renamePlayer(secret.state, idx, name);
+  const next = bumped(game.rec, { seats });
+  if (!await store.update(gameId, game.etag, next, {
+    state: nextState,
+    seatTokens: secret.seatTokens
+  }))
+    return fail(409, "The game just changed \u2014 please try again.");
+  return ok({ ok: true, seatIndex: idx, name });
+}
 async function handleAct(store, body) {
   const gameId = String(body.gameId ?? "");
   const game = await store.getGame(gameId);
@@ -750,6 +782,7 @@ function handleClientError(body) {
 var OPS = {
   create: handleCreate,
   join: handleJoin,
+  rename: handleRename,
   start: handleStart,
   act: handleAct,
   state: handleState
@@ -767,7 +800,7 @@ function makeRouter(store, opts = {}) {
     Vary: "Origin"
   });
   const onEvent = opts.onEvent;
-  const LOGGED_OPS = /* @__PURE__ */ new Set(["create", "join", "start", "act"]);
+  const LOGGED_OPS = /* @__PURE__ */ new Set(["create", "join", "rename", "start", "act"]);
   const hits = /* @__PURE__ */ new Map();
   const limited = (key, max, windowMs) => {
     const now = Date.now();
@@ -834,6 +867,11 @@ function makeRouter(store, opts = {}) {
       const seatToken = typeof body.seatToken === "string" ? body.seatToken : "";
       if (seatToken && limited(`act:${seatToken}`, 30, 1e4))
         return reply(429, { error: "You're acting too quickly \u2014 please slow down." });
+    }
+    if (op === "rename") {
+      const seatToken = typeof body.seatToken === "string" ? body.seatToken : "";
+      if (seatToken && limited(`rename:${seatToken}`, 30, 1e4))
+        return reply(429, { error: "You're renaming too quickly \u2014 please slow down." });
     }
     const fn = OPS[op];
     if (!fn) return reply(400, { error: "Unsupported request." });

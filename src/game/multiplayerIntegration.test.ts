@@ -10,7 +10,14 @@
  */
 import { describe, it, expect } from "vitest";
 import { makeMemoryStore } from "./memoryStore";
-import { handleCreate, handleJoin, handleStart, handleAct, handleState } from "./handlers";
+import {
+  handleCreate,
+  handleJoin,
+  handleRename,
+  handleStart,
+  handleAct,
+  handleState,
+} from "./handlers";
 import type { GameStore } from "./store";
 import { BackendError, type CreateConfig, type GameApi } from "./gameApi";
 import type { GameBackend } from "./backend";
@@ -41,6 +48,9 @@ function makeInProcessApi(store: GameStore): GameApi {
     },
     async start(gameId, seatToken) {
       unwrap(await handleStart(store, { gameId, seatToken }));
+    },
+    async rename(gameId, seatToken, seatIndex, name) {
+      unwrap(await handleRename(store, { gameId, seatToken, seatIndex, name }));
     },
     async act(gameId, seatToken, action) {
       unwrap(await handleAct(store, { gameId, seatToken, action }));
@@ -150,6 +160,9 @@ describe("online multiplayer (NetworkTransport over the shared handlers)", () =>
       async start() {
         throw outdated;
       },
+      async rename() {
+        throw outdated;
+      },
       async act() {
         throw outdated;
       },
@@ -203,6 +216,7 @@ describe("online multiplayer (NetworkTransport over the shared handlers)", () =>
         throw new Error("unused");
       },
       async start() {},
+      async rename() {},
       async act() {},
       async state() {
         calls += 1;
@@ -230,6 +244,7 @@ describe("online multiplayer (NetworkTransport over the shared handlers)", () =>
         throw new Error("unused");
       },
       async start() {},
+      async rename() {},
       async act() {},
       async state() {
         throw new BackendError("no such game", 404);

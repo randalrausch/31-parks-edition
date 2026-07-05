@@ -22,6 +22,7 @@ export default function OnlineGame({
   const game = useNetworkGame(session.gameId, session.seatToken);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const [renameError, setRenameError] = useState<string | null>(null);
 
   const start = async () => {
     if (starting) return;
@@ -34,6 +35,20 @@ export default function OnlineGame({
       elog("net", "start failed", e);
       setStartError((e as Error)?.message || "Couldn't start the game.");
       setStarting(false);
+    }
+  };
+
+  // Host-only lobby rename. On success we refresh so the change shows without
+  // waiting for the poll/ping; on failure we surface a brief message and let the
+  // seat snap back to the authoritative name on the next snapshot.
+  const rename = async (seatIndex: number, name: string) => {
+    setRenameError(null);
+    try {
+      await activeBackend?.api.rename(session.gameId, session.seatToken, seatIndex, name);
+      game.refresh();
+    } catch (e) {
+      elog("net", "rename failed", e);
+      setRenameError((e as Error)?.message || "Couldn't rename that player.");
     }
   };
 
@@ -80,8 +95,10 @@ export default function OnlineGame({
         code={session.code}
         isHost={session.seatIndex === 0}
         onStart={start}
+        onRename={rename}
         onLeave={onLeave}
         startError={startError}
+        renameError={renameError}
       />
     );
   }

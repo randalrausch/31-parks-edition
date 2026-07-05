@@ -8,6 +8,7 @@ import { makeMemoryStore } from "./memoryStore";
 import {
   handleCreate,
   handleJoin,
+  handleRename,
   handleStart,
   handleAct,
   handleState,
@@ -192,6 +193,120 @@ describe("handlers", () => {
     // way the game is playing and cards were dealt.
     expect(["drawing", "discarding", "dealEnd"]).toContain(st.state.phase);
     expect(st.state.players[0]!.hand.length).toBeGreaterThan(0);
+  });
+
+  it("rename: host renames a joined guest; both the seat and player update", async () => {
+    const store = makeMemoryStore();
+    const { gameId, host, guest } = await newGame(store);
+
+    const res = await handleRename(store, {
+      gameId,
+      seatToken: host.seatToken,
+      seatIndex: guest.seatIndex,
+      name: "Grandma",
+    });
+    expect(res.status).toBe(200);
+
+    const st = (await handleState(store, { gameId, seatToken: host.seatToken })).body as {
+      seats: { idx: number; name: string | null }[];
+      state: { players: { name: string }[] };
+    };
+    // Public lobby seat AND the authoritative engine player are both renamed.
+    expect(st.seats[guest.seatIndex]!.name).toBe("Grandma");
+    expect(st.state.players[guest.seatIndex]!.name).toBe("Grandma");
+  });
+
+  it("rename: host can rename an AI seat", async () => {
+    const store = makeMemoryStore();
+    const created = (
+      await handleCreate(store, {
+        config: { creatorName: "Randy", humans: 1, ai: [{ name: "Bot" }], options: {} },
+      })
+    ).body as { gameId: string; code: string; seatToken: string };
+
+    const res = await handleRename(store, {
+      gameId: created.gameId,
+      seatToken: created.seatToken,
+      seatIndex: 1,
+      name: "Rowdy Ranger",
+    });
+    expect(res.status).toBe(200);
+    const st = (await handleState(store, { gameId: created.gameId, seatToken: created.seatToken }))
+      .body as { seats: { idx: number; name: string | null; isAI: boolean }[] };
+    expect(st.seats[1]!.isAI).toBe(true);
+    expect(st.seats[1]!.name).toBe("Rowdy Ranger");
+  });
+
+  it("rename: a non-host is refused (403)", async () => {
+    const store = makeMemoryStore();
+    const { gameId, guest } = await newGame(store);
+    const res = await handleRename(store, {
+      gameId,
+      seatToken: guest.seatToken,
+      seatIndex: 0,
+      name: "Sneaky",
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("rename: refused once the game has started (409, lobby-only)", async () => {
+    const store = makeMemoryStore();
+    const { gameId, host } = await newGame(store);
+    await handleStart(store, { gameId, seatToken: host.seatToken });
+    const res = await handleRename(store, {
+      gameId,
+      seatToken: host.seatToken,
+      seatIndex: 0,
+      name: "TooLate",
+    });
+    expect(res.status).toBe(409);
+  });
+
+  it("rename: an out-of-range or non-integer seat index is rejected (400)", async () => {
+    const store = makeMemoryStore();
+    const { gameId, host } = await newGame(store);
+    for (const seatIndex of [5, -1, 1.5, "0", null]) {
+      const res = await handleRename(store, {
+        gameId,
+        seatToken: host.seatToken,
+        seatIndex,
+        name: "x",
+      });
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it("rename: an empty seat can't be renamed (409)", async () => {
+    const store = makeMemoryStore();
+    // Three human seats, only the host is filled — seats 1 and 2 are open.
+    const created = (
+      await handleCreate(store, {
+        config: { creatorName: "Randy", humans: 3, ai: [], options: {} },
+      })
+    ).body as { gameId: string; seatToken: string };
+    const res = await handleRename(store, {
+      gameId: created.gameId,
+      seatToken: created.seatToken,
+      seatIndex: 2,
+      name: "Ghost",
+    });
+    expect(res.status).toBe(409);
+  });
+
+  it("rename: an empty name falls back to a default rather than blanking the seat", async () => {
+    const store = makeMemoryStore();
+    const { gameId, host, guest } = await newGame(store);
+    const res = await handleRename(store, {
+      gameId,
+      seatToken: host.seatToken,
+      seatIndex: guest.seatIndex,
+      name: "   ",
+    });
+    expect(res.status).toBe(200);
+    const st = (await handleState(store, { gameId, seatToken: host.seatToken })).body as {
+      seats: { idx: number; name: string | null }[];
+    };
+    expect(st.seats[guest.seatIndex]!.name).toBe(`Player ${guest.seatIndex + 1}`);
   });
 
   it("act: valid move bumps version; out-of-turn move is a no-op", async () => {
