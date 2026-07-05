@@ -47,7 +47,7 @@ Each AI has a name, a home park, a catchphrase, and a five-trait personality
 17 just to see what happens.
 
 <p align="center">
-  <img src="docs/images/opponent-cards.png" alt="Three AI opponent picker cards: Naturalist Nora (memory expert), Ranger Rick (balanced), and Backcountry Ben (cautious early, aggressive late), each with a trait bar chart." width="420">
+  <img src="docs/images/ai-characters.webp" alt="All ten AI opponents as illustrated ranger portraits: Prairie Rose, Bison Bill, Coyote Cody, Half Dome Hank, Badlands Becky, Paula Pine, Ranger Rick, Summit Sam, Naturalist Nora, and Backcountry Ben, each with a one-line personality description." width="820">
 </p>
 
 Pick any of the ten by name before you start, or let the table fill in
