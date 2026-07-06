@@ -52,11 +52,21 @@ Run `npm run test:coverage` for a V8 coverage report.
 Mutation testing is the honest check on coverage *quality*: it mutates the
 rules core (`engine.ts`, `actions.ts`, `authority.ts` — see
 `stryker.config.json`) and reports any mutant the suites fail to kill, i.e.
-logic a test executes but never actually asserts. It takes tens of minutes, so
-it is deliberately **not** in CI — run it locally after substantive rules
-changes, or every few months, and add tests for survivors that represent real
-wrong-game-result bugs (some survivors are benign equivalents; judge them).
-The HTML report lands in `reports/mutation/`.
+logic a test executes but never actually asserts. It takes ~15 minutes, so it
+is deliberately **not** in CI — run it locally after substantive rules changes,
+or every few months, and add tests for survivors that represent real
+wrong-game-result bugs. The HTML report lands in `reports/mutation/`.
+
+**How to judge survivors** (from the July 2026 baseline audit): kill mutants
+that change *rules* or *shipped defaults* — that audit found (and fixed, see
+the "mutation-audit pin" tests) a blank rank surviving in `RANKS`, unasserted
+`DEFAULT_OPTIONS`/`DEFAULT_TRAITS`, three-of-a-kind near-miss guards, and the
+knock-penalty double-damage rule. Deliberately **leave** three survivor
+classes: AI personality heuristics (`planAITurn` coefficients — pinning them
+would punish tuning), equivalent mutants (defensive null/truthiness guards the
+type system already makes unreachable, `>` vs `>=` in a max-scan), and
+display-only bookkeeping (score-history `rounds` arithmetic). A falling score
+in the *authority/redaction* region is the one to take seriously.
 
 ## 2. E2E, local build — `npm run test:e2e` (Playwright)
 

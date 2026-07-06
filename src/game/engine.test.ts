@@ -3,6 +3,8 @@ import type { CardModel, Rank, Suit } from "../types";
 import { cardValue } from "../types";
 import {
   DEFAULT_OPTIONS,
+  DEFAULT_TRAITS,
+  RANKS,
   scoreHand,
   bestHandScore,
   bestSuit,
@@ -190,5 +192,64 @@ describe("AI trait → behaviour mappings", () => {
         risk: 3,
       }),
     );
+  });
+});
+
+/* ── Mutation-audit pins ─────────────────────────────────────────────────────
+ * Added after a Stryker run (docs/TESTING.md → Mutation audit) showed these
+ * exact behaviors could be mutated without any test noticing: a rank's value,
+ * the canonical rank list, a shipped default, and the three-of-a-kind guard.
+ * They pin RULES and PRODUCT DEFAULTS — not AI personality heuristics, whose
+ * surviving mutants are deliberate tuning freedom.
+ */
+
+describe("card values are exact for every rank (mutation-audit pin)", () => {
+  it("A=11, faces=10, pips at face value — exhaustively", () => {
+    const expected: Record<Rank, number> = {
+      A: 11,
+      "2": 2,
+      "3": 3,
+      "4": 4,
+      "5": 5,
+      "6": 6,
+      "7": 7,
+      "8": 8,
+      "9": 9,
+      "10": 10,
+      J: 10,
+      Q: 10,
+      K: 10,
+    };
+    expect(RANKS).toHaveLength(13);
+    for (const rank of RANKS) expect(cardValue(rank), `cardValue(${rank})`).toBe(expected[rank]);
+  });
+});
+
+describe("shipped defaults (mutation-audit pins)", () => {
+  it("DEFAULT_OPTIONS is the documented house-rule set", () => {
+    // Changing a default silently changes every new game (both boards AND the
+    // online create path via sanitizeOptions) — so the exact values are pinned.
+    expect(DEFAULT_OPTIONS).toEqual({
+      threeOfAKind: false,
+      grace: true,
+      knockPenalty: false,
+      sound: true,
+      showLog: true,
+      fullHistory: false,
+    });
+  });
+  it("DEFAULT_TRAITS is the balanced fallback personality", () => {
+    expect(DEFAULT_TRAITS).toEqual({ bluff: 2, memory: 3, patience: 3, aggression: 3, risk: 3 });
+  });
+});
+
+describe("three of a kind never fires on near-misses (mutation-audit pins)", () => {
+  it("a pair plus an odd card scores its best suit, not 30.5", () => {
+    const hand = [c("9", "spades"), c("9", "hearts"), c("2", "clubs")];
+    expect(scoreHand(hand, opts({ threeOfAKind: true }))).toBe(9);
+  });
+  it("three different ranks in one suit is a suit score, not 30.5", () => {
+    const hand = [c("2", "spades"), c("3", "spades"), c("4", "spades")];
+    expect(scoreHand(hand, opts({ threeOfAKind: true }))).toBe(9);
   });
 });

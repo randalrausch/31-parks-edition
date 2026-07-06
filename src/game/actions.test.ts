@@ -7,7 +7,16 @@ import {
   fillSeatsWithAI,
   type NewGamePlayer,
 } from "./actions";
-import { DEFAULT_OPTIONS, isAlive, type AITraits, type GamePlayer, type GameState } from "./engine";
+import {
+  DEFAULT_OPTIONS,
+  RANKS,
+  SUITS,
+  isAlive,
+  type AITraits,
+  type GamePlayer,
+  type GameState,
+} from "./engine";
+import type { CardModel, Rank, Suit } from "../types";
 import { FUZZ_SCALE, FUZZ_SEED, mulberry32 } from "./fuzzRig";
 
 // Seeded stream (per-file constant XOR the run seed) so failures reproduce:
@@ -263,4 +272,86 @@ describe("invariants over many random full games", () => {
     },
     30_000 * FUZZ_SCALE,
   );
+});
+
+/* ── Mutation-audit pins ─────────────────────────────────────────────────────
+ * See the note in engine.test.ts: these kill real Stryker survivors — a deck
+ * built from a corrupted rank list, and the knock-penalty resolution rule.
+ */
+
+describe("deck composition (mutation-audit pin)", () => {
+  it("a fresh deal holds exactly the 52 canonical rank x suit cards", () => {
+    // Pin the canonical lists as literals FIRST — the loop below iterates
+    // RANKS/SUITS itself, so a mutated list would otherwise self-consistently
+    // pass its own composition check.
+    expect(RANKS).toEqual(["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]);
+    expect(SUITS).toEqual(["spades", "hearts", "diamonds", "clubs"]);
+    const s = applyAction(createGameState(aiPlayers(3), DEFAULT_OPTIONS), { type: "deal" });
+    const all = [...s.deck, ...s.discard, ...s.players.flatMap((p) => p.hand)];
+    expect(all).toHaveLength(52);
+    const combos = new Set(all.map((card) => `${card.rank}|${card.suit}`));
+    expect(combos.size).toBe(52); // no duplicates
+    for (const rank of RANKS)
+      for (const suit of SUITS)
+        expect(combos.has(`${rank}|${suit}`), `missing ${rank} of ${suit}`).toBe(true);
+  });
+});
+
+describe("knock-penalty resolution (mutation-audit pin)", () => {
+  // Deterministic showdown between a 10-point hand (seat 0) and a 30-point
+  // hand (30, not 31 — an exact 31 would fire the instant-blitz path, where
+  // the knock penalty correctly never applies). Hands are planted after the
+  // deal with unique ids so they can't collide with deck cards; phase/tokens
+  // are reset in case the random deal resolved itself (blitz).
+  const fx = (i: number, rank: Rank, suit: Suit): CardModel => ({ id: `fx${i}`, rank, suit });
+  const playShowdown = (knockPenalty: boolean, knockerSeat: 0 | 1): GameState => {
+    const humans = [0, 1].map((i) => ({
+      id: `p${i}`,
+      name: `H${i}`,
+      isAI: false,
+      avatarKey: "ranger",
+    }));
+    const s = applyAction(createGameState(humans, { ...DEFAULT_OPTIONS, knockPenalty }), {
+      type: "deal",
+    });
+    s.players[0]!.hand = [fx(0, "2", "hearts"), fx(1, "3", "clubs"), fx(2, "5", "spades")];
+    s.players[1]!.hand = [fx(3, "K", "spades"), fx(4, "Q", "spades"), fx(5, "J", "spades")];
+    for (const p of s.players) {
+      p.tokens = 3;
+      p.grace = false;
+    }
+    s.phase = "drawing";
+    s.knocker = null;
+    s.queue = [];
+    s.cur = knockerSeat;
+
+    let next = applyAction(s, { type: "knock" });
+    expect(next.cur).toBe(1 - knockerSeat);
+    next = applyAction(next, { type: "drawDeck" }); // the other seat takes the final turn...
+    const drawn = next.players[1 - knockerSeat]!.hand[3]!;
+    next = applyAction(next, { type: "discard", cardId: drawn.id }); // ...and stands pat
+    expect(next.phase).toBe("dealEnd"); // queue drained -> showdown resolved
+    return next;
+  };
+  const rowOf = (s: GameState, id: string) =>
+    s.result!.rows.find((r: { playerId: string }) => r.playerId === id)!;
+
+  it("the knocker who loses the showdown pays double with the penalty on", () => {
+    const s = playShowdown(true, 0); // seat 0 knocks on the weakest hand
+    expect(s.players[0]!.tokens).toBe(1); // 3 - 2
+    expect(s.players[1]!.tokens).toBe(3); // winner untouched
+    expect(rowOf(s, "p0").isLoser).toBe(true); // the scorecard marks the loser...
+    expect(rowOf(s, "p1").isLoser).toBe(false); // ...and only the loser
+  });
+  it("...and the normal single token with the penalty off", () => {
+    const s = playShowdown(false, 0);
+    expect(s.players[0]!.tokens).toBe(2); // 3 - 1
+    expect(s.players[1]!.tokens).toBe(3);
+  });
+  it("a LOSER who didn't knock never pays double, even with the penalty on", () => {
+    const s = playShowdown(true, 1); // seat 1 knocks holding the strong hand
+    expect(s.players[0]!.tokens).toBe(2); // lowest hand, but not the knocker: 3 - 1
+    expect(s.players[1]!.tokens).toBe(3);
+    expect(rowOf(s, "p0").isLoser).toBe(true);
+  });
 });
