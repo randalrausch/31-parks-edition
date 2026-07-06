@@ -38,3 +38,24 @@ test("in-game board has no serious/critical accessibility violations", async ({ 
   const violations = await scan(page);
   expect(summarize(violations), "axe violations on the game board").toEqual([]);
 });
+
+// The online screens are reachable at PR time because the e2e build points at
+// the local in-memory backend (e2e/localServer.ts) — so the join form and the
+// lobby get the same accessibility gate as the solo surfaces.
+
+test("join-by-code screen has no serious/critical accessibility violations", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /join with code/i }).click();
+  await expect(page.locator(".join__input--code")).toBeVisible();
+  const violations = await scan(page);
+  expect(summarize(violations), "axe violations on the join screen").toEqual([]);
+});
+
+test("online lobby has no serious/critical accessibility violations", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /create online game/i }).click();
+  // The shareable code renders once the backend has created the room.
+  await expect(page.locator(".lobby__code")).toBeVisible({ timeout: 15_000 });
+  const violations = await scan(page);
+  expect(summarize(violations), "axe violations on the lobby").toEqual([]);
+});

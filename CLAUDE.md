@@ -134,9 +134,15 @@ publishes a GitHub Release. If it can't classify the commits, it opens an issue
 asking a human instead of guessing — so **pick the right commit type**, and if
 you're unsure whether a change is release-worthy or breaking, ask.
 
-**`PROTOCOL_VERSION` is manual.** Bump it (in `version.ts`) ONLY when the
-client↔server wire contract changes incompatibly — the op surface, the
-`redactState` shape, or seat-token semantics. A client whose `PROTOCOL_VERSION`
+**`PROTOCOL_VERSION` is manual — and tripwired.** Bump it (in `version.ts`)
+ONLY when the client↔server wire contract changes incompatibly — the op
+surface, the `redactState` shape, or seat-token semantics. Two tests exist to
+make these judgments visible: a diff in `src/game/wireShape.test.ts`'s snapshot
+means you changed the wire contract (decide compatible-vs-bump before `-u`),
+and a failure in `src/game/stateFixture.test.ts` means a stored game from the
+current `STATE_VERSION` can no longer be played (make the change
+backward-compatible, or bump `STATE_VERSION` and regenerate the fixture with
+`npm run fixture:state`). A client whose `PROTOCOL_VERSION`
 differs from the live backend's is told to refresh (`OnlineRoot` / About). When a
 change to `src/game/` might be a protocol break and you're not certain, ask
 before committing rather than risk silently breaking live games. Bumping it means

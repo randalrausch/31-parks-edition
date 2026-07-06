@@ -36,6 +36,8 @@ export default tseslint.config(
       "api/dist/**",
       "supabase/**", // Deno runtime + the committed engine bundle
       "e2e/**", // Playwright, its own runtime/tsconfig
+      ".stryker-tmp/**", // mutation-audit sandbox (a mutated copy of the repo)
+      "reports/**", // mutation-audit HTML report
       "**/*.mjs",
       "**/*.js",
     ],

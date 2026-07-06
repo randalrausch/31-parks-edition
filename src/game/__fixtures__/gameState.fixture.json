@@ -1,0 +1,394 @@
+{
+  "players": [
+    {
+      "id": "p0",
+      "name": "P0",
+      "isAI": false,
+      "avatarKey": "ranger",
+      "tokens": 3,
+      "grace": false,
+      "hand": [
+        {
+          "id": "K-clubs",
+          "rank": "K",
+          "suit": "clubs"
+        },
+        {
+          "id": "5-diamonds",
+          "rank": "5",
+          "suit": "diamonds"
+        },
+        {
+          "id": "4-spades",
+          "rank": "4",
+          "suit": "spades"
+        }
+      ]
+    },
+    {
+      "id": "p1",
+      "name": "P1",
+      "isAI": false,
+      "avatarKey": "ranger",
+      "tokens": 3,
+      "grace": false,
+      "hand": [
+        {
+          "id": "3-hearts",
+          "rank": "3",
+          "suit": "hearts"
+        },
+        {
+          "id": "3-diamonds",
+          "rank": "3",
+          "suit": "diamonds"
+        },
+        {
+          "id": "A-hearts",
+          "rank": "A",
+          "suit": "hearts"
+        }
+      ]
+    },
+    {
+      "id": "p2",
+      "name": "P2",
+      "isAI": false,
+      "avatarKey": "ranger",
+      "tokens": 3,
+      "grace": false,
+      "hand": [
+        {
+          "id": "2-hearts",
+          "rank": "2",
+          "suit": "hearts"
+        },
+        {
+          "id": "2-spades",
+          "rank": "2",
+          "suit": "spades"
+        },
+        {
+          "id": "9-clubs",
+          "rank": "9",
+          "suit": "clubs"
+        }
+      ]
+    }
+  ],
+  "deck": [
+    {
+      "id": "3-spades",
+      "rank": "3",
+      "suit": "spades"
+    },
+    {
+      "id": "5-clubs",
+      "rank": "5",
+      "suit": "clubs"
+    },
+    {
+      "id": "4-diamonds",
+      "rank": "4",
+      "suit": "diamonds"
+    },
+    {
+      "id": "4-clubs",
+      "rank": "4",
+      "suit": "clubs"
+    },
+    {
+      "id": "J-spades",
+      "rank": "J",
+      "suit": "spades"
+    },
+    {
+      "id": "Q-spades",
+      "rank": "Q",
+      "suit": "spades"
+    },
+    {
+      "id": "K-spades",
+      "rank": "K",
+      "suit": "spades"
+    },
+    {
+      "id": "A-clubs",
+      "rank": "A",
+      "suit": "clubs"
+    },
+    {
+      "id": "10-clubs",
+      "rank": "10",
+      "suit": "clubs"
+    },
+    {
+      "id": "5-spades",
+      "rank": "5",
+      "suit": "spades"
+    },
+    {
+      "id": "9-diamonds",
+      "rank": "9",
+      "suit": "diamonds"
+    },
+    {
+      "id": "J-hearts",
+      "rank": "J",
+      "suit": "hearts"
+    },
+    {
+      "id": "6-spades",
+      "rank": "6",
+      "suit": "spades"
+    },
+    {
+      "id": "9-hearts",
+      "rank": "9",
+      "suit": "hearts"
+    },
+    {
+      "id": "10-hearts",
+      "rank": "10",
+      "suit": "hearts"
+    },
+    {
+      "id": "6-diamonds",
+      "rank": "6",
+      "suit": "diamonds"
+    },
+    {
+      "id": "Q-diamonds",
+      "rank": "Q",
+      "suit": "diamonds"
+    },
+    {
+      "id": "8-hearts",
+      "rank": "8",
+      "suit": "hearts"
+    },
+    {
+      "id": "K-diamonds",
+      "rank": "K",
+      "suit": "diamonds"
+    },
+    {
+      "id": "K-hearts",
+      "rank": "K",
+      "suit": "hearts"
+    },
+    {
+      "id": "J-clubs",
+      "rank": "J",
+      "suit": "clubs"
+    },
+    {
+      "id": "7-diamonds",
+      "rank": "7",
+      "suit": "diamonds"
+    },
+    {
+      "id": "8-clubs",
+      "rank": "8",
+      "suit": "clubs"
+    },
+    {
+      "id": "A-diamonds",
+      "rank": "A",
+      "suit": "diamonds"
+    },
+    {
+      "id": "5-hearts",
+      "rank": "5",
+      "suit": "hearts"
+    },
+    {
+      "id": "10-spades",
+      "rank": "10",
+      "suit": "spades"
+    },
+    {
+      "id": "Q-hearts",
+      "rank": "Q",
+      "suit": "hearts"
+    },
+    {
+      "id": "7-clubs",
+      "rank": "7",
+      "suit": "clubs"
+    },
+    {
+      "id": "2-diamonds",
+      "rank": "2",
+      "suit": "diamonds"
+    },
+    {
+      "id": "3-clubs",
+      "rank": "3",
+      "suit": "clubs"
+    },
+    {
+      "id": "A-spades",
+      "rank": "A",
+      "suit": "spades"
+    },
+    {
+      "id": "8-spades",
+      "rank": "8",
+      "suit": "spades"
+    },
+    {
+      "id": "J-diamonds",
+      "rank": "J",
+      "suit": "diamonds"
+    },
+    {
+      "id": "9-spades",
+      "rank": "9",
+      "suit": "spades"
+    },
+    {
+      "id": "2-clubs",
+      "rank": "2",
+      "suit": "clubs"
+    },
+    {
+      "id": "Q-clubs",
+      "rank": "Q",
+      "suit": "clubs"
+    },
+    {
+      "id": "8-diamonds",
+      "rank": "8",
+      "suit": "diamonds"
+    },
+    {
+      "id": "6-clubs",
+      "rank": "6",
+      "suit": "clubs"
+    }
+  ],
+  "discard": [
+    {
+      "id": "7-spades",
+      "rank": "7",
+      "suit": "spades"
+    },
+    {
+      "id": "10-diamonds",
+      "rank": "10",
+      "suit": "diamonds"
+    },
+    {
+      "id": "7-hearts",
+      "rank": "7",
+      "suit": "hearts"
+    },
+    {
+      "id": "4-hearts",
+      "rank": "4",
+      "suit": "hearts"
+    },
+    {
+      "id": "6-hearts",
+      "rank": "6",
+      "suit": "hearts"
+    }
+  ],
+  "cur": 1,
+  "dealer": 0,
+  "knocker": null,
+  "queue": [],
+  "phase": "drawing",
+  "selected": null,
+  "options": {
+    "threeOfAKind": true,
+    "grace": true,
+    "knockPenalty": true,
+    "sound": false,
+    "showLog": true,
+    "fullHistory": false
+  },
+  "dealNum": 1,
+  "turnInDeal": 5,
+  "dealPlayers": 3,
+  "status": "",
+  "result": null,
+  "scoreHistory": [],
+  "log": [
+    {
+      "id": 0,
+      "actor": "P0",
+      "actorSeat": 0,
+      "kind": "deck",
+      "card": null
+    },
+    {
+      "id": 1,
+      "actor": "P0",
+      "actorSeat": 0,
+      "kind": "discard",
+      "card": {
+        "id": "10-diamonds",
+        "rank": "10",
+        "suit": "diamonds"
+      }
+    },
+    {
+      "id": 2,
+      "actor": "P1",
+      "actorSeat": 1,
+      "kind": "deck",
+      "card": null
+    },
+    {
+      "id": 3,
+      "actor": "P1",
+      "actorSeat": 1,
+      "kind": "discard",
+      "card": {
+        "id": "7-hearts",
+        "rank": "7",
+        "suit": "hearts"
+      }
+    },
+    {
+      "id": 4,
+      "actor": "P2",
+      "actorSeat": 2,
+      "kind": "deck",
+      "card": null
+    },
+    {
+      "id": 5,
+      "actor": "P2",
+      "actorSeat": 2,
+      "kind": "discard",
+      "card": {
+        "id": "4-hearts",
+        "rank": "4",
+        "suit": "hearts"
+      }
+    },
+    {
+      "id": 6,
+      "actor": "P0",
+      "actorSeat": 0,
+      "kind": "deck",
+      "card": null
+    },
+    {
+      "id": 7,
+      "actor": "P0",
+      "actorSeat": 0,
+      "kind": "discard",
+      "card": {
+        "id": "6-hearts",
+        "rank": "6",
+        "suit": "hearts"
+      }
+    }
+  ],
+  "winnerId": null,
+  "stateVersion": 1
+}

@@ -1,0 +1,75 @@
+name: Live-site canary
+
+# The deploy smoke only runs AT deploy time, and this project can go weeks
+# between deploys — a cert expiry, cloud config drift, or a paused backend
+# would otherwise be discovered by a player, not by CI. This plays the LIVE
+# site once a week with a real browser (e2e/deployment.spec.ts: boot + version,
+# a solo turn, and a two-browser online round against the live backend) and
+# opens an issue when it fails. The whole job self-skips (green, zero cost)
+# when the AZURE_SITE_URL repo variable isn't set.
+
+on:
+  schedule:
+    - cron: "23 6 * * 1" # weekly, Monday 06:23 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write # file/refresh the "canary failed" issue
+
+concurrency:
+  group: canary
+  cancel-in-progress: false
+
+jobs:
+  play-live-site:
+    if: ${{ vars.AZURE_SITE_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20 # cost guard - a hung job can't burn the 6h default
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            api/package-lock.json
+      - run: npm ci
+      - name: Install Chrome for Playwright
+        run: npx playwright install --with-deps chrome
+      - name: Play the live site
+        env:
+          E2E_BASE_URL: ${{ vars.AZURE_SITE_URL }}
+        run: npm run test:e2e:deploy
+      - name: Upload traces on failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: canary-test-results
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: ignore
+      - name: File (or refresh) the canary-failure issue
+        # One open issue at a time: append the new failing run to an existing
+        # issue instead of piling up duplicates — same dedupe pattern release.yml
+        # uses for ambiguous version bumps.
+        if: ${{ failure() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE: ${{ vars.AZURE_SITE_URL }}
+        run: |
+          title="Canary: the live site failed its weekly check"
+          existing=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number // empty')
+          body="The weekly live-site canary could not play $SITE.
+
+          - Failing run (traces attached as an artifact): $RUN_URL
+          - Reproduce locally: \`E2E_BASE_URL=$SITE npm run test:e2e:deploy\`
+
+          Common causes: paused/expired backend, cert or DNS problems, a CDN serving a stale bundle, or an Azure config change."
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "Still failing: $RUN_URL"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi

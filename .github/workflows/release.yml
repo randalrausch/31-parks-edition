@@ -42,6 +42,7 @@ jobs:
     # Don't act on the bot's own release commit.
     if: ${{ !startsWith(github.event.head_commit.message, 'chore(release):') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15 # cost guard - a hung job can't burn the 6h default
     steps:
       # Mint a short-lived token for the GitHub App that's on the `main` ruleset's
       # bypass list, so the version-bump push below clears the required-status-checks

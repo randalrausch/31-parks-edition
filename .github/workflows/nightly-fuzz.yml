@@ -1,0 +1,75 @@
+name: Nightly deep fuzz
+
+# PR runs keep the property/fuzz suites small and DETERMINISTIC (fixed seed,
+# see src/game/fuzzRig.ts) so a fuzz test can never flake an unrelated PR. This
+# run is where the actual hunting happens: the same suites at 50× the
+# iterations with a FRESH seed every night (the run id), exploring new random
+# games for rare invariant violations — card conservation, clean elimination,
+# termination, redaction leaks. A failure opens an issue carrying the seed,
+# which reproduces the exact run locally:
+#
+#   FUZZ_SEED=<seed from the issue> FUZZ_SCALE=50 npm test
+
+on:
+  schedule:
+    - cron: "47 3 * * *" # daily, 03:47 UTC
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: "PRNG seed (default: this run's id — a fresh stream per run)"
+        required: false
+        default: ""
+      scale:
+        description: "Iteration multiplier over the PR-sized suites"
+        required: false
+        default: "50"
+
+permissions:
+  contents: read
+  issues: write # file/refresh the "fuzz found something" issue
+
+concurrency:
+  group: nightly-fuzz
+  cancel-in-progress: false
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30 # cost guard - a hung job can't burn the 6h default
+    env:
+      FUZZ_SEED: ${{ github.event.inputs.seed || github.run_id }}
+      FUZZ_SCALE: ${{ github.event.inputs.scale || '50' }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            api/package-lock.json
+      - run: npm ci
+      - name: Deep fuzz (seed=${{ env.FUZZ_SEED }}, scale=${{ env.FUZZ_SCALE }})
+        run: npm test
+      - name: File (or refresh) the fuzz-failure issue
+        # A deep-fuzz failure is a REAL engine/redaction bug with a reproducible
+        # seed — surface it as an issue instead of an unread red run. One open
+        # issue at a time (dedupe pattern shared with canary.yml / release.yml).
+        if: ${{ failure() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Nightly fuzz found a failing game"
+          existing=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number // empty')
+          body="The nightly deep-fuzz run failed — a randomly-driven game violated an engine or redaction invariant.
+
+          - Failing run: $RUN_URL
+          - Reproduce locally: \`FUZZ_SEED=$FUZZ_SEED FUZZ_SCALE=$FUZZ_SCALE npm test\`
+
+          The failure message names the suite and trial; see src/game/fuzzRig.ts for how the knobs work."
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "Failed again (FUZZ_SEED=$FUZZ_SEED): $RUN_URL"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi

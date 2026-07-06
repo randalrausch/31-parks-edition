@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "Mutation-testing AUDIT of the pure rules core — the honest check that the unit/fuzz suites actually kill logic mutants, not just execute lines. Run it with `npm run test:mutation` (takes tens of minutes); it is deliberately NOT wired into CI — it's a periodic local audit, per docs/TESTING.md. Scope is the three rules-engine files on purpose: they are the shared authority both backends run, where a surviving mutant means a wrong game result.",
+  "testRunner": "vitest",
+  "mutate": ["src/game/engine.ts", "src/game/actions.ts", "src/game/authority.ts"],
+  "reporters": ["clear-text", "progress", "html"],
+  "coverageAnalysis": "perTest",
+  "thresholds": { "high": 90, "low": 75, "break": null },
+  "tempDirName": ".stryker-tmp"
+}

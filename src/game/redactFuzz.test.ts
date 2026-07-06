@@ -9,18 +9,7 @@ import { describe, it, expect } from "vitest";
 import { createGameState, applyAction, type GameAction, type NewGamePlayer } from "./actions";
 import { applyPlayerAction, advanceAuthority, redactState, HIDDEN_CARD } from "./authority";
 import { isAlive, type GameState } from "./engine";
-
-// mulberry32 — tiny deterministic PRNG so any failure reproduces from the seed.
-function rng(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+import { FUZZ_SCALE, FUZZ_SEED, mulberry32 as rng } from "./fuzzRig";
 
 function seats(rand: () => number): NewGamePlayer[] {
   const humans = 1 + Math.floor(rand() * 4); // 1..4
@@ -83,51 +72,72 @@ function checkAllViews(real: GameState) {
   assertNoLeak(real, null); // spectator
 }
 
+// PR-sized by default; the nightly deep-fuzz multiplies this via FUZZ_SCALE and
+// varies FUZZ_SEED per run (see fuzzRig.ts). Per-trial seeds derive from both,
+// so a failure names the exact trial to re-run.
+const TRIALS = 60 * FUZZ_SCALE;
+
 describe("redactState never leaks (fuzz)", () => {
-  it("holds across thousands of randomly-driven states and every viewpoint", () => {
-    let states = 0;
-    for (let trial = 0; trial < 60; trial++) {
-      const rand = rng(0x31_9a_c0 + trial);
-      const opts = {
-        threeOfAKind: rand() < 0.5,
-        grace: rand() < 0.5,
-        knockPenalty: rand() < 0.5,
-        sound: false,
-        showLog: true,
-        fullHistory: false,
-      };
-      let state = advanceAuthority(
-        applyAction(createGameState(seats(rand), opts), { type: "deal" }),
-      );
-      let steps = 0;
-      while (state.phase !== "gameOver" && steps++ < 400) {
-        checkAllViews(state);
-        states++;
-        if (state.phase === "dealEnd") {
-          const alive = state.players.findIndex(isAlive);
-          state = applyPlayerAction(state, state.players[alive >= 0 ? alive : 0]!.id, {
-            type: "nextDeal",
-          });
-          continue;
+  it(
+    "holds across thousands of randomly-driven states and every viewpoint",
+    () => {
+      let states = 0;
+      for (let trial = 0; trial < TRIALS; trial++) {
+        try {
+          states += runTrial(trial);
+        } catch (e) {
+          // Prefix the trial + seed onto the failure (Error.cause needs a newer
+          // TS lib than the app targets); the original stack is preserved.
+          const err = e as Error;
+          err.message = `redaction fuzz trial ${trial} (FUZZ_SEED=${FUZZ_SEED}, FUZZ_SCALE=${FUZZ_SCALE}): ${err.message}`;
+          throw err;
         }
-        const cur = state.cur;
-        const seatId = state.players[cur]!.id;
-        let action: GameAction;
-        if (state.phase === "drawing") {
-          action =
-            state.knocker === null && rand() < 0.3 ? { type: "knock" } : { type: "drawDeck" };
-        } else {
-          const hand = state.players[cur]!.hand;
-          action = {
-            type: "discard",
-            cardId: hand[Math.floor(rand() * hand.length)]!.id,
-          };
-        }
-        state = applyPlayerAction(state, seatId, action);
       }
-      checkAllViews(state); // final (gameOver or step-capped) state
-      states++;
-    }
-    expect(states).toBeGreaterThan(1000); // genuinely exercised many states
-  }, 30_000);
+      expect(states).toBeGreaterThan(1000 * FUZZ_SCALE); // genuinely exercised many states
+    },
+    30_000 * FUZZ_SCALE,
+  );
 });
+
+/** Play one randomly-driven game, asserting every view at every step. */
+function runTrial(trial: number): number {
+  let states = 0;
+  const rand = rng((0x31_9a_c0 + trial) ^ (FUZZ_SEED * 0x9e3779b9));
+  const opts = {
+    threeOfAKind: rand() < 0.5,
+    grace: rand() < 0.5,
+    knockPenalty: rand() < 0.5,
+    sound: false,
+    showLog: true,
+    fullHistory: false,
+  };
+  let state = advanceAuthority(applyAction(createGameState(seats(rand), opts), { type: "deal" }));
+  let steps = 0;
+  while (state.phase !== "gameOver" && steps++ < 400) {
+    checkAllViews(state);
+    states++;
+    if (state.phase === "dealEnd") {
+      const alive = state.players.findIndex(isAlive);
+      state = applyPlayerAction(state, state.players[alive >= 0 ? alive : 0]!.id, {
+        type: "nextDeal",
+      });
+      continue;
+    }
+    const cur = state.cur;
+    const seatId = state.players[cur]!.id;
+    let action: GameAction;
+    if (state.phase === "drawing") {
+      action = state.knocker === null && rand() < 0.3 ? { type: "knock" } : { type: "drawDeck" };
+    } else {
+      const hand = state.players[cur]!.hand;
+      action = {
+        type: "discard",
+        cardId: hand[Math.floor(rand() * hand.length)]!.id,
+      };
+    }
+    state = applyPlayerAction(state, seatId, action);
+  }
+  checkAllViews(state); // final (gameOver or step-capped) state
+  states++;
+  return states;
+}

@@ -1,0 +1,43 @@
+{
+  "_comment": "The intended branch protection for `main`, as a GitHub ruleset (Settings → Rules → Rulesets → New ruleset → Import a ruleset). The required-checks list is the part that drifts silently — this file makes it reviewable and restorable, and docs/CI.md explains WHY these five checks and no others. Two things the import cannot carry (account-specific ids): (1) add the release GitHub App to the ruleset's BYPASS LIST (mode: Always) after importing — release.yml's version-bump push needs it, see docs/CI.md → Release automation; (2) re-check the integration id on the CodeQL check if required-check matching complains.",
+  "name": "protect main",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["~DEFAULT_BRANCH"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": false,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": false,
+        "automatic_copilot_code_review_enabled": false,
+        "allowed_merge_methods": ["squash"]
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": false,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [
+          { "context": "gate" },
+          { "context": "api" },
+          { "context": "e2e" },
+          { "context": "supabase-contract" },
+          { "context": "CodeQL" }
+        ]
+      }
+    }
+  ],
+  "bypass_actors": []
+}

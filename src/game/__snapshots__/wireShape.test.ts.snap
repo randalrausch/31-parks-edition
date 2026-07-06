@@ -1,0 +1,373 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`wire-contract shapes (bump PROTOCOL_VERSION on a breaking change) > op responses and redacted views keep their shape 1`] = `
+{
+  "act_applied": {
+    "ok": "boolean",
+  },
+  "act_not_applied": {
+    "ok": "boolean",
+    "reason": "string",
+  },
+  "create": {
+    "code": "string",
+    "gameId": "string",
+    "seatIndex": "number",
+    "seatToken": "string",
+  },
+  "error": {
+    "error": "string",
+  },
+  "health": {
+    "healthy": "boolean",
+    "ok": "boolean",
+    "protocol": "number",
+    "provider": "string",
+  },
+  "join": {
+    "gameId": "string",
+    "seatIndex": "number",
+    "seatToken": "string",
+  },
+  "start": {
+    "ok": "boolean",
+  },
+  "state_lobby_seated": {
+    "seatIndex": "number",
+    "seats": [
+      {
+        "avatar": "string",
+        "filled": "boolean",
+        "idx": "number",
+        "isAI": "boolean",
+        "name": "string",
+      },
+      {
+        "avatar": "string",
+        "filled": "boolean",
+        "idx": "number",
+        "isAI": "boolean",
+        "name": "null",
+      },
+      {
+        "avatar": "string",
+        "emoji": "undefined",
+        "filled": "boolean",
+        "idx": "number",
+        "isAI": "boolean",
+        "name": "string",
+      },
+    ],
+    "state": {
+      "cur": "number",
+      "dealNum": "number",
+      "dealPlayers": "number",
+      "dealer": "number",
+      "deck": [
+        "<empty>",
+      ],
+      "discard": [
+        "<empty>",
+      ],
+      "knocker": "null",
+      "log": [
+        "<empty>",
+      ],
+      "options": {
+        "fullHistory": "boolean",
+        "grace": "boolean",
+        "knockPenalty": "boolean",
+        "showLog": "boolean",
+        "sound": "boolean",
+        "threeOfAKind": "boolean",
+      },
+      "phase": "string",
+      "players": [
+        {
+          "avatarKey": "string",
+          "grace": "boolean",
+          "hand": [
+            "<empty>",
+          ],
+          "id": "string",
+          "isAI": "boolean",
+          "name": "string",
+          "tokens": "number",
+        },
+        {
+          "avatarKey": "string",
+          "emoji": "undefined",
+          "grace": "boolean",
+          "hand": [
+            "<empty>",
+          ],
+          "id": "string",
+          "image": "undefined",
+          "isAI": "boolean",
+          "name": "string",
+          "tokens": "number",
+          "traits": {
+            "aggression": "number",
+            "bluff": "number",
+            "memory": "number",
+            "patience": "number",
+            "risk": "number",
+          },
+        },
+      ],
+      "queue": [
+        "<empty>",
+      ],
+      "result": "null",
+      "scoreHistory": [
+        "<empty>",
+      ],
+      "selected": "null",
+      "stateVersion": "number",
+      "status": "string",
+      "turnInDeal": "number",
+      "winnerId": "null",
+    },
+    "status": "string",
+    "version": "number",
+  },
+  "state_playing_seated": {
+    "seatIndex": "number",
+    "seats": [
+      {
+        "avatar": "string",
+        "filled": "boolean",
+        "idx": "number",
+        "isAI": "boolean",
+        "name": "string",
+      },
+      {
+        "avatar": "string",
+        "emoji": "null",
+        "filled": "boolean",
+        "idx": "number",
+        "isAI": "boolean",
+        "name": "string",
+      },
+      {
+        "avatar": "string",
+        "emoji": "undefined",
+        "filled": "boolean",
+        "idx": "number",
+        "isAI": "boolean",
+        "name": "string",
+      },
+    ],
+    "state": {
+      "cur": "number",
+      "dealNum": "number",
+      "dealPlayers": "number",
+      "dealer": "number",
+      "deck": [
+        {
+          "id": "string",
+          "rank": "string",
+          "suit": "string",
+        },
+      ],
+      "discard": [
+        {
+          "id": "string",
+          "rank": "string",
+          "suit": "string",
+        },
+      ],
+      "knocker": "null",
+      "log": [
+        "<empty>",
+      ],
+      "options": {
+        "fullHistory": "boolean",
+        "grace": "boolean",
+        "knockPenalty": "boolean",
+        "showLog": "boolean",
+        "sound": "boolean",
+        "threeOfAKind": "boolean",
+      },
+      "phase": "string",
+      "players": [
+        {
+          "avatarKey": "string",
+          "grace": "boolean",
+          "hand": [
+            {
+              "id": "string",
+              "rank": "string",
+              "suit": "string",
+            },
+          ],
+          "id": "string",
+          "isAI": "boolean",
+          "name": "string",
+          "tokens": "number",
+        },
+        {
+          "avatarKey": "string",
+          "emoji": "undefined",
+          "grace": "boolean",
+          "hand": [
+            {
+              "id": "string",
+              "rank": "string",
+              "suit": "string",
+            },
+          ],
+          "id": "string",
+          "image": "undefined",
+          "isAI": "boolean",
+          "name": "string",
+          "tokens": "number",
+          "traits": {
+            "aggression": "number",
+            "bluff": "number",
+            "memory": "number",
+            "patience": "number",
+            "risk": "number",
+          },
+        },
+      ],
+      "queue": [
+        "<empty>",
+      ],
+      "result": "null",
+      "scoreHistory": [
+        "<empty>",
+      ],
+      "selected": "null",
+      "stateVersion": "number",
+      "status": "string",
+      "turnInDeal": "number",
+      "winnerId": "null",
+    },
+    "status": "string",
+    "version": "number",
+  },
+  "state_playing_spectator": {
+    "seatIndex": "null",
+    "seats": [
+      {
+        "avatar": "string",
+        "filled": "boolean",
+        "idx": "number",
+        "isAI": "boolean",
+        "name": "string",
+      },
+      {
+        "avatar": "string",
+        "emoji": "null",
+        "filled": "boolean",
+        "idx": "number",
+        "isAI": "boolean",
+        "name": "string",
+      },
+      {
+        "avatar": "string",
+        "emoji": "undefined",
+        "filled": "boolean",
+        "idx": "number",
+        "isAI": "boolean",
+        "name": "string",
+      },
+    ],
+    "state": {
+      "cur": "number",
+      "dealNum": "number",
+      "dealPlayers": "number",
+      "dealer": "number",
+      "deck": [
+        {
+          "id": "string",
+          "rank": "string",
+          "suit": "string",
+        },
+      ],
+      "discard": [
+        {
+          "id": "string",
+          "rank": "string",
+          "suit": "string",
+        },
+      ],
+      "knocker": "null",
+      "log": [
+        "<empty>",
+      ],
+      "options": {
+        "fullHistory": "boolean",
+        "grace": "boolean",
+        "knockPenalty": "boolean",
+        "showLog": "boolean",
+        "sound": "boolean",
+        "threeOfAKind": "boolean",
+      },
+      "phase": "string",
+      "players": [
+        {
+          "avatarKey": "string",
+          "grace": "boolean",
+          "hand": [
+            {
+              "id": "string",
+              "rank": "string",
+              "suit": "string",
+            },
+          ],
+          "id": "string",
+          "isAI": "boolean",
+          "name": "string",
+          "tokens": "number",
+        },
+        {
+          "avatarKey": "string",
+          "emoji": "undefined",
+          "grace": "boolean",
+          "hand": [
+            {
+              "id": "string",
+              "rank": "string",
+              "suit": "string",
+            },
+          ],
+          "id": "string",
+          "image": "undefined",
+          "isAI": "boolean",
+          "name": "string",
+          "tokens": "number",
+          "traits": {
+            "aggression": "number",
+            "bluff": "number",
+            "memory": "number",
+            "patience": "number",
+            "risk": "number",
+          },
+        },
+      ],
+      "queue": [
+        "<empty>",
+      ],
+      "result": "null",
+      "scoreHistory": [
+        "<empty>",
+      ],
+      "selected": "null",
+      "stateVersion": "number",
+      "status": "string",
+      "turnInDeal": "number",
+      "winnerId": "null",
+    },
+    "status": "string",
+    "version": "number",
+  },
+  "version": {
+    "ok": "boolean",
+    "protocol": "number",
+    "provider": "string",
+    "version": "string",
+  },
+}
+`;
