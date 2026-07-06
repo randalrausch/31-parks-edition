@@ -18,6 +18,8 @@ param maxFunctionInstances int
 param logAnalyticsDailyQuotaGb int
 param maxGamesPerDay int
 param maxGamesPerIpPerHour int
+@description('GitHub repository (owner/name) whose main branch may deploy via OIDC — creates a federated deployer identity so CI needs NO stored cloud secret. Empty = skip.')
+param githubRepo string = ''
 
 var tableDataContributorRoleId = '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
 
@@ -126,7 +128,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
       appSettings: [
         { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
         { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'node' }
-        { name: 'WEBSITE_NODE_DEFAULT_VERSION', value: '~20' }
+        { name: 'WEBSITE_NODE_DEFAULT_VERSION', value: '~22' }
         { name: 'AzureWebJobsStorage', value: storageConn }
         { name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING', value: storageConn }
         { name: 'WEBSITE_CONTENTSHARE', value: 'func-${resourceToken}' }
@@ -151,6 +153,57 @@ resource tableRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
+// ── GitHub Actions deployer (OIDC) ─────────────────────────────────────────
+// A user-assigned identity that GitHub Actions logs in AS, via a federated
+// credential trusted for exactly this repo's main branch — so the deploy
+// workflow holds NO stored cloud secret (replaces the publish profile + SWA
+// deploy token). Roles are the narrowest built-ins that cover each deploy:
+// Website Contributor on the Function App (zip deploy), and Contributor on the
+// SWA only (Website Contributor doesn't span Microsoft.Web/staticSites; the
+// workflow needs staticSites/listSecrets to fetch the deployment token at run
+// time). Created only when githubRepo is set — see docs/AZURE.md → "Deploy
+// from CI without stored credentials".
+var websiteContributorRoleId = 'de139f84-1756-47ae-9be6-808fbbe84772'
+var contributorRoleId = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
+
+resource githubDeployer 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = if (!empty(githubRepo)) {
+  name: 'id-github-deploy-${resourceToken}'
+  location: location
+  tags: tags
+}
+
+resource githubFederation 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2023-01-31' = if (!empty(githubRepo)) {
+  parent: githubDeployer
+  name: 'github-main'
+  properties: {
+    issuer: 'https://token.actions.githubusercontent.com'
+    // Push-triggered and workflow_dispatch deploys both run on refs/heads/main;
+    // PR runs never reach the deploy job, so they can never mint this identity.
+    subject: 'repo:${githubRepo}:ref:refs/heads/main'
+    audiences: ['api://AzureADTokenExchange']
+  }
+}
+
+resource githubFunctionDeployRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(githubRepo)) {
+  name: guid(functionApp.id, 'github-deploy', websiteContributorRoleId)
+  scope: functionApp
+  properties: {
+    principalId: githubDeployer.properties.principalId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', websiteContributorRoleId)
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource githubSwaDeployRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(githubRepo)) {
+  name: guid(swa.id, 'github-deploy', contributorRoleId)
+  scope: swa
+  properties: {
+    principalId: githubDeployer.properties.principalId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', contributorRoleId)
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // NOTE: the monthly cost budget is intentionally NOT managed here. Azure locks a
 // budget's start date once its period is active, so any re-`azd provision` fails
 // with "Start date of budgets cannot be updated". The hard caps above
@@ -162,3 +215,5 @@ output apiBaseUrl string = 'https://${functionApp.properties.defaultHostName}/ap
 output staticWebAppUrl string = swaOrigin
 output staticWebAppName string = swa.name
 output functionAppName string = functionApp.name
+// The value the AZURE_CLIENT_ID GitHub secret needs (empty when OIDC is off).
+output githubDeployerClientId string = !empty(githubRepo) ? githubDeployer.properties.clientId : ''

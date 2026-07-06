@@ -526,6 +526,17 @@ jobs:
     if: ${{ !cancelled() && needs.decide.outputs.should_ship == 'true' && vars.DEPLOY_AZURE == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30 # cost guard - a hung job can't burn the 6h default
+    permissions:
+      contents: read
+      id-token: write # mint the OIDC token azure/login exchanges (no stored cloud secret)
+    env:
+      # Preferred path: OIDC federated login — set the three identity secrets
+      # (values come from `azd provision` outputs; docs/AZURE.md → "Deploy from
+      # CI without stored credentials") and CI deploys with a per-run token
+      # instead of long-lived credentials. When they're unset, every step below
+      # falls back to the legacy stored secrets (publish profile + SWA deploy
+      # token), so a half-migrated repo still deploys.
+      USE_OIDC: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_SUBSCRIPTION_ID != '' }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
@@ -550,16 +561,42 @@ jobs:
           VITE_API_BASE: ${{ vars.VITE_API_BASE }}
 
       # ---- Deploy backend first (so the live UI never calls a missing API) ----
-      - name: Deploy Function App
+      - name: Azure login (OIDC — per-run federated token)
+        if: ${{ env.USE_OIDC == 'true' }}
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy Function App (OIDC / RBAC)
+        if: ${{ env.USE_OIDC == 'true' }}
+        uses: Azure/functions-action@bc63708cc6539760eea18d8a7de4ce8ef5fdf593 # v1
+        with:
+          app-name: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
+          package: api
+      - name: Deploy Function App (legacy stored publish profile)
+        if: ${{ env.USE_OIDC != 'true' }}
         uses: Azure/functions-action@bc63708cc6539760eea18d8a7de4ce8ef5fdf593 # v1
         with:
           app-name: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
           package: api
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+
+      # SWA uploads always need a deployment token; under OIDC it's fetched for
+      # this run only (and masked) instead of living forever as a repo secret.
+      - name: Fetch the SWA deployment token (OIDC)
+        id: swa
+        if: ${{ env.USE_OIDC == 'true' }}
+        run: |
+          token=$(az staticwebapp secrets list --name "${{ vars.AZURE_SWA_NAME }}" \
+            --query 'properties.apiKey' -o tsv)
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
       - name: Deploy Static Web App
         uses: Azure/static-web-apps-deploy@1a947af9992250f3bc2e68ad0754c0b0c11566c9 # v1
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          # The freshly-fetched token under OIDC; the stored secret otherwise.
+          azure_static_web_apps_api_token: ${{ steps.swa.outputs.token || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           action: upload
           app_location: dist
           api_location: ""

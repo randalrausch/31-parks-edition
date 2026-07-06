@@ -1,0 +1,56 @@
+name: Infra drift reminder
+
+# CI deploys APP CODE only — deliberately: the deploy job holds data-plane
+# credentials (OIDC deployer / publish profile), never control-plane rights.
+# The flip side: merging a change under infra/** updates nothing in Azure until
+# someone runs `azd provision` from a dev machine — a step that has been
+# forgotten before. This workflow makes that impossible to miss: any push to
+# main touching the infra definition files (the trigger paths ARE the filter,
+# so it costs zero runs otherwise) opens — or refreshes — one deduped issue
+# saying exactly what to run. Close the issue after provisioning.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/**"
+      - "azure.yaml"
+
+permissions:
+  contents: read
+  issues: write # file/refresh the "run azd provision" reminder
+
+concurrency:
+  group: infra-drift
+  cancel-in-progress: false
+
+jobs:
+  remind:
+    # Only meaningful when the Azure stack is actually live.
+    if: ${{ vars.DEPLOY_AZURE == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5 # cost guard - a hung job can't burn the 6h default
+    steps:
+      - name: File (or refresh) the provision reminder
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMPARE_URL: ${{ github.event.compare }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          title="Infra changed on main — run 'azd provision'"
+          existing=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number // empty')
+          body="A push to main changed \`infra/**\` (or \`azure.yaml\`): $COMPARE_URL
+
+          CI has deployed the app code from $HEAD_SHA, but it deliberately holds no
+          control-plane credentials — infrastructure changes only reach Azure when a
+          human runs, from a machine with Azure access:
+
+              git pull && azd provision
+
+          Then close this issue. (Background: docs/AZURE.md; the same gap once left a
+          Node-runtime bump undeployed for a day.)"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "Infra changed again before the last provision: $COMPARE_URL — a single \`azd provision\` after \`git pull\` picks up everything."
+          else
+            gh issue create --title "$title" --body "$body"
+          fi

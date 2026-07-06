@@ -89,6 +89,14 @@ re-dispatches `ci.yml` with `reason=release` (gate jobs skip; the deploy jobs sh
 the correctly-versioned commit). A manual **Run workflow** on `ci.yml` with a
 `deploy_ref` redeploys/rolls back all enabled targets.
 
+`deploy-azure` prefers **OIDC** — a per-run federated token for a deployer
+identity scoped to this repo's `main` branch — and falls back to the legacy
+stored publish-profile/deploy-token secrets when the identity secrets aren't
+set (setup: [docs/AZURE.md → OIDC](AZURE.md#deploy-from-ci-without-stored-credentials-oidc--recommended)).
+Because CI holds **data-plane rights only**, merging a change under `infra/**`
+deploys nothing by itself — [`infra-drift.yml`](../.github/workflows/infra-drift.yml)
+opens a reminder issue to run `azd provision` whenever that happens.
+
 > **Rollback caveat:** SQL migrations roll **forward only** — redeploying an
 > older `deploy_ref` reships that commit's code but does not (and cannot)
 > un-apply migrations the newer deploy already ran. Keep migrations
