@@ -21,7 +21,7 @@
     "applicationinsights": "^3.5.0"
   },
   "devDependencies": {
-    "@types/node": "^26.0.1",
+    "@types/node": "^26.1.0",
     "azurite": "^3.33.0",
     "esbuild": "0.28.1",
     "typescript": "^6.0.3",
