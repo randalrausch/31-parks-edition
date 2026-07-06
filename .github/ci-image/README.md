@@ -101,9 +101,10 @@ workflow); after that the weekly/on-change rebuilds keep it fresh. Two caveats:
 - PRs **into** the upstream repo are unaffected — they run in the upstream
   context and pull the upstream image.
 
-**Still on the old path:** the deploy job's post-deploy "play the live deployment"
-step still runs `playwright install --with-deps chrome`. It only executes when
-`DEPLOY_NETLIFY` is enabled (currently off), so it's left as-is; it can adopt the
-same `container:` pattern when deploys are turned on. Roll any such change out one
-job at a time and confirm green before the next — a bad image can then only redden
-the single job that opted in.
+**Still on the old path — deliberately:** the post-deploy "play the live
+deployment" steps (both deploy jobs) and the weekly `canary.yml` still run
+`playwright install --with-deps chrome`. They're off the PR critical path and
+run at most a few times a day, so the ~30s install costs nothing that matters —
+and keeping them image-independent means a bad image rebuild can redden the PR
+gate but never block a deploy or the canary. Adopt the `container:` pattern
+there only if their runtime ever starts to matter.

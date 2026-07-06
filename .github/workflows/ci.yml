@@ -5,10 +5,11 @@ name: CI/CD
 # current main without a new commit (e.g. after adding deploy secrets).
 #
 # The quality gate is split into INDEPENDENT PARALLEL JOBS (web `gate`, `api`,
-# `e2e`) so wall-clock is the slowest single job, not the sum of everything —
-# and a fast failure (lint, typecheck) surfaces in seconds instead of waiting
-# behind the browser E2E. The `deploy` job `needs` all three, so nothing ships
-# unless every gate is green — coverage is unchanged, only the shape is faster.
+# `e2e`, `supabase-contract`, plus PR-only `dependency-review`) so wall-clock is
+# the slowest single job, not the sum of everything — and a fast failure (lint,
+# typecheck) surfaces in seconds instead of waiting behind the browser E2E. The
+# deploy jobs `need` every gate (via `decide`), so nothing ships unless all are
+# green — coverage is unchanged, only the shape is faster.
 #
 # The site is built HERE (in Actions, which is free for public repos) and the
 # prebuilt dist/ is uploaded to Netlify — so Netlify spends ZERO of its 300

@@ -228,7 +228,7 @@ export function BoardLog({
 }
 
 /** A face-down opponent — name, tokens, fanned backs. Never a score. */
-export function Opponent({
+function Opponent({
   player,
   isKnocker,
   isCurrent = false,
@@ -283,7 +283,7 @@ export function Opponent({
 }
 
 /** Centered game wordmark so it's always clear which game this is. */
-export function BoardWordmark() {
+function BoardWordmark() {
   return (
     <div className="board__wordmark" aria-label="31 · National Parks Edition">
       <span className="board__wordmark-31">31</span>
@@ -293,7 +293,7 @@ export function BoardWordmark() {
 }
 
 /** Top-left park identity badge (reads the active theme). */
-export function BoardBadge() {
+function BoardBadge() {
   const { theme } = useTheme();
   return (
     <div className="board__badge">
@@ -375,7 +375,7 @@ export function ToolButton({
 
 /** Top-right HUD: deal/round counter + tool buttons. `trailing` is the board-
  * specific final button (new-game for solo, leave for online). */
-export function BoardToolbar({
+function BoardToolbar({
   dealNum,
   roundNo,
   aliveCount,
@@ -525,7 +525,7 @@ export function PlayerHead({ player, turnText }: { player: GamePlayer; turnText:
 }
 
 /** The local player's interactive, fanned hand. */
-export function HandFan({
+function HandFan({
   hand,
   interactive,
   counting,
@@ -569,7 +569,7 @@ export function HandFan({
 }
 
 /** "Best suit {score}" readout under the hand. */
-export function HandHud({ score }: { score: number }) {
+function HandHud({ score }: { score: number }) {
   return (
     <div className="board__hud">
       <span className="board__best">
@@ -580,7 +580,7 @@ export function HandHud({ score }: { score: number }) {
 }
 
 /** Draw/Take/Knock buttons, or the single Discard button while discarding. */
-export function ActionBar({
+function ActionBar({
   discarding,
   canDraw,
   hasDiscard,

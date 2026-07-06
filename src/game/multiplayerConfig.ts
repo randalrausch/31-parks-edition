@@ -41,8 +41,6 @@ export function backendCompatible(info: BackendInfo | null): boolean {
   return info.protocol === PROTOCOL_VERSION;
 }
 
-export { PROTOCOL_VERSION };
-
 /**
  * Ask the configured backend to identify itself (provider + version) via its
  * unauthenticated `version` op. Plain fetch — no SDK — so it's safe to call from

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/main.tsx",
+    "src/game/edgeEntry.ts",
+    "e2e/**/*.ts",
+    "scripts/**/*.mjs",
+    "public/sw.js"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "e2e/**/*.ts", "scripts/**/*.mjs", "public/sw.js"],
+  "ignore": ["api/**", "supabase/**", "src/build-info.d.ts"],
+  "ignoreExportsUsedInFile": true,
+  "ignoreBinaries": ["azd", "swa", "func"],
+  "rules": {
+    "types": "off"
+  }
+}

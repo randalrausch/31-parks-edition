@@ -10,7 +10,7 @@ import type { GameBackend } from "./backend";
 import { supabaseEnabled, supabaseKey, supabaseUrl } from "./multiplayerConfig";
 import { PROTOCOL_VERSION } from "./version";
 
-export const supabase: SupabaseClient | null = supabaseEnabled
+const supabase: SupabaseClient | null = supabaseEnabled
   ? createClient(supabaseUrl!, supabaseKey!, {
       realtime: { params: { eventsPerSecond: 5 } },
     })
@@ -21,7 +21,7 @@ export const supabase: SupabaseClient | null = supabaseEnabled
 // `fetching` guard set forever, silently killing its safety-net poll.
 const REQUEST_TIMEOUT_MS = 10_000;
 
-export function makeGameApi(client: SupabaseClient): GameApi {
+function makeGameApi(client: SupabaseClient): GameApi {
   async function call<T>(body: Record<string, unknown>): Promise<T> {
     const invoke = () =>
       client.functions.invoke("game", {
@@ -78,7 +78,7 @@ export function makeGameApi(client: SupabaseClient): GameApi {
 }
 
 /** The Supabase game API (null when Supabase isn't configured). */
-export const gameApi: GameApi | null = supabase ? makeGameApi(supabase) : null;
+const gameApi: GameApi | null = supabase ? makeGameApi(supabase) : null;
 
 /**
  * Subscribe to a game's public row changes via Supabase Realtime, with automatic

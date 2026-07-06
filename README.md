@@ -238,7 +238,7 @@ docs/              Architecture, theming, backend, and deployment guides
 is an **independent, opt-in** repo variable — set any combination:
 `DEPLOY_SUPABASE=true` (Supabase backend) and `DEPLOY_NETLIFY=true` (Netlify
 frontend) ship that stack, while `DEPLOY_AZURE=true` ships the Azure Function
-App + Static Web App (`.github/workflows/azure.yml`). Enable one stack, both
+App + Static Web App (the `deploy-azure` job in `ci.yml`). Enable one stack, both
 side by side, or none — with no flags set, nothing deploys. The build-and-test
 quality gate still runs on every push for **both** back ends regardless, so
 parity can't silently rot. See [docs/DEPLOY.md](docs/DEPLOY.md) and

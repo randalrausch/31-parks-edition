@@ -23,5 +23,5 @@ Steps:
 Note: reaching the live site requires network egress to that host. In a
 locked-down sandbox the connection may be blocked by policy (a 403 at the proxy);
 if so, report that the host is blocked rather than routing around it — this test
-is meant to run from CI (it runs automatically post-deploy in `azure.yml`) or a
+is meant to run from CI (it runs automatically post-deploy in `ci.yml`, and weekly via `canary.yml`) or a
 developer machine.

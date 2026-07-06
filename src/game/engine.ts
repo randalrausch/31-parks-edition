@@ -311,7 +311,7 @@ export function aiPlayRandomChance(t: AITraits): number {
   return (5 - t.memory) * 0.06;
 }
 /** Whether the AI grabs a high discard even for a lateral move. */
-export function aiGrabsHighDiscard(t: AITraits): boolean {
+function aiGrabsHighDiscard(t: AITraits): boolean {
   return t.aggression >= 4 || t.risk >= 4;
 }
 

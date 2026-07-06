@@ -63,7 +63,7 @@ export function makeGameApi(base: string): GameApi {
   };
 }
 
-export const azureGameApi: GameApi | null = azureEnabled ? makeGameApi(azureApiBase) : null;
+const azureGameApi: GameApi | null = azureEnabled ? makeGameApi(azureApiBase) : null;
 
 /** Azure implementation of the swappable backend seam (see backend.ts). */
 export const azureBackend: GameBackend | null = azureGameApi

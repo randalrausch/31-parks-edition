@@ -1,5 +1,11 @@
 # CI/CD, testing, and release system review — July 2026
 
+> **Status: implemented.** Every roadmap item below (and the follow-up round —
+> canary, nightly fuzz, contract tripwires, mutation audit, OIDC deploys, the
+> infra-drift reminder) landed via PRs #89, #91, and #92. This document is kept
+> as the point-in-time audit; measurements and file references reflect the
+> repo as of 2026-07-05.
+
 A point-in-time audit of this repository's CI/CD, testing, release, and
 automation system, measured against what best-in-class open-source projects do,
 scoped to this project's size (a ~200-test TypeScript game, one maintainer,

@@ -92,8 +92,9 @@ single npm script (it adds the api suite and the E2E run).
   `E2E_BASE_URL=<url>`. Drives a real browser against a *deployed* site and
   actually plays it: boots + version, a solo turn, and a two-browser online round
   (create → join → start → act) against the live backend, proving per-seat
-  redaction end to end. Runs automatically post-deploy in `azure.yml` against the
-  `AZURE_SITE_URL` repo variable, and on demand via `/deploy-smoke <url>`. Requires
+  redaction end to end. Runs automatically post-deploy in `ci.yml` against the
+  `AZURE_SITE_URL` repo variable, weekly via `canary.yml`, and on demand via
+  `/deploy-smoke <url>`. Requires
   network egress to the target host (a locked-down sandbox may block it — run from
   CI or a dev machine).
 
