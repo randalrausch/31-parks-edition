@@ -29,8 +29,34 @@ redaction, store adapters, rate limiting, and reconnect logic are pinned.
 - **Security invariants** — `supabase/schema.grants.test.ts` fails if any
   `SECURITY DEFINER` RPC in the `public` schema is missing its `revoke execute
   … from anon`; `clientIp.test.ts` pins spoof-resistant IP parsing.
+- **Version-bump tripwires** — the two manual version judgments each have a
+  test that makes forgetting them visible. `wireShape.test.ts` snapshots the
+  TYPE-SHAPE of every op response and redacted view: if the snapshot diffs,
+  that's a wire-contract change — decide whether it needs a `PROTOCOL_VERSION`
+  bump before updating it. `stateFixture.test.ts` keeps a committed mid-game
+  state serialized at the current `STATE_VERSION` and proves the engine can
+  still read, redact, and advance it — if it breaks, your change would strand
+  in-flight online games: make it backward-compatible or bump `STATE_VERSION`
+  and regenerate (`npm run fixture:state`).
+
+The fuzz suites read two env knobs (see `src/game/fuzzRig.ts`): `FUZZ_SCALE`
+multiplies iteration counts and `FUZZ_SEED` seeds the PRNG (default fixed, so
+PR runs are deterministic and can't flake). The **nightly deep-fuzz workflow**
+runs them at 50× with a fresh seed per night and files an issue with the
+reproducing seed on failure: `FUZZ_SEED=<seed> FUZZ_SCALE=50 npm test`.
 
 Run `npm run test:coverage` for a V8 coverage report.
+
+### Mutation audit — `npm run test:mutation` (Stryker, periodic)
+
+Mutation testing is the honest check on coverage *quality*: it mutates the
+rules core (`engine.ts`, `actions.ts`, `authority.ts` — see
+`stryker.config.json`) and reports any mutant the suites fail to kill, i.e.
+logic a test executes but never actually asserts. It takes tens of minutes, so
+it is deliberately **not** in CI — run it locally after substantive rules
+changes, or every few months, and add tests for survivors that represent real
+wrong-game-result bugs (some survivors are benign equivalents; judge them).
+The HTML report lands in `reports/mutation/`.
 
 ## 2. E2E, local build — `npm run test:e2e` (Playwright)
 
@@ -38,8 +64,9 @@ Builds and serves the production bundle, then plays a real browser through:
 
 - **the solo flow and dialogs** (`e2e/game.spec.ts`);
 - **an automated accessibility scan** (`e2e/a11y.spec.ts`) — axe-core against
-  WCAG 2.1 A/AA on the setup screen and the in-game board, failing on
-  `serious`/`critical` violations;
+  WCAG 2.1 A/AA on the setup screen, the in-game board, the join-by-code
+  screen, and the online lobby (the online screens are reachable thanks to the
+  local backend), failing on `serious`/`critical` violations;
 - **a two-browser online round** (`e2e/online.spec.ts`) against a **local
   in-memory backend** (`e2e/localServer.ts` — the same shared op layer both
   production backends run, started automatically by Playwright). Host creates,

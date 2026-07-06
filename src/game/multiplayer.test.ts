@@ -11,8 +11,12 @@ import { describe, it, expect } from "vitest";
 import { createGameState, applyAction, type GameAction, type NewGamePlayer } from "./actions";
 import { applyPlayerAction, advanceAuthority, redactState, HIDDEN_CARD } from "./authority";
 import { DEFAULT_OPTIONS, isAlive, type AITraits, type GameState } from "./engine";
+import { FUZZ_SCALE, FUZZ_SEED, mulberry32 } from "./fuzzRig";
 
-const rnd = (n: number) => Math.floor(Math.random() * n);
+// Seeded stream (per-file constant XOR the run seed) so failures reproduce:
+// FUZZ_SEED=<seed from the log> npm test — see fuzzRig.ts.
+const rand = mulberry32(FUZZ_SEED ^ 0x31a7c0de);
+const rnd = (n: number) => Math.floor(rand() * n);
 const traits = (): AITraits => ({
   bluff: 1 + rnd(5),
   memory: 1 + rnd(5),
@@ -174,56 +178,60 @@ describe("online multiplayer integration", () => {
     expect(server.act(cur, { type: "drawDeck" })).toBe(true); // your turn
   });
 
-  it("plays full games to completion via per-seat actions only", () => {
-    for (let g = 0; g < 60; g++) {
-      const humans = 1 + rnd(3); // 1–3 humans
-      const ai = rnd(3); // 0–2 AI
-      const total = humans + ai;
-      if (total < 2) continue;
-      const options = {
-        threeOfAKind: Math.random() < 0.5,
-        grace: Math.random() < 0.5,
-        knockPenalty: Math.random() < 0.5,
-        sound: false,
-        showLog: true,
-        fullHistory: false,
-      };
-      const server = new Server(seats(humans, ai), options);
-      let steps = 0;
-      while (server.state.phase !== "gameOver" && steps++ < 5000) {
-        // Authority always rests on a human turn, deal end, or game over.
-        expect(cardCount(server.state)).toBe(52);
-        const s = server.state;
-        if (s.phase === "dealEnd") {
-          const alive = s.players.findIndex(isAlive);
-          server.act(alive >= 0 ? alive : 0, { type: "nextDeal" });
-          continue;
-        }
-        // It must be a human's turn here (AI are auto-run by the authority).
-        expect(s.players[s.cur]!.isAI).toBe(false);
-        const cur = s.cur;
-        if (s.phase === "drawing") {
-          if (s.knocker === null && Math.random() < 0.3) {
-            server.act(cur, { type: "knock" });
-          } else {
-            server.act(cur, { type: "drawDeck" });
-            if (server.state.phase === "discarding") {
-              const h = server.state.players[server.state.cur]!.hand;
-              server.act(server.state.cur, {
-                type: "discard",
-                cardId: h[rnd(h.length)]!.id,
-              });
-            }
+  it(
+    "plays full games to completion via per-seat actions only",
+    () => {
+      for (let g = 0; g < 60 * FUZZ_SCALE; g++) {
+        const humans = 1 + rnd(3); // 1–3 humans
+        const ai = rnd(3); // 0–2 AI
+        const total = humans + ai;
+        if (total < 2) continue;
+        const options = {
+          threeOfAKind: rand() < 0.5,
+          grace: rand() < 0.5,
+          knockPenalty: rand() < 0.5,
+          sound: false,
+          showLog: true,
+          fullHistory: false,
+        };
+        const server = new Server(seats(humans, ai), options);
+        let steps = 0;
+        while (server.state.phase !== "gameOver" && steps++ < 5000) {
+          // Authority always rests on a human turn, deal end, or game over.
+          expect(cardCount(server.state)).toBe(52);
+          const s = server.state;
+          if (s.phase === "dealEnd") {
+            const alive = s.players.findIndex(isAlive);
+            server.act(alive >= 0 ? alive : 0, { type: "nextDeal" });
+            continue;
           }
-        } else {
-          const h = s.players[cur]!.hand;
-          server.act(cur, { type: "discard", cardId: h[rnd(h.length)]!.id });
+          // It must be a human's turn here (AI are auto-run by the authority).
+          expect(s.players[s.cur]!.isAI).toBe(false);
+          const cur = s.cur;
+          if (s.phase === "drawing") {
+            if (s.knocker === null && rand() < 0.3) {
+              server.act(cur, { type: "knock" });
+            } else {
+              server.act(cur, { type: "drawDeck" });
+              if (server.state.phase === "discarding") {
+                const h = server.state.players[server.state.cur]!.hand;
+                server.act(server.state.cur, {
+                  type: "discard",
+                  cardId: h[rnd(h.length)]!.id,
+                });
+              }
+            }
+          } else {
+            const h = s.players[cur]!.hand;
+            server.act(cur, { type: "discard", cardId: h[rnd(h.length)]!.id });
+          }
         }
+        expect(server.state.phase).toBe("gameOver");
+        const aliveAtEnd = server.state.players.filter(isAlive).length;
+        expect(aliveAtEnd).toBeLessThanOrEqual(1);
+        expect(Boolean(server.state.winnerId)).toBe(aliveAtEnd === 1);
       }
-      expect(server.state.phase).toBe("gameOver");
-      const aliveAtEnd = server.state.players.filter(isAlive).length;
-      expect(aliveAtEnd).toBeLessThanOrEqual(1);
-      expect(Boolean(server.state.winnerId)).toBe(aliveAtEnd === 1);
-    }
-  });
+    },
+    30_000 * FUZZ_SCALE,
+  );
 });

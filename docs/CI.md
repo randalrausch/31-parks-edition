@@ -12,7 +12,18 @@ as **four parallel jobs** (plus a deploy job that waits on them):
 | `deploy` | builds with secrets, ships enabled targets, runs the post-deploy smoke | push to `main` only |
 
 CodeQL ([`codeql.yml`](../.github/workflows/codeql.yml)) runs in parallel as the
-`CodeQL` check.
+`CodeQL` check, and `dependency-review` (in `ci.yml`, PRs only) fails a PR that
+*introduces* a dependency with known high-severity vulnerabilities — the gap
+Dependabot (which only updates existing deps) doesn't cover. The `e2e` job
+uploads its Playwright traces as a `playwright-test-results` artifact **on
+failure**, so a CI-only E2E failure is debuggable in the trace viewer.
+
+Two scheduled workflows watch for rot between pushes:
+
+| Workflow | Cadence | What it does |
+| --- | --- | --- |
+| [`canary.yml`](../.github/workflows/canary.yml) | weekly | Plays the **live site** (solo turn + two-browser online round) against `AZURE_SITE_URL`; opens/refreshes an issue on failure. Self-skips when the variable isn't set. |
+| [`nightly-fuzz.yml`](../.github/workflows/nightly-fuzz.yml) | nightly | Runs the property/fuzz suites at 50× iterations with a fresh seed per run (PR runs stay small and deterministic — see `src/game/fuzzRig.ts`); opens an issue carrying the reproducing seed on failure. |
 
 `api` and `e2e` self-skip their heavy steps on a docs/meta-only diff, and
 `supabase-contract` only boots the Docker stack when `supabase/**` (or its own
@@ -30,6 +41,14 @@ under _Require status checks to pass before merging_, require exactly:
 - `e2e`
 - `supabase-contract`
 - `CodeQL`
+
+The intended ruleset is also committed as [`docs/ruleset.json`](ruleset.json)
+(Settings → Rules → Rulesets → **Import a ruleset**) so the protection is
+reviewable and restorable instead of living only in Settings. After importing,
+add the release GitHub App to the ruleset's **bypass list** by hand — that's an
+account-specific id an import can't carry (see [Release automation](#release-automation-extra-setup-beyond-git-clone)).
+Do **not** require `dependency-review` — it's PR-only by nature (it diffs
+base..head) but new; leave it informational until it has some history.
 
 Notes:
 

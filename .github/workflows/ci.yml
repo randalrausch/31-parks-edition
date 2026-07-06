@@ -73,6 +73,7 @@ jobs:
     # PR, and manual dispatch.
     if: ${{ github.event.inputs.reason != 'release' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15 # cost guard - a hung job can't burn the 6h default
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
@@ -151,6 +152,7 @@ jobs:
     # Skipped on the release re-dispatch (reason=release) — see the gate job.
     if: ${{ github.event.inputs.reason != 'release' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15 # cost guard - a hung job can't burn the 6h default
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       # Skip the backend suite when a change can't affect it — a docs/meta-only
@@ -215,6 +217,7 @@ jobs:
     # also avoids the container image pull on those runs.
     if: ${{ github.event.inputs.reason != 'release' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20 # cost guard - a hung job can't burn the 6h default
     # Run inside the prebuilt CI image (.github/ci-image) — it already carries
     # Node + Chrome + the browser system libraries, so this job pulls a ready
     # image instead of running `playwright install --with-deps chrome` (~26s, and
@@ -272,6 +275,33 @@ jobs:
         if: steps.changes.outputs.code == 'true'
         # Builds the production bundle, then plays it in the image's baked Chrome.
         run: npm run test:e2e
+      - name: Upload traces on failure
+        # Playwright records a trace on first retry (playwright.config.ts); ship
+        # test-results/ (traces, error context, screenshots) as an artifact so a
+        # CI-only failure is debuggable in the trace viewer instead of guessed at
+        # from the line reporter. Costs nothing when green.
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-test-results
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ---- Supply-chain gate: fails a PR that ADDS a dependency with known vulns
+  # or a disallowed license change. Complements Dependabot (which only updates
+  # EXISTING deps — it never vets a brand-new package a PR introduces). Diff-based
+  # and read-only, so it's fork-safe; PR-only because it compares base..head.
+  dependency-review:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10 # cost guard - a hung job can't burn the 6h default
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high # block known-bad; leave low/moderate to Dependabot's cadence
+          comment-summary-in-pr: on-failure
 
   # ---- Real-Postgres contract: boot a REAL local Supabase stack
   # (`supabase start`) and assert the SQL directly with psql — the commit_game
@@ -294,6 +324,7 @@ jobs:
     # Skipped on the release re-dispatch (reason=release) — see the gate job.
     if: ${{ github.event.inputs.reason != 'release' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20 # cost guard - a hung job can't burn the 6h default
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - name: Did the backend (supabase/**) change?
@@ -350,6 +381,7 @@ jobs:
       && needs.e2e.result != 'failure' && needs.e2e.result != 'cancelled'
       && needs['supabase-contract'].result != 'failure' && needs['supabase-contract'].result != 'cancelled' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10 # cost guard - a hung job can't burn the 6h default
     outputs:
       should_ship: ${{ steps.ship.outputs.should_ship }}
       ref: ${{ steps.ship.outputs.ref }}
@@ -410,6 +442,7 @@ jobs:
     # already encodes "no gate failed", so guarding on !cancelled() is safe.
     if: ${{ !cancelled() && needs.decide.outputs.should_ship == 'true' && (vars.DEPLOY_SUPABASE == 'true' || vars.DEPLOY_NETLIFY == 'true') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30 # cost guard - a hung job can't burn the 6h default
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
@@ -492,6 +525,7 @@ jobs:
     # gate-skip that propagates through `decide` on a reason=release re-dispatch.
     if: ${{ !cancelled() && needs.decide.outputs.should_ship == 'true' && vars.DEPLOY_AZURE == 'true' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30 # cost guard - a hung job can't burn the 6h default
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:

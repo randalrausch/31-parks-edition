@@ -8,8 +8,12 @@ import {
   type NewGamePlayer,
 } from "./actions";
 import { DEFAULT_OPTIONS, isAlive, type AITraits, type GamePlayer, type GameState } from "./engine";
+import { FUZZ_SCALE, FUZZ_SEED, mulberry32 } from "./fuzzRig";
 
-const rnd = (n: number) => Math.floor(Math.random() * n);
+// Seeded stream (per-file constant XOR the run seed) so failures reproduce:
+// FUZZ_SEED=<seed from the log> npm test — see fuzzRig.ts.
+const rand = mulberry32(FUZZ_SEED ^ 0x0ac710e5);
+const rnd = (n: number) => Math.floor(rand() * n);
 const traits = (): AITraits => ({
   bluff: 1 + rnd(5),
   memory: 1 + rnd(5),
@@ -194,68 +198,69 @@ describe("turn actions", () => {
 });
 
 describe("invariants over many random full games", () => {
-  it("conserves 52 cards, eliminates cleanly, and ends with exactly one winner", () => {
-    for (let g = 0; g < 150; g++) {
-      const n = 2 + rnd(5); // 2–6 players
-      const options = {
-        threeOfAKind: Math.random() < 0.5,
-        grace: Math.random() < 0.5,
-        knockPenalty: Math.random() < 0.5,
-        sound: false,
-        showLog: true,
-        fullHistory: false,
-      };
-      let s = applyAction(createGameState(aiPlayers(n), options), {
-        type: "deal",
-      });
-      let prevTokens = s.players.reduce((t, p) => t + p.tokens, 0);
-      let steps = 0;
+  it(
+    "conserves 52 cards, eliminates cleanly, and ends with exactly one winner",
+    () => {
+      for (let g = 0; g < 150 * FUZZ_SCALE; g++) {
+        const n = 2 + rnd(5); // 2–6 players
+        const options = {
+          threeOfAKind: rand() < 0.5,
+          grace: rand() < 0.5,
+          knockPenalty: rand() < 0.5,
+          sound: false,
+          showLog: true,
+          fullHistory: false,
+        };
+        let s = applyAction(createGameState(aiPlayers(n), options), {
+          type: "deal",
+        });
+        let prevTokens = s.players.reduce((t, p) => t + p.tokens, 0);
+        let steps = 0;
 
-      while (s.phase !== "gameOver") {
-        expect(cardCount(s)).toBe(52);
-        if (s.phase === "drawing" || s.phase === "discarding") {
-          expect(s.players.some((p) => !isAlive(p) && p.hand.length > 0)).toBe(false);
-        }
-        if (s.phase === "dealEnd") {
-          const tokens = s.players.reduce((t, p) => t + p.tokens, 0);
-          expect(tokens).toBeLessThanOrEqual(prevTokens); // tokens never increase
-          prevTokens = tokens;
-          s = applyAction(s, { type: "nextDeal" });
-        } else {
-          // Drive a simple legal action: knock sometimes, else draw + discard.
-          if (s.phase === "drawing") {
-            if (s.knocker === null && Math.random() < 0.25) {
-              s = applyAction(s, { type: "knock" });
-            } else {
-              s = applyAction(
-                s,
-                Math.random() < 0.5 ? { type: "drawDeck" } : { type: "takeDiscard" },
-              );
-              if (s.phase === "discarding") {
-                const h = s.players[s.cur]!.hand;
-                s = applyAction(s, {
-                  type: "discard",
-                  cardId: h[rnd(h.length)]!.id,
-                });
-              }
-            }
-          } else {
-            const h = s.players[s.cur]!.hand;
-            s = applyAction(s, {
-              type: "discard",
-              cardId: h[rnd(h.length)]!.id,
-            });
+        while (s.phase !== "gameOver") {
+          expect(cardCount(s)).toBe(52);
+          if (s.phase === "drawing" || s.phase === "discarding") {
+            expect(s.players.some((p) => !isAlive(p) && p.hand.length > 0)).toBe(false);
           }
+          if (s.phase === "dealEnd") {
+            const tokens = s.players.reduce((t, p) => t + p.tokens, 0);
+            expect(tokens).toBeLessThanOrEqual(prevTokens); // tokens never increase
+            prevTokens = tokens;
+            s = applyAction(s, { type: "nextDeal" });
+          } else {
+            // Drive a simple legal action: knock sometimes, else draw + discard.
+            if (s.phase === "drawing") {
+              if (s.knocker === null && rand() < 0.25) {
+                s = applyAction(s, { type: "knock" });
+              } else {
+                s = applyAction(s, rand() < 0.5 ? { type: "drawDeck" } : { type: "takeDiscard" });
+                if (s.phase === "discarding") {
+                  const h = s.players[s.cur]!.hand;
+                  s = applyAction(s, {
+                    type: "discard",
+                    cardId: h[rnd(h.length)]!.id,
+                  });
+                }
+              }
+            } else {
+              const h = s.players[s.cur]!.hand;
+              s = applyAction(s, {
+                type: "discard",
+                cardId: h[rnd(h.length)]!.id,
+              });
+            }
+          }
+          expect(++steps).toBeLessThan(6000); // must terminate
         }
-        expect(++steps).toBeLessThan(6000); // must terminate
-      }
 
-      // A game ends with one winner — or zero, if the last players are
-      // eliminated in the same deal (a draw). Winner is set iff one survives.
-      const aliveAtEnd = s.players.filter(isAlive).length;
-      expect(aliveAtEnd).toBeLessThanOrEqual(1);
-      expect(Boolean(s.winnerId)).toBe(aliveAtEnd === 1);
-      expect(s.scoreHistory.length).toBe(s.dealNum);
-    }
-  });
+        // A game ends with one winner — or zero, if the last players are
+        // eliminated in the same deal (a draw). Winner is set iff one survives.
+        const aliveAtEnd = s.players.filter(isAlive).length;
+        expect(aliveAtEnd).toBeLessThanOrEqual(1);
+        expect(Boolean(s.winnerId)).toBe(aliveAtEnd === 1);
+        expect(s.scoreHistory.length).toBe(s.dealNum);
+      }
+    },
+    30_000 * FUZZ_SCALE,
+  );
 });

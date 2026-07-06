@@ -64,3 +64,7 @@ supabase/.branches/
 # Transient files written by scripts/release.mjs
 .release-notes.md
 .release-ambiguous.md
+
+# Stryker mutation-testing audit output (npm run test:mutation)
+/.stryker-tmp/
+/reports/
