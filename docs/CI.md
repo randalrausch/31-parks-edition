@@ -14,7 +14,9 @@ as **four parallel jobs** (plus a deploy job that waits on them):
 CodeQL ([`codeql.yml`](../.github/workflows/codeql.yml)) runs in parallel as the
 `CodeQL` check, and `dependency-review` (in `ci.yml`, PRs only) fails a PR that
 *introduces* a dependency with known high-severity vulnerabilities — the gap
-Dependabot (which only updates existing deps) doesn't cover. The `e2e` job
+Dependabot (which only updates existing deps) doesn't cover. It requires the
+**Dependency graph** to be enabled once in Settings → Advanced Security /
+Security analysis (the job fails with exactly that message when it isn't). The `e2e` job
 uploads its Playwright traces as a `playwright-test-results` artifact **on
 failure**, so a CI-only E2E failure is debuggable in the trace viewer.
 
