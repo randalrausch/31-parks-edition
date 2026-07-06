@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.1 — 2026-07-06
+
+### Fixes
+
+- make the frequent card-deal sound much quieter, give shuffle its own texture (#90)
+
 ## v0.9.0 — 2026-07-05
 
 ### Features
