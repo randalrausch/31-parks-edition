@@ -34,6 +34,9 @@ jobs:
       - name: File (or refresh) the provision reminder
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No checkout in this job (it only files an issue), so gh can't infer
+          # the repo from a git remote — name it explicitly.
+          GH_REPO: ${{ github.repository }}
           COMPARE_URL: ${{ github.event.compare }}
           HEAD_SHA: ${{ github.sha }}
         run: |
