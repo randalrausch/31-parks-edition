@@ -40,6 +40,9 @@ param maxGamesPerDay int = 500
 @minValue(1)
 param maxGamesPerIpPerHour int = 20
 
+@description('GitHub repository (owner/name) whose main branch may deploy via OIDC (no stored cloud secret in CI). Set with `azd env set GITHUB_REPO owner/name`. Empty = skip.')
+param githubRepo string = ''
+
 var rgName = empty(resourceGroupName) ? 'rg-31-parks-edition-${environmentName}' : resourceGroupName
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 // Applied to the resource group and every resource (resources.bicep threads
@@ -72,6 +75,7 @@ module resources 'resources.bicep' = {
     logAnalyticsDailyQuotaGb: logAnalyticsDailyQuotaGb
     maxGamesPerDay: maxGamesPerDay
     maxGamesPerIpPerHour: maxGamesPerIpPerHour
+    githubRepo: githubRepo
   }
 }
 
@@ -82,3 +86,8 @@ output VITE_API_BASE string = resources.outputs.apiBaseUrl
 output STATIC_WEB_APP_URL string = resources.outputs.staticWebAppUrl
 output STATIC_WEB_APP_NAME string = resources.outputs.staticWebAppName
 output FUNCTION_APP_NAME string = resources.outputs.functionAppName
+// The three values the OIDC deploy needs as GitHub repo secrets — read them
+// after provisioning with `azd env get-values` (see docs/AZURE.md → OIDC).
+output AZURE_CLIENT_ID string = resources.outputs.githubDeployerClientId
+output AZURE_TENANT_ID string = tenant().tenantId
+output AZURE_SUBSCRIPTION_ID string = subscription().subscriptionId

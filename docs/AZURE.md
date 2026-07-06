@@ -216,12 +216,44 @@ Variable below. It runs only after the tests pass on `main`.
 ./scripts/setup-azure-ci.sh
 ```
 
-It reads the azd outputs, fetches the two deploy credentials via `az`, and sets
-all five GitHub items (with the right names) using the `gh` CLI. Requires `az`
-logged in and `gh` authenticated. Idempotent.
+It reads the azd outputs and sets every GitHub item (with the right names) via
+the `gh` CLI — using OIDC when the deployer identity exists (below), the legacy
+stored credentials otherwise. Requires `az` logged in and `gh` authenticated.
+Idempotent.
 
-**Or set them by hand** under **Settings → Secrets and variables → Actions**.
-The trick is that the azd output names don't all match the GitHub names:
+### Deploy from CI without stored credentials (OIDC — recommended)
+
+By default the deploy job authenticates with two **long-lived stored secrets**
+(a Function App publish profile and an SWA deployment token). The better mode
+is OIDC: `infra/` can provision a **federated deployer identity** that GitHub
+Actions logs in as with a per-run token minted for *exactly this repo's `main`
+branch* — nothing long-lived is stored in GitHub, nothing to rotate or leak.
+One-time setup:
+
+```bash
+azd env set GITHUB_REPO <owner>/<repo>   # e.g. randalrausch/31-parks-edition
+azd provision                            # creates the identity + roles (see resources.bicep)
+./scripts/setup-azure-ci.sh              # detects OIDC and sets the GitHub items
+```
+
+That stores three **identity** secrets (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`,
+`AZURE_SUBSCRIPTION_ID` — useless to anyone who can't mint this repo's OIDC
+token) plus the `AZURE_SWA_NAME` variable (the workflow fetches a fresh SWA
+deployment token each run and masks it). The identity holds only two
+resource-scoped roles: Website Contributor on the Function App and Contributor
+on the Static Web App. `ci.yml` prefers OIDC whenever the three secrets exist
+and falls back to the stored credentials otherwise — so migrate whenever, and
+**after the first green OIDC deploy** delete the legacy pair:
+
+```bash
+gh secret delete AZURE_FUNCTIONAPP_PUBLISH_PROFILE
+gh secret delete AZURE_STATIC_WEB_APPS_API_TOKEN
+```
+
+### Setting the GitHub items by hand
+
+Under **Settings → Secrets and variables → Actions** — note the azd output
+names don't all match the GitHub names:
 
 | Kind | GitHub name | Value / source (`azd env get-values`) |
 |------|-------------|----------------------------------------|
@@ -229,11 +261,21 @@ The trick is that the azd output names don't all match the GitHub names:
 | Variable | `VITE_API_BASE` | azd output **`VITE_API_BASE`** (copy verbatim; it's `https://<func-app>.azurewebsites.net/api`) |
 | Variable | `AZURE_FUNCTIONAPP_NAME` | azd output **`FUNCTION_APP_NAME`** ⚠️ (name differs) |
 | Variable | `AZURE_SITE_URL` *(optional)* | your live SWA URL — enables the post-deploy smoke |
+| **OIDC mode** | | |
+| Variable | `AZURE_SWA_NAME` | azd output **`STATIC_WEB_APP_NAME`** |
+| Secret | `AZURE_CLIENT_ID` / `AZURE_TENANT_ID` / `AZURE_SUBSCRIPTION_ID` | azd outputs of the same names (present once provisioned with `GITHUB_REPO` set) |
+| **Legacy mode** (only when not using OIDC) | | |
 | Secret | `AZURE_STATIC_WEB_APPS_API_TOKEN` | `az staticwebapp secrets list --name <STATIC_WEB_APP_NAME> --query properties.apiKey -o tsv` (or Portal → SWA → **Manage deployment token**) |
 | Secret | `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` | `az functionapp deployment list-publishing-profiles --name <FUNCTION_APP_NAME> -g <RESOURCE_GROUP> --xml` (or Portal → Function App → **Get publish profile**) |
 
 On push to `main` it builds web + api, deploys the Function App first, then the
 prebuilt static site.
+
+> **Infra changes don't auto-deploy — by design.** CI holds data-plane deploy
+> rights only, so merging a change under `infra/**` updates nothing in Azure
+> until you run `azd provision`. The `infra-drift.yml` workflow opens a
+> reminder issue on any such merge (when `DEPLOY_AZURE` is on); close it after
+> provisioning.
 
 > **`DEPLOY_AZURE` is independent of the Supabase/Netlify flags.** Setting it to
 > `true` activates this Azure workflow; it no longer touches `ci.yml`'s

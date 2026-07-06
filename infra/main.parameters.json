@@ -11,6 +11,8 @@
     "maxFunctionInstances": { "value": 5 },
     "logAnalyticsDailyQuotaGb": { "value": 1 },
     "maxGamesPerDay": { "value": 500 },
-    "maxGamesPerIpPerHour": { "value": 20 }
+    "maxGamesPerIpPerHour": { "value": 20 },
+
+    "githubRepo": { "value": "${GITHUB_REPO}" }
   }
 }
