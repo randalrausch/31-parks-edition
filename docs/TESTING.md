@@ -47,6 +47,18 @@ reproducing seed on failure: `FUZZ_SEED=<seed> FUZZ_SCALE=50 npm test`.
 
 Run `npm run test:coverage` for a V8 coverage report.
 
+### Dead-code audit — `npx knip` (periodic)
+
+[knip](https://knip.dev) reports unused files, exports, and dependencies.
+`knip.json` teaches it every runtime this repo actually has beyond the Vite
+app — the edge-bundle source, the e2e layer (incl. the local game server), the
+release/CI scripts, and the service worker — and excludes `api/` (its own npm
+package, covered by the api CI job) and `supabase/` (the Deno entry + the
+committed generated bundle). `ignoreExportsUsedInFile` keeps documented
+same-file registry patterns (like `themes.ts` exporting each park per
+THEMES.md) out of the report, and exported *types* are left alone as model
+documentation. A clean run is the baseline; treat new findings as real.
+
 ### Mutation audit — `npm run test:mutation` (Stryker, periodic)
 
 Mutation testing is the honest check on coverage *quality*: it mutates the

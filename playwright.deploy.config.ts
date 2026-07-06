@@ -11,7 +11,8 @@ import { defineConfig, devices } from "@playwright/test";
  * (e.g. PW_EXECUTABLE_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome).
  *
  * Note: an agent sandbox whose egress policy blocks the public domain can't reach
- * the live site — run this from CI (azure.yml, post-deploy) or a dev machine.
+ * the live site — run this from CI (ci.yml post-deploy, or the weekly canary)
+ * or a dev machine.
  */
 const executablePath = process.env.PW_EXECUTABLE_PATH;
 

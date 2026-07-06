@@ -32,7 +32,7 @@ trust and roll back. Read CLAUDE.md first.
    from the logs? Note missing signals (e.g. conflict counts, reaper outcomes).
 5. **Deploy & rollback safety** — `PROTOCOL_VERSION` gating (client refresh on
    mismatch), the `engine.mjs` rebuild discipline, the CI quality gate, and the
-   post-deploy smoke (`e2e/deployment.spec.ts`, `.github/workflows/azure.yml`).
+   post-deploy smoke (`e2e/deployment.spec.ts`, run by `ci.yml`'s deploy jobs and the weekly `canary.yml`).
    Check ordering (backend before frontend), and whether a bad deploy is caught.
 6. **Backend parity** — for every issue above, verify the sibling backend/adapter
    and its entry shim pass equivalent options (rate limits, origins, provider).

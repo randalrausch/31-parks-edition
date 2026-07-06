@@ -67,28 +67,6 @@ export function NpsArrowhead({ className }: { className?: string }) {
   );
 }
 
-export function PineTree({
-  className,
-  fill = "currentColor",
-}: {
-  className?: string;
-  fill?: string;
-}) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 32 40"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <polygon points="16,2 25,18 7,18" fill={fill} />
-      <polygon points="16,10 28,28 4,28" fill={fill} />
-      <polygon points="16,18 31,36 1,36" fill={fill} />
-      <rect x="14" y="35" width="4" height="5" fill={fill} />
-    </svg>
-  );
-}
-
 export function StarDivider({ className }: { className?: string }) {
   return (
     <svg
@@ -104,23 +82,6 @@ export function StarDivider({ className }: { className?: string }) {
         points="100,1 102.5,6.5 108,7 103.5,10.5 105,16 100,12.7 95,16 96.5,10.5 92,7 97.5,6.5"
         fill="currentColor"
       />
-    </svg>
-  );
-}
-
-export function CompassRose({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 64 64"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" strokeWidth="2.5" />
-      <polygon points="32,4 38,32 32,28 26,32" fill="currentColor" />
-      <polygon points="32,60 26,32 32,36 38,32" fill="currentColor" opacity="0.6" />
-      <polygon points="4,32 32,26 28,32 32,38" fill="currentColor" opacity="0.6" />
-      <polygon points="60,32 32,38 36,32 32,26" fill="currentColor" opacity="0.6" />
     </svg>
   );
 }

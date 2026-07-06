@@ -12,7 +12,8 @@ import { test, expect, type Page } from "@playwright/test";
  * reads it as baseURL and drops the local webServer. With E2E_BASE_URL unset the
  * whole file skips, so it never runs against the local preview by accident.
  *
- * Runs in CI post-deploy (azure.yml), where egress to the live site is open. It
+ * Runs in CI post-deploy (ci.yml's deploy jobs) and weekly (canary.yml), where
+ * egress to the live site is open. It
  * can't run from an agent sandbox whose egress policy blocks the public domain —
  * point it at the site from CI or a developer machine instead.
  */

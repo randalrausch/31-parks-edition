@@ -1,13 +1,14 @@
 # CI structure & branch protection
 
 The quality gate in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs
-as **four parallel jobs** (plus a deploy job that waits on them):
+as **parallel jobs** (plus deploy jobs that wait on them):
 
 | Job | What it runs | Runs on |
 | --- | --- | --- |
 | `gate` | typecheck · format · lint · workflow lint (actionlint) · unit/fuzz tests (with a coverage summary on `main`) · edge-bundle sync · CI-image sync · build | every push & PR |
 | `api` | Azure Functions typecheck + Table Storage (Azurite) CAS suite + build | every push & PR |
 | `e2e` | real-browser Playwright inside the prebuilt CI image: solo flow, axe accessibility scan, and a two-browser online round against a local in-memory backend (`e2e/localServer.ts`) | every push & PR |
+| `dependency-review` | fails a PR that introduces a dependency with known high-severity vulnerabilities | every PR |
 | `supabase-contract` | boots a real local Postgres (`supabase start`) and asserts the SQL contract with psql — `commit_game` CAS, `create_game` atomicity, anon RPC-EXECUTE revokes, and the RLS hiding `game_secrets` / the join code | every push & PR |
 | `deploy` | builds with secrets, ships enabled targets, runs the post-deploy smoke | push to `main` only |
 
@@ -29,7 +30,7 @@ Two scheduled workflows watch for rot between pushes:
 
 `api` and `e2e` self-skip their heavy steps on a docs/meta-only diff, and
 `supabase-contract` only boots the Docker stack when `supabase/**` (or its own
-contract suite) changed — otherwise it no-ops green in seconds. All four skip on the
+contract suite) changed — otherwise it no-ops green in seconds. The gate jobs skip on the
 release re-dispatch (`reason=release`) — but the **jobs still report a result on
 every PR**, so they're safe to require.
 
@@ -55,14 +56,14 @@ base..head) but new; leave it informational until it has some history.
 Notes:
 
 - **Remove `ci-cd`** if it's still listed — the pipeline used to be one job by that
-  name; it no longer exists (it was split into the three above), and a required
+  name; it no longer exists (it was split into the parallel jobs above), and a required
   check that never reports blocks every PR.
 - **Do not require `build`** (the CI-image build check from
   [`ci-image.yml`](../.github/workflows/ci-image.yml)). It only runs on PRs that
   touch the Dockerfile / lockfile, so requiring it would leave every other PR stuck
   waiting on a check that never starts. Leave it informational.
 - The `reason=release` skip only fires on the internal release re-dispatch, never on
-  a PR, so requiring the three gate jobs stays correct. (GitHub also treats a skipped
+  a PR, so requiring the gate jobs stays correct. (GitHub also treats a skipped
   required check as passing.)
 
 ## Deploys — one gate, one job per target

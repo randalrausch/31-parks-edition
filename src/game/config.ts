@@ -69,7 +69,7 @@ export const clampImage = (s: unknown): string | undefined =>
   typeof s === "string" && s.length <= 512 && /^\/(?!\/)[A-Za-z0-9._~/-]*$/.test(s) ? s : undefined;
 
 /** Coerce client traits into 1–5 integers, defaulting missing ones to 3. */
-export function clampTraits(t: unknown): Record<string, number> | undefined {
+function clampTraits(t: unknown): Record<string, number> | undefined {
   if (!t || typeof t !== "object") return undefined;
   const src = t as Record<string, unknown>;
   const out: Record<string, number> = {};
