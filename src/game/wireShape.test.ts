@@ -54,9 +54,25 @@ function shapeOf(v: unknown): unknown {
   return typeof v;
 }
 
-// The engine shuffles with Math.random; seed it so the game reaches the same
-// deterministic mid-game state (and thus the same shape) on every run.
-beforeAll(() => vi.spyOn(Math, "random").mockImplementation(mulberry32(0x5eed)));
+// Seed EVERY randomness source so the game reaches the same state (and thus
+// the same shape) on every run. The AI heuristics use Math.random, but the
+// deck shuffle deliberately uses crypto.getRandomValues (engine.ts — a server
+// deck must be unpredictable), so that must be seeded too: an unlucky real
+// shuffle can deal an instant 31, which resolves the deal on the spot and
+// changes the redacted-state shape — a snapshot flake on unrelated PRs.
+beforeAll(() => {
+  const rand = mulberry32(0x5eed);
+  vi.spyOn(Math, "random").mockImplementation(rand);
+  vi.spyOn(globalThis.crypto, "getRandomValues").mockImplementation(
+    <T extends ArrayBufferView | null>(buf: T): T => {
+      if (buf) {
+        const bytes = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+        for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(rand() * 256);
+      }
+      return buf;
+    },
+  );
+});
 afterAll(() => vi.restoreAllMocks());
 
 describe("wire-contract shapes (bump PROTOCOL_VERSION on a breaking change)", () => {
