@@ -163,7 +163,7 @@ jobs:
       # an unlisted path always runs the suite. A workflow_dispatch (the release
       # re-deploy) has no diff base, so paths-filter reports everything changed
       # and the suite runs in full.
-      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
+      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4
         id: changes
         with:
           predicate-quantifier: "every"
@@ -247,7 +247,7 @@ jobs:
       # Same safe-set gate as the api job: a docs/meta-only diff can't change the
       # built app, so skip the Playwright run. `every` + all-negation errs toward
       # RUNNING.
-      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
+      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4
         id: changes
         with:
           predicate-quantifier: "every"
@@ -329,7 +329,7 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - name: Did the backend (supabase/**) change?
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
+        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4
         id: changes
         with:
           filters: |
@@ -398,7 +398,7 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
       - name: Did the backend (supabase/**) change?
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
+        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4
         id: changes
         with:
           filters: |
