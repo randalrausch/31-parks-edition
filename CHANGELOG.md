@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.10.0 — 2026-07-08
+
+### Features
+
+- make sound a per-client preference instead of a shared game option
+
 ## v0.9.1 — 2026-07-06
 
 ### Fixes
