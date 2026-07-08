@@ -17,6 +17,7 @@ import { useTheme } from "./ParkThemeProvider";
 import ParkScene from "./ParkScene";
 import Modal from "./Modal";
 import ParkPicker from "./ParkPicker";
+import BirthdayBanner from "./BirthdayBanner";
 import { formatScore, type GamePlayer, type LogEntry } from "../game/engine";
 import type { CardModel, Suit } from "../types";
 
@@ -25,7 +26,8 @@ import type { CardModel, Suit } from "../types";
  * scene, and vignette — shared by both boards (and the online "Connecting…"
  * state) so the scaffolding can't drift. `children` are the table contents;
  * `overlays` render as siblings of the table inside the fold (covers, deal-end /
- * game-over overlays, toasts, modals).
+ * game-over overlays, toasts, modals). Also mounts the birthday easter egg
+ * (see BirthdayBanner) — it renders nothing except on its one day a year.
  */
 export function BoardFrame({ children, overlays }: { children: ReactNode; overlays?: ReactNode }) {
   const { theme } = useTheme();
@@ -37,6 +39,7 @@ export function BoardFrame({ children, overlays }: { children: ReactNode; overla
         {children}
       </div>
       {overlays}
+      <BirthdayBanner />
     </section>
   );
 }
