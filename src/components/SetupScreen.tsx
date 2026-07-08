@@ -18,6 +18,7 @@ import HeroBackground from "./HeroBackground";
 import { StarDivider } from "../art/Glyphs";
 import { titleImage } from "../titleArt";
 import { useAmbientAudio, hasAmbientAudio } from "../game/ambientAudio";
+import { useSoundEnabled } from "../game/soundPrefs";
 import { multiplayerEnabled } from "../game/multiplayerConfig";
 import { DEFAULT_OPTIONS, type AITraits, type GameOptions } from "../game/engine";
 import { AI_CHARACTERS, CHARACTERS_BY_ID, TRAIT_KEYS } from "../game/aiCharacters";
@@ -195,6 +196,7 @@ export default function SetupScreen({
   const [aboutOpen, setAboutOpen] = useState(false);
   const [ambientOn, setAmbientOn] = useState(false);
   useAmbientAudio(themeId, ambientOn);
+  const [soundOn, setSoundOn] = useSoundEnabled();
 
   const ai = aiCharIds.length;
   const total = humans + ai;
@@ -465,11 +467,19 @@ export default function SetupScreen({
               on={options.fullHistory}
               onToggle={() => toggle("fullHistory")}
             />
+          </div>
+        </section>
+
+        {/* Per-device preferences — not part of the shared game options, so
+            each player sets their own and can change it mid-game too. */}
+        <section className="setup__section setup__arr setup__arr--4">
+          <SectionTitle>Your Device</SectionTitle>
+          <div className="setup__rules">
             <Toggle
               label="Sound"
-              hint="Card, knock, and coin effects."
-              on={options.sound}
-              onToggle={() => toggle("sound")}
+              hint="Card, knock, and coin effects — just for this device."
+              on={soundOn}
+              onToggle={() => setSoundOn(!soundOn)}
             />
           </div>
         </section>

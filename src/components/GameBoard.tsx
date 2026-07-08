@@ -36,6 +36,7 @@ import {
 } from "../game/engine";
 import type { SoloGameApi } from "../game/useGame";
 import { clearSoloResuming } from "../game/soloPersist";
+import { useSoundEnabled } from "../game/soundPrefs";
 import "./GameBoard.css";
 
 export default function GameBoard({ game }: { game: SoloGameApi }) {
@@ -47,6 +48,7 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
   }, []);
   const [helpOpen, setHelpOpen] = useState(false);
   const [parksOpen, setParksOpen] = useState(false);
+  const [soundOn, setSoundOn] = useSoundEnabled();
   // Whether the live action feed is shown on the table. Defaults to on, and
   // the choice is remembered across turns and games.
   const [logOpen, setLogOpen] = useState(() => {
@@ -138,6 +140,8 @@ export default function GameBoard({ game }: { game: SoloGameApi }) {
         aliveCount={aliveCount}
         onSwitchPark={() => setParksOpen(true)}
         onHelp={() => setHelpOpen(true)}
+        soundOn={soundOn}
+        onToggleSound={() => setSoundOn(!soundOn)}
         trailing={
           <ToolButton label="New game" onClick={game.newGame}>
             <NewGameIcon />

@@ -233,7 +233,6 @@ describe("shipped defaults (mutation-audit pins)", () => {
       threeOfAKind: false,
       grace: true,
       knockPenalty: false,
-      sound: true,
       showLog: true,
       fullHistory: false,
     });

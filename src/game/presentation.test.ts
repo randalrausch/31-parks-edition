@@ -19,7 +19,7 @@ function auth(over: Partial<GameState>): GameState {
     cur: 0,
     knocker: null,
     phase: "drawing",
-    options: { sound: true },
+    options: {},
     result: null,
     ...(over as object),
   } as unknown as GameState;

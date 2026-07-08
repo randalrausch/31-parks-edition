@@ -32,6 +32,7 @@ import {
 import type { NetworkGameApi } from "../game/useNetworkGame";
 import { useTurnReplay } from "./useTurnReplay";
 import { sndShuffle, sndDeal, sndKnock, sndCoin } from "../game/sound";
+import { useSoundEnabled } from "../game/soundPrefs";
 import "./GameBoard.css";
 
 export default function OnlineGameBoard({
@@ -45,6 +46,7 @@ export default function OnlineGameBoard({
   const [parksOpen, setParksOpen] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const [showAllLog, setShowAllLog] = useState(false);
+  const [soundOn, setSoundOn] = useSoundEnabled();
 
   const snap = game.snap;
   const s = snap?.state ?? null;
@@ -72,9 +74,10 @@ export default function OnlineGameBoard({
   // replay the new public log moves one beat at a time for natural flow. Match
   // on seat index (not name — names aren't unique) so a same-named opponent's
   // moves are never mistaken for the viewer's own.
-  const replay = useTurnReplay(snap, viewer >= 0 ? viewer : null, !!s?.options.sound);
+  const replay = useTurnReplay(snap, viewer >= 0 ? viewer : null, soundOn);
 
-  // Sound cues for the online table (gated by the shared "Sound" house rule):
+  // Sound cues for the online table, gated by this device's own sound
+  // preference (not a shared game option — each player mutes independently):
   // a shuffle when a new deal is dealt and a coin when a deal resolves. Opponent
   // move SFX are paced by useTurnReplay; the viewer's own moves are sounded by
   // the action handlers below. The first snapshot (join / reconnect) only seeds
@@ -90,7 +93,7 @@ export default function OnlineGameBoard({
       soundedCoin.current = s.phase === "dealEnd" ? s.dealNum : -1;
       return;
     }
-    if (!s.options.sound) return;
+    if (!soundOn) return;
     if (s.phase !== "dealEnd" && s.dealNum !== soundedShuffle.current) {
       soundedShuffle.current = s.dealNum;
       sndShuffle();
@@ -99,7 +102,7 @@ export default function OnlineGameBoard({
       soundedCoin.current = s.dealNum;
       sndCoin();
     }
-  }, [s]);
+  }, [s, soundOn]);
 
   if (!s) {
     return (
@@ -110,18 +113,17 @@ export default function OnlineGameBoard({
   }
 
   // The viewer's own moves are sounded immediately here (opponents are paced by
-  // useTurnReplay), gated by the shared house rule.
-  const sound = !!s.options.sound;
+  // useTurnReplay), gated by this device's own sound preference.
   const drawDeck = () => {
-    if (sound) sndDeal();
+    if (soundOn) sndDeal();
     game.act({ type: "drawDeck" });
   };
   const takeDiscard = () => {
-    if (sound) sndDeal();
+    if (soundOn) sndDeal();
     game.act({ type: "takeDiscard" });
   };
   const knock = () => {
-    if (sound) sndKnock();
+    if (soundOn) sndKnock();
     game.act({ type: "knock" });
   };
 
@@ -247,6 +249,8 @@ export default function OnlineGameBoard({
         aliveCount={aliveCount}
         onSwitchPark={() => setParksOpen(true)}
         onHelp={() => setHelpOpen(true)}
+        soundOn={soundOn}
+        onToggleSound={() => setSoundOn(!soundOn)}
         trailing={
           <ToolButton label="Leave game" onClick={onLeave}>
             <LeaveIcon />
@@ -289,7 +293,7 @@ export default function OnlineGameBoard({
               onKnock={knock}
               onConfirmDiscard={() => {
                 if (selected === null) return;
-                if (sound) sndDeal();
+                if (soundOn) sndDeal();
                 game.act({ type: "discard", cardId: me.hand[selected]!.id });
                 setSelected(null);
               }}

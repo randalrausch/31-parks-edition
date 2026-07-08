@@ -41,7 +41,6 @@ function Shell() {
           threeOfAKind: false,
           grace: true,
           knockPenalty: false,
-          sound: false,
           showLog: true,
           fullHistory: false,
         },

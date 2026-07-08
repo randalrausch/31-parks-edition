@@ -23,6 +23,7 @@ import { type GameOptions, type GameState, type AITraits } from "./engine";
 import { LocalTransport, type Transport } from "./transport";
 import type { GameAction, NewGamePlayer } from "./actions";
 import { sndShuffle, sndDeal, sndKnock, sndCoin } from "./sound";
+import { isSoundEnabled } from "./soundPrefs";
 import {
   step,
   freshPresentation,
@@ -94,7 +95,7 @@ export function useGame(): SoloGameApi {
   useEffect(() => clearTimers, [clearTimers]);
 
   const beep = (fn: () => void) => {
-    if (authRef.current?.options.sound) fn();
+    if (isSoundEnabled()) fn();
   };
   const play = (snd: Snd) => {
     if (snd === "shuffle") beep(sndShuffle);

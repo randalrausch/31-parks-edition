@@ -28,7 +28,6 @@ const CONFIG = {
       threeOfAKind: false,
       grace: true,
       knockPenalty: true,
-      sound: false,
     },
   },
 };
