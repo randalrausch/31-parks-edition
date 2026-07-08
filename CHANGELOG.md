@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.11.0 — 2026-07-08
+
+### Features
+
+- greet Dan with a birthday banner on the board
+
 ## v0.10.0 — 2026-07-08
 
 ### Features
