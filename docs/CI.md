@@ -130,18 +130,21 @@ the one thing a fork or self-host must do — beyond cloning — for releases to
    - Create it, then **Generate a private key** (downloads a `.pem`).
 2. **Install the App** on this repo: the App's page → _Install App_ → your account →
    _Only select repositories_ → pick this repo.
-3. **Add two repository secrets** (Settings → Secrets and variables → Actions):
-   - `RELEASE_APP_ID` — the App's numeric _App ID_ (from its _General_ page).
-   - `RELEASE_APP_PRIVATE_KEY` — the **entire** `.pem` contents, including the
-     `-----BEGIN…`/`-----END…` lines.
+3. **Add a repository variable and a repository secret** (Settings → Secrets and
+   variables → Actions):
+   - `RELEASE_APP_CLIENT_ID` (**Variables** tab) — the App's _Client ID_ (from its
+     _General_ page; looks like `Iv23…`). Not sensitive, so it's a variable, not a
+     secret.
+   - `RELEASE_APP_PRIVATE_KEY` (**Secrets** tab) — the **entire** `.pem` contents,
+     including the `-----BEGIN…`/`-----END…` lines.
 4. **Add the App to the `main` ruleset's bypass list**: Settings → Rules → Rulesets
    → open the ruleset targeting `main` → _Bypass list_ → _Add bypass_ → select your
    App → mode **Always** → Save.
 
 The next `feat:`/`fix:` merge then releases and deploys on its own.
 
-Under the hood, `release.yml` mints a short-lived installation token from those two
-secrets via [`actions/create-github-app-token`](https://github.com/actions/create-github-app-token)
+Under the hood, `release.yml` mints a short-lived installation token from that
+variable and secret via [`actions/create-github-app-token`](https://github.com/actions/create-github-app-token)
 and uses it **only** for the push to `main`. The tag push, the GitHub Release, the
 "ask a human" issue, and the deploy dispatch all keep using the built-in
 `GITHUB_TOKEN` (none of those are blocked by the branch rule). Nothing long-lived
@@ -151,8 +154,9 @@ length of one job.
 ### Alternative: bypass with the built-in Actions token
 
 If you'd rather not create an App, add the built-in **GitHub Actions** actor to the
-`main` ruleset's bypass list instead and skip the two secrets. `release.yml` falls
-back to `GITHUB_TOKEN` when `RELEASE_APP_ID` is unset, and that push then bypasses.
+`main` ruleset's bypass list instead and skip the variable/secret pair. `release.yml`
+falls back to `GITHUB_TOKEN` when `RELEASE_APP_CLIENT_ID` is unset, and that push
+then bypasses.
 Whether the plain Actions token is selectable as a bypass actor depends on your
 plan/ruleset UI — if it isn't offered, use the App above.
 
