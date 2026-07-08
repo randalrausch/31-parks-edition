@@ -47,7 +47,7 @@ export const freshPresentation = (): Presentation => ({
   aiIdx: null,
 });
 
-/** Sounds the interpreter plays (gated on options.sound). */
+/** Sounds the interpreter plays (gated on the client's local sound preference). */
 export type Snd = "shuffle" | "deal" | "knock" | "coin";
 
 /** Events that drive the machine — external (user) and internal (scheduled). */

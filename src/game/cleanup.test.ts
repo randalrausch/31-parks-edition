@@ -9,7 +9,6 @@ function game(id: string, expiresAt: string): { rec: GameRecord; secret: SecretR
     threeOfAKind: false,
     grace: true,
     knockPenalty: true,
-    sound: false,
     showLog: true,
     fullHistory: false,
   });

@@ -331,6 +331,35 @@ const HelpIcon = () => (
     <circle cx="12.1" cy="17" r="1.2" fill="currentColor" />
   </svg>
 );
+/** Speaker glyph for the per-client sound toggle; waves when on, an X when off. */
+const SoundIcon = ({ on }: { on: boolean }) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path
+      d="M4 9v6h4l5 4V5L8 9H4z"
+      fill="currentColor"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+    {on ? (
+      <path
+        d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8 8 0 0 1 0 12"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    ) : (
+      <path
+        d="M17 9.5l4 5M21 9.5l-4 5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    )}
+  </svg>
+);
 export const NewGameIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path
@@ -381,6 +410,8 @@ function BoardToolbar({
   aliveCount,
   onSwitchPark,
   onHelp,
+  soundOn,
+  onToggleSound,
   trailing,
 }: {
   dealNum: number;
@@ -388,6 +419,8 @@ function BoardToolbar({
   aliveCount: number;
   onSwitchPark: () => void;
   onHelp: () => void;
+  soundOn: boolean;
+  onToggleSound: () => void;
   trailing?: ReactNode;
 }) {
   return (
@@ -403,6 +436,12 @@ function BoardToolbar({
       </ToolButton>
       <ToolButton label="How to play" onClick={onHelp}>
         <HelpIcon />
+      </ToolButton>
+      <ToolButton
+        label={soundOn ? "Mute sound effects" : "Unmute sound effects"}
+        onClick={onToggleSound}
+      >
+        <SoundIcon on={soundOn} />
       </ToolButton>
       {trailing}
     </div>
@@ -425,6 +464,8 @@ export function BoardHeader({
   aliveCount,
   onSwitchPark,
   onHelp,
+  soundOn,
+  onToggleSound,
   trailing,
 }: {
   dealNum: number;
@@ -432,6 +473,8 @@ export function BoardHeader({
   aliveCount: number;
   onSwitchPark: () => void;
   onHelp: () => void;
+  soundOn: boolean;
+  onToggleSound: () => void;
   trailing?: ReactNode;
 }) {
   return (
@@ -444,6 +487,8 @@ export function BoardHeader({
         aliveCount={aliveCount}
         onSwitchPark={onSwitchPark}
         onHelp={onHelp}
+        soundOn={soundOn}
+        onToggleSound={onToggleSound}
         trailing={trailing}
       />
     </header>

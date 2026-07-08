@@ -195,7 +195,7 @@ describe("turn actions", () => {
   });
 
   it("rotates the opening seat each deal", () => {
-    let s = createGameState(aiPlayers(3), { ...DEFAULT_OPTIONS, sound: false });
+    let s = createGameState(aiPlayers(3), DEFAULT_OPTIONS);
     const openers: number[] = [];
     for (let i = 0; i < 4; i++) {
       s = applyAction(s, { type: "deal" });
@@ -216,7 +216,6 @@ describe("invariants over many random full games", () => {
           threeOfAKind: rand() < 0.5,
           grace: rand() < 0.5,
           knockPenalty: rand() < 0.5,
-          sound: false,
           showLog: true,
           fullHistory: false,
         };

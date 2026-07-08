@@ -84,7 +84,7 @@ function clampTraits(t: unknown): Record<string, number> | undefined {
  * Whitelist client options into a full, trusted GameOptions. Unknown fields are
  * dropped, and each option is defaulted from DEFAULT_OPTIONS: an option whose
  * default is TRUE stays on unless the client explicitly sends `false` (e.g.
- * grace, sound, showLog); an option whose default is FALSE stays off unless the
+ * grace, showLog); an option whose default is FALSE stays off unless the
  * client explicitly sends `true`. Deriving from DEFAULT_OPTIONS keeps a raw API
  * caller's game identical to the app's, and means a newly-added option can't
  * silently get the wrong default here.

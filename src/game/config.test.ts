@@ -5,16 +5,15 @@ import { DEFAULT_OPTIONS } from "./engine";
 describe("sanitizeOptions", () => {
   it("returns the app defaults for an empty/absent config", () => {
     // A raw API caller who sends no options must get the same game the app
-    // builds — in particular grace and sound ON (they default true).
+    // builds — in particular grace ON (it defaults true).
     expect(sanitizeOptions({})).toEqual(DEFAULT_OPTIONS);
     expect(sanitizeOptions(undefined)).toEqual(DEFAULT_OPTIONS);
     expect(sanitizeOptions(null)).toEqual(DEFAULT_OPTIONS);
   });
 
   it("lets an explicit false turn off a true-default option", () => {
-    const o = sanitizeOptions({ grace: false, sound: false, showLog: false });
+    const o = sanitizeOptions({ grace: false, showLog: false });
     expect(o.grace).toBe(false);
-    expect(o.sound).toBe(false);
     expect(o.showLog).toBe(false);
   });
 

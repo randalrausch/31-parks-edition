@@ -107,7 +107,6 @@ function runTrial(trial: number): number {
     threeOfAKind: rand() < 0.5,
     grace: rand() < 0.5,
     knockPenalty: rand() < 0.5,
-    sound: false,
     showLog: true,
     fullHistory: false,
   };

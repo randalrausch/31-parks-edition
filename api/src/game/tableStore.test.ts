@@ -57,7 +57,6 @@ function fixtures(): { rec: GameRecord; secret: SecretRecord } {
       threeOfAKind: false,
       grace: true,
       knockPenalty: true,
-      sound: false,
       showLog: true,
       fullHistory: false,
     },

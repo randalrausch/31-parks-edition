@@ -198,7 +198,6 @@ describe("full async games (only human actions submitted)", () => {
         threeOfAKind: Math.random() < 0.5,
         grace: Math.random() < 0.5,
         knockPenalty: Math.random() < 0.5,
-        sound: false,
         showLog: true,
         fullHistory: false,
       };

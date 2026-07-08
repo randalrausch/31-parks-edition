@@ -13,7 +13,6 @@ function fixtures(overrides: Partial<GameRecord> = {}) {
       threeOfAKind: false,
       grace: true,
       knockPenalty: true,
-      sound: false,
       showLog: true,
       fullHistory: false,
     },

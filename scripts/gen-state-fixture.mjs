@@ -43,7 +43,6 @@ const options = {
   threeOfAKind: true,
   grace: true,
   knockPenalty: true,
-  sound: false,
   showLog: true,
   fullHistory: false,
 };
