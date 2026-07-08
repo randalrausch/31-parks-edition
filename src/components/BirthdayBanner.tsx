@@ -64,7 +64,7 @@ export default function BirthdayBanner() {
         </button>
         <span className="birthday__eyebrow">Happy Birthday</span>
         <h2 className="birthday__title">{BIRTHDAY.name}!</h2>
-        <p className="birthday__msg">Hope your trip through the parks is a good one this year.</p>
+        <p className="birthday__msg">Hope it's a great one this year.</p>
       </div>
     </div>
   );
