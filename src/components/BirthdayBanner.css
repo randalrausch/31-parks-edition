@@ -1,0 +1,109 @@
+/* Fixed to the viewport (not the table), so it survives above the board's own
+   overflow:hidden layers and never gets clipped. */
+.birthday {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: start center;
+  padding-top: calc(24px + var(--safe-t));
+  pointer-events: none;
+}
+
+.birthday__confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.birthday__piece {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0.9;
+  animation: birthday-fall linear infinite;
+}
+
+@keyframes birthday-fall {
+  from {
+    transform: translateY(-5vh) translateX(0) rotate(0deg);
+    opacity: 0.9;
+  }
+  to {
+    transform: translateY(105vh) translateX(var(--drift)) rotate(var(--rotate));
+    opacity: 0.7;
+  }
+}
+
+.birthday__card {
+  position: relative;
+  pointer-events: auto;
+  max-width: min(360px, calc(100vw - 32px));
+  text-align: center;
+  padding: 18px 26px 20px;
+  background: linear-gradient(180deg, var(--chrome-surface), var(--chrome-bg));
+  border: 1.5px solid var(--chrome-line-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+  animation: birthday-rise 0.3s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+@keyframes birthday-rise {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.96);
+  }
+}
+
+.birthday__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: var(--cream-dim);
+  border-radius: 50%;
+}
+.birthday__close:hover {
+  color: var(--cream);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.birthday__eyebrow {
+  display: block;
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  font-size: 0.72rem;
+  color: var(--gold-bright);
+}
+
+.birthday__title {
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 8vw, 2.8rem);
+  color: var(--cream);
+  letter-spacing: 0.04em;
+  margin: 2px 0 6px;
+}
+
+.birthday__msg {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--cream-dim);
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .birthday__piece {
+    animation: none;
+    display: none;
+  }
+  .birthday__card {
+    animation: none;
+  }
+}
