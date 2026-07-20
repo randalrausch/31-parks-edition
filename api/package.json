@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.1.0",
-    "azurite": "^3.33.0",
+    "azurite": "^3.36.0",
     "esbuild": "0.28.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.10"
